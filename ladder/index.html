@@ -52,7 +52,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .list input{width:100%;font:500 14px var(--f-body);padding:6px 9px;border:1px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink)}
 .stage{background:var(--board);border-radius:16px;padding:14px 10px 12px;box-shadow:inset 0 0 0 6px #6b4a2b,0 14px 30px -18px rgba(0,0,0,.6);overflow:hidden}
 svg#lad{display:block;width:100%;height:auto;touch-action:manipulation}
-.nm{cursor:pointer}
+.nm{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.nm rect,.nm text{pointer-events:all}
 .nm rect{fill:rgba(255,255,255,.08);stroke:var(--chalk-dim);stroke-width:1.5}
 .nm:hover rect,.nm:focus rect{fill:rgba(255,255,255,.18)}
 .nm text,.rs text{fill:var(--chalk);font-family:var(--f-display);text-anchor:middle;dominant-baseline:central}
@@ -201,7 +202,9 @@ function renderTable(){
   $('tbl').querySelector('tbody').innerHTML=names.map((nm,i)=>{const r=revealed.has(i)?resultAt(path(i).end):'';
     return `<tr><td><span class="sw" style="background:${COLORS[i%10]}"></span>${esc(nm)}</td><td>${revealed.has(i)?`<span class="pill">${esc(r)}</span>`:'<span class="note">아직 몰라요</span>'}</td></tr>`;}).join('');
 }
-$('lad').addEventListener('click',e=>{const g=e.target.closest('.nm');if(g)ride(+g.dataset.i);});
+// 클릭과 터치 모두 받기 (아이폰 사파리에서 그림 요소 클릭이 안 잡히는 경우 대비)
+let lastTap=0;const onTap=e=>{const g=e.target.closest('.nm');if(!g)return;const now=Date.now();if(now-lastTap<500)return;lastTap=now;ride(+g.dataset.i);};
+$('lad').addEventListener('click',onTap);$('lad').addEventListener('pointerup',onTap);$('lad').addEventListener('touchend',e=>{const g=e.target.closest('.nm');if(g){e.preventDefault();onTap(e);}},{passive:false});
 $('lad').addEventListener('keydown',e=>{const g=e.target.closest('.nm');if(g&&(e.key==='Enter'||e.key===' ')){e.preventDefault();ride(+g.dataset.i);}});
 $('all').onclick=async()=>{for(let i=0;i<N;i++)if(!revealed.has(i)){await ride(i);}};
 $('make').onclick=makeLadder;
@@ -218,6 +221,21 @@ if(!results.length)results=['당첨','꽝','꽝','꽝'];
 fillDefaults();renderInputs();makeLadder();
 </script>
 
-<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+<div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
+<style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
+padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);
+max-width:calc(100vw - 24px);white-space:nowrap}.sw-upd[hidden]{display:none!important}
+.sw-upd button{border:0;border-radius:999px;padding:6px 12px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+#swNow{background:#4cc38a;color:#0b1a12}#swLater{background:transparent;color:#cfd8d3}</style>
+<script>(function(){if(!('serviceWorker' in navigator))return;
+let reloading=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(reloading)return;reloading=true;location.reload();});
+function show(w){var b=document.getElementById('swUpd');b.hidden=false;
+  document.getElementById('swNow').onclick=function(){document.getElementById('swMsg').textContent='바꾸는 중…';w.postMessage('SKIP');};
+  document.getElementById('swLater').onclick=function(){b.hidden=true;};}
+addEventListener('load',function(){navigator.serviceWorker.register('sw.js').then(function(reg){
+  if(reg.waiting&&navigator.serviceWorker.controller)show(reg.waiting);
+  reg.addEventListener('updatefound',function(){var w=reg.installing;if(w)w.addEventListener('statechange',function(){if(w.state==='installed'&&navigator.serviceWorker.controller)show(w);});});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reg.update().catch(function(){});});
+}).catch(function(){});});})();</script>
 </body>
 </html>

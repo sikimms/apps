@@ -31,6 +31,9 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
 .how b{color:var(--accent)}
 .how ul{margin:6px 0 0;padding-left:18px}
 .state{margin-top:10px;font-size:12.5px;color:var(--muted)}
+.more{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:18px;font-size:14px}
+.more a{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--card);border:1px solid var(--rule);color:inherit;text-decoration:none}
+.more a img{border-radius:8px}.more small{flex-basis:100%;color:var(--muted);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -44,6 +47,10 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
       <a class="app" href="omok.html"><img src="icons/omok.png" alt="" width="64" height="64"><span><b>오목</b><small>오목 배우기와 대국 (3·3 금지)</small></span></a>
       <a class="app" href="othello.html"><img src="icons/othello.png" alt="" width="64" height="64"><span><b>오델로</b><small>오델로 배우기와 대국</small></span></a>
     </div>
+    <div class="more"><b>다른 앱</b>
+      <a href="../ladder/"><img src="../ladder/icons/icon-192.png" alt="" width="28" height="28">사다리타기</a>
+      <a href="../lotto/"><img src="../lotto/icons/icon-192.png" alt="" width="28" height="28">로또 번호뽑기</a>
+      <small>따로 설치하는 앱이에요. 열어서 홈 화면에 추가하면 아이콘이 따로 생겨요.</small></div>
     <div class="how">
       <b>휴대폰 홈 화면에 앱으로 추가하기</b>
       <ul>
@@ -54,9 +61,22 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
     </div>
     <div class="state" id="state"></div>
   </div>
-<script>
-const st=document.getElementById('state');
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{st.textContent='오프라인 저장 완료: 인터넷 없이도 열 수 있어요.';}).catch(()=>{});}
-</script>
+<div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
+<style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
+padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);
+max-width:calc(100vw - 24px);white-space:nowrap}.sw-upd[hidden]{display:none!important}
+.sw-upd button{border:0;border-radius:999px;padding:6px 12px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+#swNow{background:#4cc38a;color:#0b1a12}#swLater{background:transparent;color:#cfd8d3}</style>
+<script>(function(){if(!('serviceWorker' in navigator))return;
+let reloading=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(reloading)return;reloading=true;location.reload();});
+function show(w){var b=document.getElementById('swUpd');b.hidden=false;
+  document.getElementById('swNow').onclick=function(){document.getElementById('swMsg').textContent='바꾸는 중…';w.postMessage('SKIP');};
+  document.getElementById('swLater').onclick=function(){b.hidden=true;};}
+addEventListener('load',function(){navigator.serviceWorker.register('sw.js').then(function(reg){
+  if(reg.waiting&&navigator.serviceWorker.controller)show(reg.waiting);
+  reg.addEventListener('updatefound',function(){var w=reg.installing;if(w)w.addEventListener('statechange',function(){if(w.state==='installed'&&navigator.serviceWorker.controller)show(w);});});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reg.update().catch(function(){});});
+}).catch(function(){});});})();</script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.ready.then(()=>{document.getElementById('state').textContent='오프라인 저장 완료: 인터넷 없이도 열 수 있어요.';});</script>
 </body>
 </html>

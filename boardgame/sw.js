@@ -1,6 +1,7 @@
-// 오프라인 저장 (버전 7e5cd2e58e)
-const CACHE='bgc-7e5cd2e58e',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","baduk.html","chess.html","janggi.html","omok.html","othello.html","icons/baduk.png","icons/chess.png","icons/janggi.png","icons/omok.png","icons/othello.png"];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()));});
+// 오프라인 저장 (버전 85bd3cbcbc)
+const CACHE='bgc-85bd3cbcbc',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","baduk.html","chess.html","janggi.html","omok.html","othello.html","icons/baduk.png","icons/chess.png","icons/janggi.png","icons/omok.png","icons/othello.png"];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));});
+self.addEventListener('message',e=>{if(e.data==='SKIP')self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('bgc-')&&k!==CACHE&&k!=='bgc-font').map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{
   const u=new URL(e.request.url);if(e.request.method!=='GET')return;
