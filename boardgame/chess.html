@@ -329,7 +329,7 @@ const mkey=m=>m.f*1024+m.t*8+(m.pr||0);
 function orderMoves(ms,ply){
   const kk=killers[ply];
   for(const m of ms){const k=mkey(m);let s=0;
-    if(m.cap)s=1e6+RULES.VAL[Math.abs(m.cap)]*10-RULES.VAL[Math.abs(m.pc)]/10;
+    if(m.h!=null)s=m.h+(k===kk?5e5:0);else if(m.cap)s=1e6+RULES.VAL[Math.abs(m.cap)]*10-RULES.VAL[Math.abs(m.pc)]/10;
     else if(m.pr)s=9e5;else if(k===kk)s=8e5;
     m._s=s;}
   return ms.sort((a,b)=>b._s-a._s);
@@ -346,14 +346,16 @@ function qs(p,alpha,beta,ply){
   }
   return alpha;
 }
+const genSearch=p=>RULES.searchMoves?RULES.searchMoves(p):RULES.genPseudo(p,false);
 function ab(p,depth,alpha,beta,ply){
+  if(RULES.terminalScore){const ts=RULES.terminalScore(p,ply);if(ts!==null)return ts;}
   if((++nodes&1023)===0&&Date.now()>stopAt)aborted=true;
   if(aborted)return 0;
   const chk=RULES.inCheck(p);
   if(chk&&ply<10)depth++;
   if(depth<=0)return qs(p,alpha,beta,ply);
   let n=0,best=-INF;
-  for(const m of orderMoves(RULES.genPseudo(p,false),ply)){
+  for(const m of orderMoves(genSearch(p),ply)){
     const c=RULES.make(p,m);if(RULES.illegal(c,p.side))continue;n++;
     const s=-ab(c,depth-1,-beta,-alpha,ply+1);
     if(aborted)return 0;
@@ -364,7 +366,7 @@ function ab(p,depth,alpha,beta,ply){
   return best;
 }
 function rootSearch(p,maxDepth,timeMs){
-  const moves=orderMoves(RULES.legal(p),0);
+  const moves=orderMoves(RULES.searchMoves?RULES.searchMoves(p).filter(m=>!m.pass):RULES.legal(p),0);
   if(!moves.length)return{move:null,score:RULES.inCheck(p)?-MATE:0,depth:0};
   let best=moves[0],bestScore=-INF,reached=0;const deadline=Date.now()+timeMs;
   for(let d=1;d<=maxDepth;d++){
@@ -763,6 +765,7 @@ function makeInteractor(svg,getState,onMove){
   svg.addEventListener('click',e=>{const sq=GAME.hit(svg,e);if(sq>=0)handle(sq);});
   async function handle(sq){
     const st=getState();if(!st.canMove)return;
+    if(GAME.placement){const c=st.legal.filter(m=>m.t===sq);if(c.length){sel=-1;dots=[];onMove(c[0]);}else if(GAME.badClick)GAME.badClick(st.pos,sq);return;}
     if(sel>=0){const c=dots.filter(m=>m.t===sq);if(c.length){const m=await pickMove(c);sel=-1;dots=[];onMove(m);return;}}
     const pc=st.pos.b[sq];
     if(pc&&Math.sign(pc)===st.pos.side&&sq!==sel){sel=sq;dots=st.legal.filter(m=>m.f===sq);}else{sel=-1;dots=[];}
@@ -801,7 +804,7 @@ function renderLesson(){
   $('chips').innerHTML=LESSONS.map((l,k)=>`<button class="chip${k===LS.li?' on':''}${lessonDone.has(k)?' done':''}" data-k="${k}">${k+1}. ${l.title}</button>`).join('');
   $('lstep').textContent=`${LS.li+1}강 · ${L.steps.length>1?`단계 ${LS.si+1}/${L.steps.length}`:'한 단계'}`;
   $('ltitle').innerHTML=L.title;$('ltext').innerHTML=st.text;
-  $('lturn').innerHTML=st.type==='move'&&!LS.done?`<div class="turn">${GAME.sideChip(LS.pos.side)}${GAME.sideName(LS.pos.side)} 차례 · 말을 누르면 갈 수 있는 곳이 보여요</div>`:'';
+  $('lturn').innerHTML=st.type==='move'&&!LS.done?`<div class="turn">${GAME.sideChip(LS.pos.side)}${GAME.sideName(LS.pos.side)} 차례 · ${GAME.turnHint||'말을 누르면 갈 수 있는 곳이 보여요'}</div>`:'';
   if(st.type==='quiz'){const q=st.quiz(LS);
     $('lquiz').innerHTML=`<div class="quiz">${q.opts.map((v,i)=>`<button class="btn" data-i="${i}">${v}</button>`).join('')}</div>`;
     $('lquiz').querySelectorAll('button').forEach(b=>b.onclick=()=>{const okk=+b.dataset.i===q.ans;LS.fb={kind:okk?'ok':'no',msg:okk?q.msg:q.wrong||'다시 생각해 보세요.'};if(okk)finishStep();renderLesson();});
@@ -810,7 +813,7 @@ function renderLesson(){
   const lastL=LS.li===LESSONS.length-1&&LS.si===L.steps.length-1;
   $('lnext').textContent=lastL?'실전 대국 하러 가기':(LS.si<L.steps.length-1?'다음 단계':'다음 강의');
   $('lnext').disabled=!LS.done;$('lreset').hidden=st.type==='info';
-  GAME.draw($('lboard'),LS.pos,{sel:lint.sel,dots:lint.dots,last:LS.last,marks:st.marks,labels:true,check:checkSq(LS.pos)});
+  GAME.draw($('lboard'),LS.pos,{sel:lint.sel,dots:GAME.placement?(GAME.showAllDots?LS.legal:[]):lint.dots,last:LS.last,marks:st.marks,labels:true,check:checkSq(LS.pos)});
 }
 $('chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b)loadStep(+b.dataset.k,0);});
 $('lreset').onclick=()=>{setLessonPos(LS.start.pos);LS.last=LS.start.last;LS.done=step().type==='info';LS.fb=null;lint.clear();renderLesson();};
@@ -941,7 +944,8 @@ function renderPlay(){
   renderLevels();
   $('sbName').innerHTML=`${GAME.sideChip(US)}${GAME.sideName(US)}${ai?' · 나':''}`;
   $('swName').innerHTML=`${GAME.sideChip(AS)}${GAME.sideName(AS)}${ai?` · 컴퓨터 (${LEVELS[G.level].name})`:''}`;
-  $('sbCap').textContent='잡은 말: '+GAME.captText(G.capt[US]);$('swCap').textContent='잡은 말: '+GAME.captText(G.capt[AS]);
+  if(GAME.statLine){$('sbCap').textContent=GAME.statLine(G.pos,US);$('swCap').textContent=GAME.statLine(G.pos,AS);}
+  else{$('sbCap').textContent='잡은 말: '+GAME.captText(G.capt[US]);$('swCap').textContent='잡은 말: '+GAME.captText(G.capt[AS]);}
   $('sb').classList.toggle('cur',!G.over&&G.pos.side===US);$('sw').classList.toggle('cur',!G.over&&G.pos.side===AS);
   $('pmsg').className='fb '+G.kind+(G.thinking?' thinking':'');
   $('pmsg').innerHTML=(G.evalHtml?`<div style="margin-bottom:4px">방금 내 수: ${G.evalHtml}</div>`:'')+G.coach+
@@ -952,7 +956,7 @@ function renderPlay(){
   const showW=ai&&G.winUser!=null;$('wwrap').hidden=!showW;
   if(showW){const p=Math.round(G.winUser*100);$('wbarB').style.width=p+'%';$('wB').textContent=`${GAME.sideName(US)}(나) ${p}%`;$('wW').textContent=`${GAME.sideName(AS)} ${100-p}%`;}
   const arrows=G.hint?[{f:G.hint.f,t:G.hint.t,color:BLUE}]:[];
-  const o={sel:pint.sel,dots:$('optDots').checked?pint.dots:[],last:G.last,labels:$('optLabels').checked,check:checkSq(G.pos),arrows};
+  const o={sel:pint.sel,dots:$('optDots').checked?(GAME.placement?(GAME.showAllDots&&!G.over?G.legal:[]):pint.dots):[],last:G.last,labels:$('optLabels').checked,check:checkSq(G.pos),arrows};
   const in3d=use3d&&V3;$('p3d').hidden=!in3d;$('pboard').toggleAttribute('hidden',!!in3d);$('vreset').hidden=$('vhelp').hidden=!in3d;
   $('v3d').textContent=in3d?'2D로 보기':'3D로 보기';
   if(in3d)V3.draw(G.pos,o);else GAME.draw($('pboard'),G.pos,o);
@@ -988,6 +992,7 @@ document.querySelectorAll('[data-newgame]').forEach(el=>el.onchange=newGame);
 /* ---------- 실수 다시 보기 ---------- */
 let RV=null;
 function reasons(e){
+  if(GAME.reasons)return GAME.reasons(e,G.replies[e.ply]);
   const out=[],mover=e.before.side,after=RULES.make(e.before,e.move),name=GAME.pname(e.move.pc),rep=G.replies[e.ply];
   if(rep){const a2=RULES.make(after,rep),st=RULES.status(a2,[],0);
     if(st.over&&st.winner===-mover)out.push(`그 수 때문에 바로 <b>${GAME.mateWord}</b>을 당했어요.`);
