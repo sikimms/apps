@@ -235,6 +235,9 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .nbody{min-width:0;flex:1}.nname{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
 .nwin{font-size:12px;font-weight:700;color:var(--print-ink);background:var(--print);border-radius:999px;padding:0 8px}.ndist{font:600 12px var(--f-num);color:var(--fix)}
 .nlinks{display:flex;flex-wrap:wrap;gap:10px;margin-top:3px;font-size:12.5px}.nlinks a{color:var(--fix)}
+.mhide{display:none!important}
+.mpicked{margin-top:12px;border-top:1px solid var(--rule);padding-top:10px}.mptitle{font-weight:700;font-size:14px;margin-bottom:6px}.mptitle .note{font-weight:400;margin-left:4px}
+.mlatest{margin:10px 0 4px}.mlatest .hlatest{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .hupd{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;border-radius:8px;background:var(--paper)}
 .hupd .note{flex:1 1 260px}
 .qrbox{margin:12px 0 4px;padding:12px 14px;border-radius:12px;background:var(--print-soft)}
@@ -10612,6 +10615,7 @@ $('draw').onclick=()=>{
   showMsg(p.bad.length?`${p.bad.join('·')}게임은 숫자가 6개가 아니고 자동선택도 없어서 뺐어요.`:'');
 };
 $('rows').addEventListener('click',e=>{const b=e.target.closest('.mini');if(!b)return;const i=+b.dataset.i;
+  if(!current[i]){renderRows(false);return;}
   if(b.dataset.act==='save'){const g=current[i];if(saved.some(s=>s.nums.join()===g.nums.join())){showMsg('이미 보관한 번호예요.');return;}
     saved.unshift({nums:g.nums,type:g.type,t:Date.now()});saved=saved.slice(0,50);store.set('saved',saved);showMsg(`${g.game}게임을 보관했어요.`,true);renderRows(false);}
   else if(b.dataset.act==='redo'){const gi=LAB.indexOf(current[i].game);current[i]=makeGame(gi);renderRows(false);
@@ -11358,6 +11362,44 @@ $('mMock').onclick=async()=>{
   setBusy(false);
 };
 
+</script>
+<script>
+/* ===== 휴대폰 간단 보기: 손으로 칠하는 메뉴(용지·이번 회차 번호·역대 조회)는 숨기고,
+   꼭 필요한 것(뽑은 번호·보관함·최근 회차·최신 회차 받기)은 다른 메뉴로 옮긴다. PC 화면은 그대로 ===== */
+(function(){
+  const isPhone=matchMedia('(max-width:760px)').matches||/Android|iPhone|iPod/i.test(navigator.userAgent);
+  if(!isPhone)return;
+  const HIDE=['slip','draw','hist'];
+  // 옮길 곳 만들기
+  const mach=document.querySelector('[data-id="machine"]'),win=document.querySelector('[data-id="win"]'),draw=document.querySelector('[data-id="draw"]'),hist=document.querySelector('[data-id="hist"]');
+  const home={rows:[$('rows').parentNode,$('rows').nextSibling],msg:[$('msg').parentNode,$('msg').nextSibling],box:null,hupd:null,hl:null};
+  const picked=document.createElement('div');picked.className='mpicked';picked.innerHTML='<div class="mptitle">뽑은 번호 <span class="note">보관을 누르면 아래 당첨 번호 맞춰보기의 보관함에 남아요</span></div>';
+  const savedBox=draw.querySelector('.facts'),hupd=hist.querySelector('.hupd'),hl=$('hlatest');
+  const latestBox=document.createElement('div');latestBox.className='mlatest';
+  let compact=store.get('compact',true);
+  function apply(){
+    for(const id of HIDE){const p=document.querySelector(`[data-id="${id}"]`);if(p)p.classList.toggle('mhide',compact);}
+    if(compact){
+      picked.append($('rows'),$('msg'));mach.appendChild(picked);
+      latestBox.append(hl,hupd);win.insertBefore(latestBox,win.querySelector('.qrbox'));
+      win.appendChild(savedBox);
+    }else{
+      draw.insertBefore($('msg'),draw.querySelector('.facts')||null);draw.insertBefore($('rows'),$('msg'));draw.appendChild(savedBox);
+      const hh=hist.querySelector('.hhead');hh.appendChild(hl);hh.after(hupd);
+      picked.remove();latestBox.remove();
+    }
+    const kp=$('recKeep').closest('label');if(kp)kp.hidden=compact;if(compact)$('recKeep').checked=false;
+    $('mCompact').textContent=compact?'모든 메뉴 보기':'휴대폰 간단 보기';
+    const n=document.querySelector('#hRec')&&document.querySelector('[data-id="rec"] .autofill .note');
+    if(n)n.textContent=compact?'게임마다 추첨을 따로 돌려 많이 나온 6개로 골라, 추첨기 아래 "뽑은 번호"에 넣어요.':'게임마다 추첨을 따로 돌려 많이 나온 6개로 용지를 칠하고, 이번 회차 번호에 바로 넣어요.';
+  }
+  // 용지를 안 보이게 하면 추첨기가 뽑을 게임이 없을 수 있으니, 비어 있으면 A게임을 자동으로
+  if(compact&&!playable().games.length){slip[0].auto=true;if(typeof saveSlip==='function')saveSlip();renderSlip();}
+  const b=document.createElement('button');b.className='mini';b.id='mCompact';b.type='button';
+  b.onclick=()=>{compact=!compact;store.set('compact',compact);apply();};
+  document.querySelector('.layoutbar').appendChild(b);
+  apply();
+})();
 </script>
 
 <div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
