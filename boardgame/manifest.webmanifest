@@ -1,0 +1,65 @@
+{
+  "name": "보드게임 교실",
+  "short_name": "보드게임",
+  "description": "초보를 위한 바둑·체스·장기 교실",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eaeee9",
+  "theme_color": "#2d6a4f",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "바둑",
+      "url": "./baduk.html",
+      "icons": [
+        {
+          "src": "icons/baduk.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "체스",
+      "url": "./chess.html",
+      "icons": [
+        {
+          "src": "icons/chess.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "장기",
+      "url": "./janggi.html",
+      "icons": [
+        {
+          "src": "icons/janggi.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

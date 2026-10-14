@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>앱 모음</title>
+<style>
+:root{--bg:#f3f1ee;--card:#fff;--ink:#222;--muted:#666;--rule:#ddd}
+@media (prefers-color-scheme: dark){:root{--bg:#161616;--card:#222;--ink:#eee;--muted:#aaa;--rule:#333;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.6}
+.wrap{max-width:560px;margin:0 auto;padding:36px 16px}
+h1{font-size:26px;margin:0 0 18px}
+a.app{display:flex;align-items:center;gap:14px;padding:14px 16px;margin-bottom:10px;border-radius:14px;background:var(--card);border:1px solid var(--rule);color:inherit;text-decoration:none}
+a.app img{width:56px;height:56px;border-radius:12px}
+a.app b{display:block;font-size:19px}
+a.app small{color:var(--muted)}
+p{color:var(--muted);font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>앱 모음</h1>
+  <a class="app" href="boardgame/"><img src="boardgame/icons/icon-192.png" alt=""><span><b>보드게임 교실</b><small>바둑 · 체스 · 장기 배우기와 대국</small></span></a>
+  <a class="app" href="lotto/"><img src="lotto/icons/icon-192.png" alt=""><span><b>로또 6/45 번호뽑기</b><small>3D 추첨기 · 역대 당첨 조회</small></span></a>
+  <p>각 앱을 열고 휴대폰 메뉴에서 "홈 화면에 추가"를 누르면 앱처럼 쓸 수 있어요.</p>
+</div>
+</body>
+</html>

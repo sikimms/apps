@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="보드게임">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>보드게임 교실</title>
+<style>
+/* 시작 화면: 게임 세 개를 큰 카드로 */
+:root{--bg:#eaeee9;--card:#f8faf7;--ink:#1c2420;--muted:#5a6660;--rule:#d2d9d3;--accent:#2d6a4f;--accent-soft:#dcebe2;
+  --f-display:"Gowun Batang","Nanum Myeongjo",serif;--f-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+@media (prefers-color-scheme: dark){:root{--bg:#131815;--card:#1b221e;--ink:#e4eae6;--muted:#98a59e;--rule:#2c3631;--accent:#74c49b;--accent-soft:#22342a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:720px;margin:0 auto;padding:calc(28px + env(safe-area-inset-top,0px)) 16px calc(32px + env(safe-area-inset-bottom,0px))}
+h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
+.sub{color:var(--muted);font-size:14px;margin:6px 0 22px}
+.apps{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.app{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:var(--card);border:1px solid var(--rule);color:inherit;text-decoration:none}
+.app:hover,.app:focus-visible{border-color:var(--accent);outline:none;box-shadow:0 0 0 2px var(--accent-soft)}
+.app img{border-radius:14px;flex:none}
+.app b{display:block;font-family:var(--f-display);font-size:22px;line-height:1.2}
+.app small{display:block;color:var(--muted);font-size:13px}
+.how{margin-top:26px;padding:14px 16px;border-radius:12px;background:var(--accent-soft);font-size:13.5px}
+.how b{color:var(--accent)}
+.how ul{margin:6px 0 0;padding-left:18px}
+.state{margin-top:10px;font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>보드게임 교실</h1>
+    <div class="sub">처음 배우는 사람을 위한 바둑·체스·장기</div>
+    <div class="apps">
+      <a class="app" href="baduk.html"><img src="icons/baduk.png" alt="" width="64" height="64"><span><b>바둑</b><small>9·13·19줄 바둑 배우기와 대국</small></span></a>
+      <a class="app" href="chess.html"><img src="icons/chess.png" alt="" width="64" height="64"><span><b>체스</b><small>체스 배우기와 대국</small></span></a>
+      <a class="app" href="janggi.html"><img src="icons/janggi.png" alt="" width="64" height="64"><span><b>장기</b><small>장기 배우기와 대국</small></span></a>
+    </div>
+    <div class="how">
+      <b>휴대폰 홈 화면에 앱으로 추가하기</b>
+      <ul>
+        <li><b>안드로이드</b> (크롬): 오른쪽 위 ⋮ 메뉴 → <b>홈 화면에 추가</b> 또는 <b>앱 설치</b></li>
+        <li><b>아이폰</b> (사파리): 아래 공유 버튼 → <b>홈 화면에 추가</b></li>
+        <li>한 번 열어 두면 인터넷이 없어도 실행돼요.</li>
+      </ul>
+    </div>
+    <div class="state" id="state"></div>
+  </div>
+<script>
+const st=document.getElementById('state');
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{st.textContent='오프라인 저장 완료: 인터넷 없이도 열 수 있어요.';}).catch(()=>{});}
+</script>
+</body>
+</html>
