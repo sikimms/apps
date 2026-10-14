@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="보드게임">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>첫 윷놀이 교실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: 왼쪽 판, 오른쪽 수업 노트/대국 패널 — 좁은 화면에선 위아래로 쌓임 */
+:root{
+  --bg:#eceeea; --surface:#f9faf8; --ink:#1d2320; --muted:#5b6661; --rule:#d3d9d4;
+  --accent:#2d6a4f; --accent-ink:#ffffff; --accent-soft:#dcebe2;
+  --danger:#b3362c; --danger-soft:#f6e1de; --ok:#2b7a47; --ok-soft:#dff0e4;
+  --f-display:"Gowun Batang","Nanum Myeongjo",serif;
+  --f-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131715; --surface:#1b211e; --ink:#e4eae6; --muted:#98a59e; --rule:#2c3631;
+  --accent:#74c49b; --accent-ink:#0e1411; --accent-soft:#22342a;
+  --danger:#ff8074; --danger-soft:#3a201d; --ok:#83d6a1; --ok-soft:#1d3326; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131715; --surface:#1b211e; --ink:#e4eae6; --muted:#98a59e; --rule:#2c3631;
+  --accent:#74c49b; --accent-ink:#0e1411; --accent-soft:#22342a;
+  --danger:#ff8074; --danger-soft:#3a201d; --ok:#83d6a1; --ok-soft:#1d3326; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+h1{font-family:var(--f-display);font-size:30px;margin:0;line-height:1.2;text-wrap:balance}
+h1 small{display:block;font-family:var(--f-body);font-size:13px;color:var(--muted);font-weight:400;margin-top:4px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--rule);border-radius:999px;padding:4px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:500 14px var(--f-body);padding:7px 16px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.grid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.boardbox{background:var(--frame);padding:6px;border-radius:10px;box-shadow:0 10px 30px -18px rgba(0,0,0,.55);max-width:560px;width:100%;margin:0 auto}
+svg.board{display:block;width:100%;height:auto;cursor:pointer;touch-action:manipulation;user-select:none}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:20px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.chip{border:1px solid var(--rule);background:transparent;color:var(--muted);border-radius:8px;padding:4px 10px;font:500 13px var(--f-body);cursor:pointer;font-variant-numeric:tabular-nums}
+.chip.done{color:var(--ok);border-color:var(--ok)}
+.chip.done::after{content:" ✓"}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+h2{font-family:var(--f-display);font-size:24px;margin:2px 0 10px;text-wrap:balance}
+.text{max-width:62ch}
+.text b{color:var(--accent)}
+.turn{display:inline-flex;align-items:center;gap:8px;font-weight:500;font-size:14px;margin:12px 0 4px}
+.fb{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:14.5px}
+.fb.ok{background:var(--ok-soft);border-left:4px solid var(--ok)}
+.fb.no{background:var(--danger-soft);border-left:4px solid var(--danger)}
+.fb.info{background:var(--accent-soft);border-left:4px solid var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.btn{border:1px solid var(--rule);background:var(--surface);color:var(--ink);font:500 14px var(--f-body);padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.quiz{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat{border:1px solid var(--rule);border-radius:10px;padding:10px 12px;min-width:0}
+.stat.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.stat .n{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.opts{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:14px;font-size:14px}
+.opts label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px solid var(--rule);background:var(--surface);color:var(--ink)}
+.tips{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px;font-size:13.5px;color:var(--muted)}
+.tips ul{margin:6px 0 0;padding-left:18px}
+.result{font-variant-numeric:tabular-nums}
+.rankcard{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--rule)}
+.rank{font-family:var(--f-display);font-size:34px;font-weight:700;line-height:1.1;color:var(--accent);font-variant-numeric:tabular-nums}
+.rank small{font-size:15px;color:var(--muted);font-weight:400;margin-left:6px;font-family:var(--f-body)}
+.sub{font-size:13px;color:var(--muted)}
+.linkbtn{border:0;background:none;color:var(--muted);font:13px var(--f-body);text-decoration:underline;cursor:pointer;padding:2px}
+.levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.lv{border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:10px;padding:8px 4px;cursor:pointer;font:500 15px var(--f-body);display:flex;flex-direction:column;align-items:center;gap:1px}
+.lv span{font-size:11.5px;color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
+.lv[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
+.lv:disabled{opacity:.4;cursor:not-allowed}
+.wbar{height:10px;border-radius:5px;background:var(--bar-b);box-shadow:inset 0 0 0 1px var(--rule);overflow:hidden;margin-top:4px}
+.wbar span{display:block;height:100%;background:var(--bar-a);transition:width .4s}
+.wrow{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:12px}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;margin-right:6px}
+.tag.g{background:var(--ok-soft);color:var(--ok)} .tag.m{background:var(--accent-soft);color:var(--accent)}
+.tag.s{background:var(--danger-soft);color:var(--danger)} .tag.b{background:var(--danger);color:var(--surface)}
+.hist{margin:8px 0 0;padding:0;list-style:none;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hist li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px dashed var(--rule)}
+.thinking::after{content:"";display:inline-block;width:10px;height:10px;margin-left:8px;border-radius:50%;border:2px solid var(--accent);border-right-color:transparent;animation:spin .8s linear infinite;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.thinking::after{animation:none}}
+.rv{border:0;cursor:pointer;font-family:inherit;line-height:1.6}
+.rv:hover{text-decoration:underline}
+.rvlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.modal{position:fixed;inset:0;background:rgba(8,12,10,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.sheet{background:var(--surface);color:var(--ink);border-radius:14px;width:100%;max-width:460px;max-height:100%;overflow:auto;padding:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
+.rvhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rvhead h2{font-size:20px;margin:2px 0 10px}
+.seg{display:flex;gap:4px;background:var(--bg);border-radius:999px;padding:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:500 14px var(--f-body);padding:6px 10px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.sheet .boardbox{max-width:min(420px,52vh)}
+.sheet svg.board{cursor:default}
+.legend{font-size:13px;color:var(--muted);margin:8px 0 2px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.lg{display:inline-block;width:18px;height:4px;border-radius:2px;background:var(--c)}
+.lg.dash{background:repeating-linear-gradient(90deg,var(--c) 0 5px,transparent 5px 8px)}
+.boardcol{min-width:0;max-width:560px;width:100%;margin:0 auto}
+.b3d{width:100%;aspect-ratio:var(--b3d-ratio,1);border-radius:6px;background:radial-gradient(ellipse at 50% 35%,var(--surface),var(--bg));overflow:hidden}
+.viewbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.btn.sm{padding:5px 11px;font-size:13px}
+.pk{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.pk button{font:500 16px var(--f-body);padding:10px 16px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);cursor:pointer}
+.pk button:hover{border-color:var(--accent)}
+#rvEyebrow{text-transform:none;letter-spacing:0}
+
+/* 윷놀이 전용 */
+:root{--frame:#7a4f24;--accent:#a8432a;--accent-soft:#f6e3db}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--accent:#f29a7f;--accent-soft:#3b231c;--accent-ink:#1a0d09}}
+:root[data-theme="dark"]{--accent:#f29a7f;--accent-soft:#3b231c;--accent-ink:#1a0d09}
+.ybg{fill:#f1dfb8}
+.yline{stroke:#6b4a22;stroke-width:4;stroke-linecap:round}
+.ynode{fill:#fbf3df;stroke:#6b4a22;stroke-width:3}
+.ybig{fill:#e7c98c;stroke:#6b4a22;stroke-width:4}
+.ylbl{font:700 13px var(--f-body);fill:#6b4a22}
+.ytx{font:700 12px var(--f-body);fill:#fff;pointer-events:none}
+.ycnt{font:800 13px var(--f-body)}
+.ytgt{cursor:pointer}
+.ytgt circle,.ytgt rect{animation:ypulse 1s ease-in-out infinite alternate}
+@keyframes ypulse{from{opacity:.65}to{opacity:1}}
+.ypc.can{cursor:pointer}
+.ytrays{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:10px}
+.ytray{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:10px;padding:8px 10px;font:500 13px var(--f-body);min-width:0}
+.ytray:disabled{cursor:default;color:var(--ink)}
+.ytray.can{cursor:pointer;border-color:var(--accent)}
+.ytray.can:hover{box-shadow:0 0 0 2px var(--accent-soft)}
+.ytray.cur{box-shadow:0 0 0 2px var(--accent)}
+.ytray.sel{background:var(--accent-soft)}
+.yname{display:flex;align-items:center;gap:6px;font-weight:700}
+.yname i,.ywho i{display:inline-block;width:12px;height:12px;border-radius:50%}
+.yhome{display:flex;gap:2px;min-height:26px;align-items:center}
+.yhome small{color:var(--muted)}
+.ydone{display:flex;align-items:center;gap:2px;font-size:12px;color:var(--muted)}
+.ytok{width:24px;height:24px}.ytok.fin{width:16px;height:16px;opacity:.6}
+.ythrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.ythrowside{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.ybtn{font-size:17px;padding:11px 20px}
+.yresults{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.yres{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:14px}
+.ybig-r{font-family:var(--f-display);font-size:22px;font-weight:700;color:var(--accent);margin-right:4px}
+.ystickrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:4px 0 10px}
+.lres{display:flex;gap:6px}
+.ywho label{gap:4px}
+/* 윷가락: 평평한 면(배)은 밝은 나무에 ✕무늬, 둥근 면(등)은 짙은 나무 */
+.sticks{display:flex;gap:9px;padding:8px 4px;perspective:500px}
+.stick{position:relative;width:22px;height:104px;border-radius:11px/22px;display:flex;align-items:center;justify-content:center;transform:rotate(var(--r));box-shadow:0 5px 8px -4px rgba(0,0,0,.45)}
+.stick.flat{background:linear-gradient(90deg,#f3dfb4,#ecd29c 60%,#e2c185)}
+.stick.round{background:linear-gradient(90deg,#8a5a2b,#b27a41 45%,#6e4520)}
+.stick .xs{writing-mode:vertical-rl;color:#8c5a28;font-weight:700;font-size:12px;letter-spacing:6px}
+.stick .bk{position:absolute;top:6px;left:50%;transform:translateX(-50%);font:800 10px var(--f-body);color:#fff;background:#b3362c;border-radius:4px;padding:0 2px;line-height:14px}
+.stick.round .bk{opacity:.5}
+.sticks.spin .stick{animation:yflip .75s cubic-bezier(.3,.6,.4,1) var(--d) both}
+@keyframes yflip{0%{transform:translateY(0) rotateX(0) rotate(var(--r))}35%{transform:translateY(-46px) rotateX(540deg) rotate(calc(var(--r)*-2))}70%{transform:translateY(-12px) rotateX(900deg) rotate(var(--r))}100%{transform:translateY(0) rotateX(1080deg) rotate(var(--r))}}
+@media (prefers-reduced-motion:reduce){.sticks.spin .stick{animation:none}.ytgt circle,.ytgt rect{animation:none}}
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>첫 윷놀이 교실<small>윷가락 읽는 법부터 지름길·잡기·업기까지, 직접 해 보면서 배워요.</small></h1>
+    <div class="tabs" role="tablist"><button id="tabLearn" role="tab" aria-selected="true">배우기</button><button id="tabPlay" role="tab" aria-selected="false">실전</button></div>
+  </header>
+  <section id="learn" class="grid">
+    <div class="boardcol"><div class="boardbox"><svg id="lboard" class="board" aria-label="연습용 말판"></svg></div>
+      <div class="ytrays" id="ltrays"></div></div>
+    <div class="panel">
+      <div class="chips" id="chips"></div>
+      <div class="eyebrow" id="lstep"></div>
+      <h2 id="ltitle"></h2>
+      <div class="ystickrow" id="lsticks"></div>
+      <div class="text" id="ltext"></div>
+      <div id="lquiz"></div><div id="lfb"></div>
+      <div class="row"><button class="btn" id="lreset">다시 하기</button><button class="btn primary" id="lnext">다음</button></div>
+    </div>
+  </section>
+  <section id="play" class="grid" hidden>
+    <div class="boardcol"><div class="boardbox"><svg id="board" class="board" aria-label="윷놀이 말판"></svg></div>
+      <div class="ytrays" id="trays"></div></div>
+    <div class="panel">
+      <div class="ythrow"><div id="stickbox"></div>
+        <div class="ythrowside"><button class="btn primary ybtn" id="throwBtn">윷 던지기</button><div class="yresults" id="results"></div></div></div>
+      <div id="pmsg" class="fb info"></div>
+      <div class="row"><button class="btn primary" id="newBtn">새 게임</button></div>
+      <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
+      <div class="levels" id="levels" role="radiogroup" aria-label="컴퓨터 등급"></div>
+      <div class="sub" id="rec"></div>
+      <div class="opts">
+        <label>사람 수 <select id="optPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option></select></label>
+        <label>말 <select id="optPieces"><option value="2">2개 (짧게)</option><option value="3">3개</option><option value="4">4개</option></select></label>
+        <label><input type="checkbox" id="optBack"> 빽도 쓰기</label>
+      </div>
+      <div class="opts ywho" id="who"></div>
+      <div class="tips"><strong>하는 법</strong><ul>
+        <li><b>윷 던지기</b>를 누르고, 내 말(또는 아래 내 집)을 누른 다음 판에 나타난 도·개·걸 자리를 누르면 옮겨져요.</li>
+        <li>윷·모가 나오거나 상대 말을 잡으면 한 번 더 던져요. 결과가 여러 개면 원하는 순서로 쓰세요.</li>
+        <li>컴퓨터와 할 때는 내가 고른 수를 컴퓨터가 계산해서 <span class="tag g">좋은 수</span><span class="tag s">아쉬운 수</span>를 알려줘요. 윷은 운이 크게 작용해서 급수 대신 승패 기록만 남겨요.</li>
+      </ul><button class="linkbtn" id="resetRec">기록 지우기</button></div>
+    </div>
+  </section>
+</div>
+<div id="review" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="rvTitle">
+  <div class="sheet">
+    <div class="rvhead"><div><div class="eyebrow">다시 보기</div><h2 id="rvTitle"></h2></div><button class="linkbtn" id="rvClose">닫기 ✕</button></div>
+    <div class="boardbox"><svg id="rvBoard" class="board" aria-label="그때 말판"></svg></div>
+    <div class="legend" id="rvLegend"></div>
+    <div class="fb info" id="rvText"></div>
+  </div>
+</div>
+<script>
+/* ===== 윷놀이 규칙 =====
+   말판 점 29개: 0 참먹이(출발·도착, 오른쪽 아래) → 1~4 오른쪽 변 → 5 오른쪽 위 귀(모) → 6~9 → 10 왼쪽 위 귀(뒷모)
+   → 11~14 → 15 왼쪽 아래 귀(찌모) → 16~19 → 0. 지름길: 5→20→21→22(방)→23→24→15, 10→25→26→22→27→28→0.
+   귀나 방에 '멈추면' 다음 차례에 지름길로 간다. 방에 멈추면 참먹이 쪽으로 간다. 참먹이를 지나야 '나기'(완주). */
+const YUT=(()=>{
+const HOME=-1,DONE=99;
+const RES={do:1,gae:2,geol:3,yut:4,mo:5,back:-1};
+const RNAME={do:'도',gae:'개',geol:'걸',yut:'윷',mo:'모',back:'빽도'};
+const OUT=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,0];
+function path(node){
+  if(node===HOME)return OUT.concat(DONE);
+  if(node===0)return[DONE];
+  const tail15=[15,16,17,18,19,0,DONE];
+  if(node===5)return[20,21,22,23,24].concat(tail15);
+  if(node===10)return[25,26,22,27,28,0,DONE];
+  if(node===20)return[21,22,23,24].concat(tail15);
+  if(node===21)return[22,23,24].concat(tail15);
+  if(node===22)return[27,28,0,DONE];
+  if(node===23)return[24].concat(tail15);
+  if(node===24)return tail15;
+  if(node===25)return[26,22,27,28,0,DONE];
+  if(node===26)return[22,27,28,0,DONE];
+  if(node===27)return[28,0,DONE];
+  if(node===28)return[0,DONE];
+  return OUT.slice(OUT.indexOf(node)+1).concat(DONE);
+}
+const remain=node=>node===DONE?0:path(node).length;  // 나기까지 남은 걸음
+// 막대 4개를 던진다. 평평한 면(배)이 나올 확률 0.6. 0번 막대에 '뒤' 표시(빽도)
+function throwSticks(backOn,rnd=Math.random){
+  const flat=[0,1,2,3].map(()=>rnd()<0.6),k=flat.filter(Boolean).length;
+  let r=['mo','do','gae','geol','yut'][k];
+  if(k===1&&flat[0]&&backOn)r='back';
+  return{r,flat};
+}
+const PROB={do:0.1536,gae:0.3456,geol:0.3456,yut:0.1296,mo:0.0256};
+const probOf=(r,backOn)=>r==='back'?(backOn?0.0384:0):r==='do'?(backOn?0.1152:0.1536):PROB[r];
+function newGame(o){
+  const n=o.players||2,k=o.pieces||4;
+  return{n,k,backOn:o.backOn!==false,turn:0,
+    pcs:Array.from({length:n},()=>Array.from({length:k},()=>({node:HOME,trail:[]}))),
+    results:[],toThrow:1,winner:-1,done:Array(n).fill(0)};
+}
+const clone=s=>({n:s.n,k:s.k,backOn:s.backOn,turn:s.turn,pcs:s.pcs.map(a=>a.map(p=>({node:p.node,trail:p.trail.slice()}))),
+  results:s.results.slice(),toThrow:s.toThrow,winner:s.winner,done:s.done.slice()});
+// 던진 결과를 넣는다 (윷·모면 한 번 더)
+function addThrow(s,r){s.results.push(r);s.toThrow--;if(r==='yut'||r==='mo')s.toThrow++;}
+function backDest(p){
+  if(p.trail.length>=2)return{node:p.trail[p.trail.length-2],trail:p.trail.slice(0,-1)};
+  if(p.node===0)return{node:19,trail:[19]};
+  return{node:0,trail:[0]};
+}
+// 쓸 수 있는 수: 결과(종류별 하나) × 움직일 말 묶음(판 위 같은 자리별 하나 + 집에 있는 말 하나)
+function actions(s){
+  const me=s.turn,out=[],seen=new Set(),P=s.pcs[me];
+  for(const r of s.results){if(seen.has(r))continue;seen.add(r);
+    const used=new Set();
+    P.forEach((p,i)=>{if(p.node===DONE)return;
+      if(p.node===HOME){if(r==='back'||used.has('H'))return;used.add('H');}
+      else{if(used.has(p.node))return;used.add(p.node);}
+      out.push({r,pc:i,...dest(p,r)});});}
+  return out;
+}
+function dest(p,r){
+  if(r==='back'){const b=backDest(p);return{to:b.node,trail:b.trail,steps:[b.node]};}
+  const seq=path(p.node),n=RES[r],steps=seq.slice(0,Math.min(n,seq.length));
+  const to=steps[steps.length-1];
+  const trail=p.trail.concat(steps.filter(x=>x!==DONE));
+  return{to,trail,steps};
+}
+// 수를 둔다. 결과: {cap: 잡은 말 수, stack: 업은 말 수, fin: 난 말 수}
+function apply(s,a){
+  const me=s.turn,P=s.pcs[me],src=P[a.pc].node;
+  const movers=src===HOME?[a.pc]:P.map((p,i)=>p.node===src?i:-1).filter(i=>i>=0);
+  const info={cap:0,stack:0,fin:0,from:src,to:a.to,r:a.r,movers:movers.length,capWho:[]};
+  s.results.splice(s.results.indexOf(a.r),1);
+  if(a.to!==DONE)for(let o=0;o<s.n;o++){if(o===me)continue;s.pcs[o].forEach(q=>{if(q.node===a.to){q.node=HOME;q.trail=[];info.cap++;if(!info.capWho.includes(o))info.capWho.push(o);}});}
+  if(a.to!==DONE)info.stack=P.filter((p,i)=>p.node===a.to&&!movers.includes(i)).length;
+  for(const i of movers){P[i].node=a.to;P[i].trail=a.to===DONE?[]:a.trail.slice();}
+  if(a.to===DONE){info.fin=movers.length;s.done[me]+=movers.length;}
+  if(info.cap)s.toThrow++;
+  if(s.done[me]===s.k)s.winner=me;
+  return info;
+}
+// 결과가 남았는데 쓸 수 없으면(판에 말이 없는데 빽도 등) 버린다
+function dropUseless(s){const dropped=[];
+  for(const r of s.results.slice()){const ok=actions({...s,results:[r]}).length>0;if(!ok){s.results.splice(s.results.indexOf(r),1);dropped.push(r);}}
+  return dropped;}
+const turnOver=s=>s.winner<0&&s.toThrow===0&&s.results.length===0;
+function nextTurn(s){s.turn=(s.turn+1)%s.n;s.toThrow=1;s.results=[];}
+
+/* ---------- 컴퓨터: 형세 점수 ---------- */
+const VDONE=32;
+const pval=node=>node===DONE?VDONE:node===HOME?0:30-remain(node)+ (node===5||node===10||node===22?1.5:0);
+// node에 있는 상대 말을 다음 차례에 잡을 확률(대략)
+function hitProb(s,att,node){
+  let pr=0;const seen=new Set();
+  for(const p of s.pcs[att]){if(p.node===DONE)continue;const key=p.node;if(seen.has(key))continue;seen.add(key);
+    for(const r of Object.keys(RES)){if(r==='back'&&(p.node===HOME||!s.backOn))continue;if(r==='back'){if(backDest(p).node===node)pr+=probOf(r,s.backOn);continue;}
+      const seq=path(p.node),n=RES[r];if(seq[Math.min(n,seq.length)-1]===node)pr+=probOf(r,s.backOn);}}
+  return Math.min(0.9,pr*1.25);  // 윷·모 뒤 한 번 더 던지는 몫을 조금 더함
+}
+function evaluate(s,me,o={}){
+  if(s.winner===me)return 1e5;if(s.winner>=0)return -1e5;
+  let sc=0;
+  for(let pl=0;pl<s.n;pl++){
+    const sign=pl===me?1:-1/(s.n-1);
+    const groups=new Map();s.pcs[pl].forEach(p=>{sc+=sign*pval(p.node);if(p.node!==HOME&&p.node!==DONE)groups.set(p.node,(groups.get(p.node)||0)+1);});
+    if(o.risk===false)continue;
+    for(const [node,cnt] of groups){
+      let pr=0;for(let at=0;at<s.n;at++)if(at!==pl)pr=1-(1-pr)*(1-hitProb(s,at,node));
+      sc-=sign*pr*cnt*(pval(node)+3)*(pl===me?0.9:0.6);}
+  }
+  return sc;
+}
+// 남은 결과를 모두 쓰는 순서까지 따져서 가장 좋은 수를 고른다
+function bestPlan(s,me,o={}){
+  const depth=o.depth||1;let best=null,bv=-Infinity;
+  const acts=actions(s);
+  for(const a of acts){const c=clone(s),info=apply(c,a);
+    let v;
+    if(c.winner===me)v=1e5;
+    else if(info.cap)v=evaluate(c,me,o)+4+(o.risk===false?0:2);
+    else if(depth>1&&c.results.length&&actions(c).length)v=bestPlan(c,me,{...o,depth:depth-1}).v;
+    else v=evaluate(c,me,o);
+    a.v=v;if(v>bv){bv=v;best=a;}}
+  return{a:best,v:bv,all:acts};
+}
+const LEVELS=[
+  {name:'신입',pick:(s,me)=>{const p=bestPlan(s,me,{risk:false});return Math.random()<0.55?p.all[(Math.random()*p.all.length)|0]:p.a;}},
+  {name:'초보',pick:(s,me)=>bestPlan(s,me,{risk:false}).a},
+  {name:'중수',pick:(s,me)=>bestPlan(s,me,{depth:1}).a},
+  {name:'고수',pick:(s,me)=>bestPlan(s,me,{depth:Math.min(4,s.results.length)}).a}
+];
+return{HOME,DONE,RES,RNAME,path,remain,throwSticks,newGame,clone,addThrow,actions,dest,apply,dropUseless,turnOver,nextTurn,
+  evaluate,bestPlan,hitProb,LEVELS,probOf};
+})();
+
+/* ===== 윷놀이 화면: 배우기 · 실전 ===== */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const {HOME,DONE,RNAME}=YUT;
+const store={get(k,d){try{const v=localStorage.getItem('yut-'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem('yut-'+k,JSON.stringify(v));}catch(e){}}};
+const COLORS=['#d23a2e','#1d6fd6','#2b9a4b','#d99a00'],CNAME=['빨강','파랑','초록','노랑'];
+const josa=(w,a,b)=>{const c=w.charCodeAt(w.length-1);if(c<0xAC00||c>0xD7A3)return w+b;return w+((c-0xAC00)%28?a:b);};
+
+/* ---------- 말판 그리기 ---------- */
+const BS=460,BM=40,BU=(BS-BM*2)/10;
+const XY=(()=>{const a={};const set=(n,x,y)=>a[n]=[BM+x*BU,BM+y*BU];
+  set(0,10,10);[1,2,3,4].forEach((n,i)=>set(n,10,8-2*i));set(5,10,0);[6,7,8,9].forEach((n,i)=>set(n,8-2*i,0));set(10,0,0);
+  [11,12,13,14].forEach((n,i)=>set(n,0,2+2*i));set(15,0,10);[16,17,18,19].forEach((n,i)=>set(n,2+2*i,10));
+  set(20,10-10/6*1,10/6*1);set(21,10-10/6*2,10/6*2);set(22,5,5);set(23,10/6*2,10-10/6*2);set(24,10/6*1,10-10/6*1);
+  set(25,10/6,10/6);set(26,10/6*2,10/6*2);set(27,10-10/6*2,10-10/6*2);set(28,10-10/6,10-10/6);return a;})();
+const BIG=new Set([0,5,10,15,22]);
+function drawBoard(svg,s,o={}){
+  svg.setAttribute('viewBox',`0 0 ${BS} ${BS}`);
+  let h=`<rect x="0" y="0" width="${BS}" height="${BS}" rx="12" class="ybg"/>`;
+  const L=(a,b)=>`<line x1="${XY[a][0]}" y1="${XY[a][1]}" x2="${XY[b][0]}" y2="${XY[b][1]}" class="yline"/>`;
+  h+=L(0,5)+L(5,10)+L(10,15)+L(15,0)+L(5,15)+L(10,0);
+  for(let n=0;n<=28;n++){const [x,y]=XY[n],big=BIG.has(n);
+    h+=`<circle cx="${x}" cy="${y}" r="${big?19:13}" class="${big?'ybig':'ynode'}"/>`;
+    if(n===0)h+=`<text x="${x+24}" y="${y+36}" text-anchor="end" class="ylbl">참먹이 (출발·도착)</text>`;}
+  h+=`<text x="${XY[5][0]}" y="${XY[5][1]-26}" text-anchor="middle" class="ylbl">모</text><text x="${XY[10][0]}" y="${XY[10][1]-26}" text-anchor="middle" class="ylbl">뒷모</text>`+
+    `<text x="${XY[15][0]}" y="${XY[15][1]+36}" text-anchor="middle" class="ylbl">찌모</text><text x="${XY[22][0]}" y="${XY[22][1]+34}" text-anchor="middle" class="ylbl">방</text>`;
+  (o.marks||[]).forEach(n=>{const [x,y]=XY[n];h+=`<circle cx="${x}" cy="${y}" r="24" fill="none" stroke="#ffb400" stroke-width="4" stroke-dasharray="7 5"/>`;});
+  if(o.lastPath&&o.lastPath.length>1){const pts=o.lastPath.filter(n=>n!==HOME&&n!==DONE).map(n=>XY[n].join(',')).join(' ');h+=`<polyline points="${pts}" fill="none" stroke="${o.lastColor||'#555'}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="2 9" opacity=".8"/>`;}
+  // 말 (같은 자리 말은 업힌 것: 숫자로 표시)
+  const at=new Map();
+  s.pcs.forEach((P,pl)=>P.forEach((p,i)=>{if(p.node===HOME||p.node===DONE)return;const k=p.node;if(!at.has(k))at.set(k,[]);at.get(k).push([pl,i]);}));
+  for(const [node,list] of at){const [x,y]=XY[node],pl=list[0][0],cnt=list.length,sel=o.sel&&o.sel.pl===pl&&s.pcs[pl][o.sel.pc].node===node;
+    h+=`<g class="ypc${o.clickable===pl?' can':''}" data-node="${node}" data-pl="${pl}" data-pc="${list[0][1]}">`+
+      `<ellipse cx="${x+2}" cy="${y+16}" rx="17" ry="5" fill="#000" opacity=".2"/>`+
+      (cnt>1?`<path d="${piecePath(x+5,y-6)}" fill="${COLORS[pl]}" stroke="#fff" stroke-width="2" opacity=".85"/>`:'')+
+      `<path d="${piecePath(x,y)}" fill="${COLORS[pl]}" stroke="${sel?'#ffd34d':'#fff'}" stroke-width="${sel?4:2.5}"/>`+
+      (cnt>1?`<circle cx="${x+15}" cy="${y-17}" r="10" fill="#fff" stroke="${COLORS[pl]}" stroke-width="2"/><text x="${x+15}" y="${y-12.5}" text-anchor="middle" class="ycnt" fill="${COLORS[pl]}">${cnt}</text>`:'')+'</g>';}
+  // 갈 수 있는 곳
+  let nd=0;(o.targets||[]).forEach(t=>{if(t.to===DONE){const [x0,y]=XY[0],x=x0-(nd++)*62;h+=`<g class="ytgt" data-t="${t.key}"><rect x="${x-58}" y="${y-60}" width="56" height="28" rx="14" fill="${COLORS[s.turn]}"/><text x="${x-30}" y="${y-41}" text-anchor="middle" class="ytx">나기 ${RNAME[t.r]}</text></g>`;return;}
+    const [x,y]=XY[t.to];h+=`<g class="ytgt" data-t="${t.key}"><circle cx="${x}" cy="${y}" r="17" fill="${COLORS[s.turn]}" opacity=".85"/><text x="${x}" y="${y+5}" text-anchor="middle" class="ytx">${RNAME[t.r]}</text></g>`;});
+  svg.innerHTML=h;
+}
+const piecePath=(x,y)=>`M${x-13} ${y+12}Q${x-15} ${y-4} ${x-7} ${y-10}Q${x} ${y-18} ${x+7} ${y-10}Q${x+15} ${y-4} ${x+13} ${y+12}Z`;
+// 집(아직 안 나간 말)과 난 말
+function trayHtml(s,pl,o={}){
+  const P=s.pcs[pl],home=P.filter(p=>p.node===HOME).length,done=P.filter(p=>p.node===DONE).length;
+  const tok=(n,cls)=>Array.from({length:n},()=>`<svg viewBox="0 0 30 30" class="ytok ${cls}"><path d="${piecePath(15,17)}" fill="${COLORS[pl]}" stroke="#fff" stroke-width="2"/></svg>`).join('');
+  return `<button class="ytray${o.can&&home?' can':''}${o.sel?' sel':''}" data-home="${pl}" ${o.can&&home?'':'disabled'} aria-label="${CNAME[pl]} 집에 있는 말 ${home}개">
+    <span class="yname"><i style="background:${COLORS[pl]}"></i>${o.name}</span><span class="yhome">${home?tok(home,''):'<small>집에 말 없음</small>'}</span><span class="ydone">난 말 ${done?tok(done,'fin'):'0'}</span></button>`;
+}
+
+/* ---------- 윷가락 ---------- */
+function sticksHtml(flat,backOn,spin){
+  return `<div class="sticks${spin?' spin':''}">${[0,1,2,3].map(i=>`<div class="stick ${flat[i]?'flat':'round'}" style="--d:${i*60}ms;--r:${(i%2?1:-1)*(6+i*3)}deg">${i===0&&backOn?'<span class="bk">뒤</span>':''}<span class="xs">${flat[i]?'✕✕✕':''}</span></div>`).join('')}</div>`;
+}
+const FLAT_OF={do:[false,true,false,false],gae:[true,true,false,false],geol:[true,true,true,false],yut:[true,true,true,true],mo:[false,false,false,false],back:[true,false,false,false]};
+
+/* ---------- 실전 ---------- */
+let G=null,busy=false;
+const opt={players:store.get('players',2),pieces:store.get('pieces',4),backOn:store.get('backOn',true),level:store.get('level',1),
+  who:store.get('who',['me','ai','ai','ai'])};
+let rec=store.get('rec',{});
+function isAI(pl){return opt.who[pl]==='ai';}
+function newGame(){
+  G={s:YUT.newGame(opt),sel:null,msg:'',kind:'info',lastPath:null,lastColor:null,flat:[true,true,false,false],spin:false,lastRes:null,evals:[],over:false,gen:(G?G.gen:0)+1};
+  G.msg=`<b>${CNAME[0]}</b>${isAI(0)?'(컴퓨터)':''}부터 시작해요. 윷을 던지세요.`;
+  render();maybeAI();
+}
+const playerName=pl=>`${CNAME[pl]}${isAI(pl)?' · 컴퓨터':opt.who.filter(w=>w==='me').length>1?'':' · 나'}`;
+async function doThrow(){
+  const s=G.s;if(busy||G.over||s.toThrow<=0)return;
+  busy=true;const t=YUT.throwSticks(s.backOn);
+  G.spin=true;G.flat=t.flat;render();await sleep(750);G.spin=false;
+  YUT.addThrow(s,t.r);G.lastRes=t.r;
+  const extra=t.r==='yut'||t.r==='mo';
+  G.msg=`<span class="ybig-r">${RNAME[t.r]}!</span> ${extra?'한 번 더 던져요.':''}`;G.kind=extra?'ok':'info';
+  if(s.toThrow===0)afterThrows();
+  busy=false;render();maybeAI();
+}
+function afterThrows(){
+  const s=G.s,dr=YUT.dropUseless(s);
+  if(dr.length)G.msg+=` 판에 말이 없어서 ${dr.map(r=>RNAME[r]).join('·')}는 쓸 수 없어요.`;
+  if(!s.results.length)endTurn();
+  else if(!isAI(s.turn))G.msg+=` <br>움직일 말을 누르세요.${s.results.length>1?' 결과를 어떤 순서로 써도 돼요.':''}`;
+}
+function endTurn(){const s=G.s;YUT.nextTurn(s);G.sel=null;G.msg+=` <br><b>${playerName(s.turn)}</b> 차례예요.`;}
+function targetsFor(sel){
+  const s=G.s;if(!sel)return[];const p=s.pcs[s.turn][sel.pc];
+  return YUT.actions(s).filter(a=>a.pc===sel.pc||(p.node!==HOME&&s.pcs[s.turn][a.pc].node===p.node)).map((a,k)=>({...a,key:k}));
+}
+function doAction(a,byAI){
+  const s=G.s,me=s.turn;
+  let ev=null;
+  if(!byAI&&opt.who.filter(w=>w==='ai').length){const plan=YUT.bestPlan(s,me,{depth:Math.min(3,s.results.length)});
+    const mine=plan.all.find(x=>x.r===a.r&&x.pc===a.pc)||plan.all.find(x=>x.r===a.r&&x.to===a.to);
+    if(mine&&plan.a){const loss=Math.max(0,plan.v-mine.v);ev={loss,best:plan.a,mine,before:YUT.clone(s)};}}
+  const info=YUT.apply(s,a);
+  G.lastPath=[info.from===HOME?0:info.from].concat(a.steps.filter(n=>n!==DONE));if(info.from===HOME)G.lastPath.shift();G.lastColor=COLORS[me];
+  let t=`${CNAME[me]} ${RNAME[a.r]}: `+(info.from===HOME?'새 말을 올렸어요':info.movers>1?`업은 말 ${info.movers}개가 함께 갔어요`:'말을 옮겼어요');
+  if(info.fin)t=`${CNAME[me]} ${RNAME[a.r]}: 말 ${info.fin}개가 <b>났어요</b>!`;
+  if(info.stack)t+=`. 내 말을 <b>업었어요</b> (이제 ${info.stack+info.movers}개가 함께 다녀요)`;
+  if(info.cap)t+=`. ${info.capWho.map(o=>CNAME[o]).join('·')} 말 ${info.cap}개를 <b>잡았어요</b>! 한 번 더 던져요`;
+  if([5,10].includes(a.to))t+='. 귀에 멈췄으니 다음엔 <b>지름길</b>로 가요';
+  if(a.to===22)t+='. 방에 멈췄으니 다음엔 참먹이 쪽 지름길로 가요';
+  G.msg=t+'.';G.kind=info.cap||info.fin?'ok':'info';G.sel=null;
+  if(ev){const cls=ev.loss<1.5?['g','좋은 수']:ev.loss<5?['m','보통']:ev.loss<12?['s','아쉬운 수']:['b','큰 실수'];
+    ev.cls=cls[0];G.evals.push(ev);const k=G.evals.length-1;
+    G.msg=(cls[0]==='s'||cls[0]==='b'?`<button class="tag ${cls[0]} rv" data-ev="${k}">${cls[1]} · 왜?</button>`:`<span class="tag ${cls[0]}">${cls[1]}</span>`)+G.msg;}
+  if(s.winner>=0){finish();return;}
+  if(s.toThrow===0){YUT.dropUseless(s);if(!s.results.length)endTurn();}
+}
+function finish(){
+  const s=G.s,w=s.winner;G.over=true;
+  const humans=opt.who.slice(0,s.n).map((x,i)=>x==='me'?i:-1).filter(i=>i>=0),ais=opt.who.slice(0,s.n).some(x=>x==='ai');
+  let h=`<div class="result"><b>게임 끝 · ${CNAME[w]}${isAI(w)?'(컴퓨터)':''} 승리!</b>`;
+  if(humans.length===1&&ais){const lv=YUT.LEVELS[opt.level].name,r=rec[lv]||{w:0,l:0};if(w===humans[0])r.w++;else r.l++;rec[lv]=r;store.set('rec',rec);
+    const ev=G.evals,cnt={g:0,m:0,s:0,b:0};ev.forEach(e=>cnt[e.cls]++);
+    h+=`<div style="margin-top:8px"><span class="tag g">좋은 수 ${cnt.g}</span><span class="tag m">보통 ${cnt.m}</span><span class="tag s">아쉬운 수 ${cnt.s}</span><span class="tag b">큰 실수 ${cnt.b}</span></div>`;
+    const bad=ev.map((e,k)=>[e,k]).filter(([e])=>e.cls==='s'||e.cls==='b');
+    if(bad.length)h+=`<div style="margin-top:8px">아쉬웠던 수 다시 보기<div class="rvlist">${bad.map(([e,k],j)=>`<button class="tag ${e.cls} rv" data-ev="${k}">${j+1}. ${RNAME[e.mine.r]} · ${e.cls==='b'?'큰 실수':'아쉬운 수'}</button>`).join('')}</div></div>`;}
+  G.msg=h+'</div>';G.kind='ok';render();renderRec();
+}
+async function maybeAI(){
+  const s=G.s,gen=G.gen;if(G.over||!isAI(s.turn)||busy)return;
+  await sleep(600);if(gen!==G.gen||G.over)return;
+  if(s.toThrow>0){await doThrow();return;}
+  if(s.results.length){const a=YUT.LEVELS[opt.level].pick(s,s.turn);if(!a){s.results=[];endTurn();render();maybeAI();return;}
+    G.sel={pl:s.turn,pc:a.pc};render();await sleep(500);if(gen!==G.gen)return;
+    doAction(a,true);render();maybeAI();}
+}
+function render(){
+  const s=G.s,me=s.turn,human=!isAI(me)&&!G.over;
+  const tg=human&&G.sel?targetsFor(G.sel):[];
+  drawBoard($('board'),s,{targets:tg,sel:G.sel,clickable:human&&s.toThrow===0&&s.results.length?me:-1,lastPath:G.lastPath,lastColor:G.lastColor});
+  $('trays').innerHTML=Array.from({length:s.n},(_,pl)=>trayHtml(s,pl,{name:playerName(pl),can:human&&pl===me&&s.toThrow===0&&s.results.length&&!s.results.every(r=>r==='back'),sel:G.sel&&G.sel.pl===pl&&s.pcs[pl][G.sel.pc].node===HOME})).join('');
+  [...$('trays').children].forEach((el,pl)=>el.classList.toggle('cur',pl===me&&!G.over));
+  $('stickbox').innerHTML=sticksHtml(G.flat,s.backOn,G.spin);
+  $('results').innerHTML=s.results.length?`<span class="sub">쓸 결과</span>${s.results.map(r=>`<span class="yres">${RNAME[r]}</span>`).join('')}`:'';
+  $('throwBtn').disabled=!human||busy||s.toThrow<=0;
+  $('throwBtn').textContent=s.toThrow>1?`윷 던지기 (${s.toThrow}번 남음)`:'윷 던지기';
+  $('pmsg').className='fb '+G.kind+(isAI(me)&&!G.over?' thinking':'');
+  $('pmsg').innerHTML=G.msg+(isAI(me)&&!G.over?`<div class="sub">${CNAME[me]}(컴퓨터) 차례예요</div>`:'');
+}
+function boardClick(e){
+  const s=G.s,me=s.turn;if(G.over||isAI(me)||busy||s.toThrow>0||!s.results.length)return;
+  const t=e.target.closest('.ytgt');
+  if(t&&G.sel){const a=targetsFor(G.sel).find(x=>String(x.key)===t.dataset.t);if(a){doAction(a,false);render();maybeAI();}return;}
+  const pc=e.target.closest('.ypc');
+  if(pc&&+pc.dataset.pl===me){const i=+pc.dataset.pc;G.sel=G.sel&&G.sel.pc===i?null:{pl:me,pc:i};autoIfOne();render();return;}
+  G.sel=null;render();
+}
+// 고른 말이 갈 곳이 하나뿐이면 바로 표시만 (누르면 이동)
+function autoIfOne(){}
+$('board').addEventListener('click',boardClick);
+$('trays').addEventListener('click',e=>{const b=e.target.closest('.ytray');if(!b||b.disabled)return;const s=G.s,pl=+b.dataset.home;if(pl!==s.turn)return;
+  const i=s.pcs[pl].findIndex(p=>p.node===HOME);if(i<0)return;G.sel=G.sel&&G.sel.pc===i?null:{pl,pc:i};render();});
+$('throwBtn').onclick=doThrow;
+$('newBtn').onclick=newGame;
+
+/* 설정 */
+function renderSetup(){
+  $('optPlayers').value=opt.players;$('optPieces').value=opt.pieces;$('optBack').checked=opt.backOn;
+  $('who').innerHTML=Array.from({length:opt.players},(_,pl)=>`<label><i style="background:${COLORS[pl]}"></i>${CNAME[pl]} <select data-who="${pl}"><option value="me"${opt.who[pl]==='me'?' selected':''}>사람</option><option value="ai"${opt.who[pl]==='ai'?' selected':''}>컴퓨터</option></select></label>`).join('');
+  $('levels').innerHTML=YUT.LEVELS.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===opt.level}" data-k="${k}">${l.name}<span>${['막 두기','앞으로만','잡기·위험 계산','순서까지 계산'][k]}</span></button>`).join('');
+}
+function saveOpt(){store.set('players',opt.players);store.set('pieces',opt.pieces);store.set('backOn',opt.backOn);store.set('level',opt.level);store.set('who',opt.who);}
+$('optPlayers').onchange=e=>{opt.players=+e.target.value;saveOpt();renderSetup();newGame();};
+$('optPieces').onchange=e=>{opt.pieces=+e.target.value;saveOpt();newGame();};
+$('optBack').onchange=e=>{opt.backOn=e.target.checked;saveOpt();newGame();};
+$('who').addEventListener('change',e=>{const el=e.target.closest('[data-who]');if(!el)return;opt.who[+el.dataset.who]=el.value;saveOpt();newGame();});
+$('levels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b)return;opt.level=+b.dataset.k;saveOpt();renderSetup();renderRec();
+  if(G&&!G.over&&G.s.pcs.some(P=>P.some(p=>p.node!==HOME))){G.msg=`<b>${YUT.LEVELS[opt.level].name}</b> 컴퓨터는 지금부터 적용돼요.`;render();}});
+function renderRec(){const lv=YUT.LEVELS[opt.level].name,r=rec[lv]||{w:0,l:0};
+  $('rec').innerHTML=`<b>${lv}</b> 컴퓨터 상대 ${r.w}승 ${r.l}패`+(r.w+r.l?` · 승률 ${Math.round(r.w/(r.w+r.l)*100)}%`:'');}
+$('resetRec').onclick=()=>{rec={};store.set('rec',rec);renderRec();};
+
+/* 아쉬운 수: 이유 설명 */
+function whyText(e){
+  const s=e.before,me=s.turn,out=[];
+  const after=YUT.clone(s),ia=YUT.apply(after,e.mine),ab=YUT.clone(s),ib=YUT.apply(ab,e.best);
+  const sameNode=e.best.r===e.mine.r&&s.pcs[me][e.best.pc].node===s.pcs[me][e.mine.pc].node;
+  if(ib.cap&&!ia.cap)out.push(`추천 수(${RNAME[e.best.r]}로 ${nodeName(s.pcs[me][e.best.pc].node)} 말 옮기기)로 상대 말을 <b>잡고 한 번 더</b> 던질 수 있었어요.`);
+  if(ib.fin>ia.fin)out.push(`추천 수로 말을 <b>날</b> 수 있었어요.`);
+  if(!ia.cap&&e.mine.to!==DONE){let pr=0;for(let o=0;o<s.n;o++)if(o!==me)pr=1-(1-pr)*(1-YUT.hitProb(after,o,e.mine.to));
+    if(pr>0.3)out.push(`옮긴 자리는 다음 차례에 상대에게 잡힐 확률이 약 <b>${Math.round(pr*100)}%</b>나 됐어요.`);}
+  if([5,10,22].includes(e.best.to)&&![5,10,22].includes(e.mine.to))out.push('추천 수는 귀나 방에 멈춰서 다음에 <b>지름길</b>로 갈 수 있어요.');
+  if(ib.stack&&!ia.stack)out.push('추천 수는 내 말을 <b>업어서</b> 함께 빨리 갈 수 있어요.');
+  if(!out.length)out.push(sameNode?'같은 말이라도 결과를 쓰는 순서가 중요해요.':`컴퓨터 계산으로는 ${RNAME[e.best.r]}를 ${nodeName(s.pcs[me][e.best.pc].node)} 말에 쓰는 편이 더 안전하고 빨랐어요.`);
+  return out;
+}
+const nodeName=n=>n===HOME?'집에 있는':n===0?'참먹이':n===5?'모 자리':n===10?'뒷모 자리':n===15?'찌모 자리':n===22?'방':'판 위';
+function openWhy(k){const e=G.evals[k];if(!e)return;
+  $('rvTitle').innerHTML=`<span class="tag ${e.cls}">${e.cls==='b'?'큰 실수':'아쉬운 수'}</span>${RNAME[e.mine.r]} 쓰기`;
+  $('rvText').innerHTML=whyText(e).join('<br>');
+  const pB=e.before;drawBoard($('rvBoard'),pB,{targets:[{...e.best,key:'b'}],sel:{pl:pB.turn,pc:e.best.pc},marks:[e.mine.to===DONE?0:e.mine.to]});
+  $('rvLegend').innerHTML=`<span class="lg" style="--c:${COLORS[pB.turn]}"></span>추천 수가 가는 곳 &nbsp; <span class="lg dash" style="--c:#ffb400"></span>내가 옮긴 곳`;
+  $('review').hidden=false;$('rvClose').focus();}
+document.addEventListener('click',ev=>{const b=ev.target.closest('.rv');if(b)openWhy(+b.dataset.ev);});
+$('rvClose').onclick=()=>$('review').hidden=true;
+$('review').addEventListener('click',ev=>{if(ev.target.id==='review')$('review').hidden=true;});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')$('review').hidden=true;});
+
+/* ---------- 배우기 ---------- */
+const ST=(mine,opp,extra={})=>{const s=YUT.newGame({players:2,pieces:4});mine.forEach((n,i)=>s.pcs[0][i].node=n);opp.forEach((n,i)=>s.pcs[1][i].node=n);
+  s.pcs.forEach(P=>P.forEach(p=>{if(p.node!==HOME&&p.node!==DONE)p.trail=trailTo(p.node);}));s.done=[s.pcs[0].filter(p=>p.node===DONE).length,s.pcs[1].filter(p=>p.node===DONE).length];
+  s.toThrow=0;Object.assign(s,extra);return s;};
+function trailTo(node){for(const start of [HOME]){const seq=YUT.path(start);const i=seq.indexOf(node);if(i>=0)return seq.slice(0,i+1);}
+  const viaB=[1,2,3,4,5].concat(YUT.path(5));let i=viaB.indexOf(node);if(i>=0)return viaB.slice(0,i+1);
+  const viaC=[1,2,3,4,5,6,7,8,9,10].concat(YUT.path(10));i=viaC.indexOf(node);return viaC.slice(0,i+1);}
+const LESSONS=[
+  {title:'윷놀이란?',type:'info',flat:FLAT_OF.geol,state:()=>ST([],[]),
+    text:'윷놀이는 <b>윷가락 네 개</b>를 던져 나온 만큼 말을 옮겨, 내 말 <b>4개를 먼저 한 바퀴 돌려 내보내는</b>(나기) 쪽이 이기는 우리 전통 놀이예요.<br><br>말은 오른쪽 아래 <b>참먹이</b>에서 출발해 시계 반대 방향(위쪽)으로 돌아요. 판의 큰 동그라미(귀와 가운데 방)에 멈추면 <b>지름길</b>로 갈 수 있어요.'},
+  {title:'윷가락 읽기',type:'quiz',flat:FLAT_OF.geol,state:()=>ST([],[]),
+    text:'윷가락은 평평한 면(배, ✕무늬)과 둥근 면(등)이 있어요. <b>배가 몇 개 나왔는지</b> 세요.<br>배 1개 = <b>도</b>(1칸), 2개 = <b>개</b>(2칸), 3개 = <b>걸</b>(3칸), 4개 = <b>윷</b>(4칸), 모두 등 = <b>모</b>(5칸)<br><br><b>문제:</b> 위 윷가락은 무엇일까요?',
+    quiz:{opts:['도','개','걸','윷','모'],ans:2,msg:'정답! 배가 3개라 걸, 3칸 가요.',wrong:'✕무늬가 있는 평평한 면을 세어 보세요.'}},
+  {title:'윷과 모는 한 번 더',type:'quiz',flat:FLAT_OF.mo,state:()=>ST([],[]),
+    text:'모두 둥근 면이면 <b>모</b>(5칸), 모두 평평하면 <b>윷</b>(4칸)이에요. 윷이나 모가 나오면 <b>한 번 더 던져요</b>. 나온 결과는 모아 두었다가 원하는 순서로 써요.<br><br><b>문제:</b> 위 윷가락은 무엇이고, 다음엔 어떻게 할까요?',
+    quiz:{opts:['모 · 한 번 더 던진다','도 · 차례가 끝난다','윷 · 차례가 끝난다'],ans:0,msg:'정답! 모는 5칸이고 한 번 더 던져요.',wrong:'평평한 면이 하나도 없어요.'}},
+  {title:'말 올리기',type:'move',flat:FLAT_OF.gae,state:()=>ST([],[],{results:['gae']}),
+    text:'던진 결과로 집에 있는 말을 판에 올리거나, 판 위의 말을 옮겨요.<br><br><b>과제:</b> 개(2칸)가 나왔어요. 아래 내 집(빨강)을 누르고, 판에 나타난 <b>개</b> 자리를 눌러 말을 올리세요.',
+    check:(a,info)=>info.from===HOME?{ok:true,msg:'말이 판에 올라갔어요! 참먹이에서 2칸 간 자리예요.'}:{msg:'집에 있는 말을 올려 보세요.'}},
+  {title:'귀에 멈추면 지름길',type:'move',flat:FLAT_OF.geol,state:()=>ST([2],[],{results:['geol']}),
+    text:'오른쪽 위 큰 동그라미(<b>모</b> 자리)에 딱 멈추면, 다음 차례에는 대각선 <b>지름길</b>로 가요. 훨씬 빨리 돌 수 있어요.<br><br><b>과제:</b> 걸(3칸)로 말을 모 자리에 멈추게 하세요.',
+    check:(a)=>a.to===5?{ok:true,msg:'모 자리에 멈췄어요! 다음엔 가운데 방 쪽 대각선으로 가요. 왼쪽 위 뒷모에 멈추면 참먹이로 바로 가는 더 빠른 지름길이 있어요.'}:{msg:'모 자리(오른쪽 위 귀)까지 3칸이에요.'}},
+  {title:'상대 말 잡기',type:'move',flat:FLAT_OF.geol,state:()=>ST([HOME],[3],{results:['geol']}),
+    text:'내 말이 <b>상대 말이 있는 자리</b>에 멈추면 그 말을 잡아요. 잡힌 말은 집으로 돌아가고, 잡은 사람은 <b>한 번 더</b> 던져요.<br><br><b>과제:</b> 걸로 파랑 말을 잡으세요.',
+    check:(a,info)=>info.cap?{ok:true,msg:'잡았어요! 파랑 말은 처음부터 다시 와야 해요. 그리고 한 번 더 던질 수 있어요.'}:{msg:'파랑 말이 3칸 앞에 있어요. 집에서 새 말을 올려 보세요.'}},
+  {title:'말 업기',type:'move',flat:FLAT_OF.gae,state:()=>ST([2,HOME],[],{results:['gae']}),
+    text:'내 말이 <b>내 다른 말</b>이 있는 자리에 멈추면 둘을 <b>업어서</b> 함께 다녀요. 한 번에 여러 말이 갈 수 있지만, 잡히면 한꺼번에 집으로 가요.<br><br><b>과제:</b> 개로 새 말을 올려 판 위의 내 말을 업으세요.',
+    check:(a,info)=>info.stack?{ok:true,msg:'업었어요! 이제 두 말이 한 번에 움직여요. 숫자 2가 업힌 말 수예요.'}:{msg:'집에서 새 말을 올려 2칸 자리의 내 말에 겹쳐 보세요.'}},
+  {title:'빽도',type:'move',flat:FLAT_OF.back,state:()=>ST([4],[3],{results:['back']}),
+    text:'<b>뒤</b> 표시가 있는 윷가락 하나만 평평하면 <b>빽도</b>예요. 말을 <b>한 칸 뒤로</b> 옮겨요. 판에 말이 없으면 쓸 수 없어요.<br><br>뒤로 가서 상대 말을 잡을 수도 있어요.<br><br><b>과제:</b> 빽도로 바로 뒤의 파랑 말을 잡으세요.',
+    check:(a,info)=>info.cap?{ok:true,msg:'뒤로 가서 잡았어요! 실전 옵션에서 빽도를 끌 수도 있어요.'}:{msg:'내 말을 눌러 한 칸 뒤로 보내 보세요.'}},
+  {title:'나기',type:'move',flat:FLAT_OF.geol,state:()=>ST([27,DONE,DONE,DONE],[12],{results:['geol']}),
+    text:'말이 판을 다 돌아 <b>참먹이를 지나면</b> 판에서 나가요(<b>나기</b>). 참먹이에 딱 멈추면 아직 판 위예요. 다음에 무엇이 나와도 날 수 있어요.<br><br><b>과제:</b> 마지막 말을 걸로 내보내 이기세요.',
+    check:(a,info)=>info.fin?{ok:true,msg:'말 4개가 모두 났어요. 승리! 이제 실전에서 컴퓨터와 겨뤄 보세요.'}:{msg:'말을 눌러 참먹이 너머 "나기" 표시를 누르세요.'}},
+  {title:'이제 실전!',type:'info',flat:FLAT_OF.yut,state:()=>ST([5,22],[12,17]),
+    text:'윷놀이 요령:<br><br>1. 귀(모·뒷모)나 방에 <b>멈추면 지름길</b>, 특히 뒷모→방→참먹이가 가장 빨라요<br>2. 상대 말 바로 뒤 1~3칸(개·걸이 잘 나와요)은 <b>잡히기 쉬운 자리</b>예요<br>3. 업으면 빠르지만 잡히면 손해가 커요<br>4. 결과가 여러 개면 <b>쓰는 순서</b>를 잘 골라 잡기와 지름길을 노리세요<br><br>실전에서 2~4명, 사람·컴퓨터를 섞어 할 수 있어요.'}
+];
+let done=new Set(store.get('lessons',[]));
+const LS={i:0,s:null,sel:null,fb:null,ok:false};
+function loadLesson(i){LS.i=i;const L=LESSONS[i];LS.s=L.state();LS.sel=null;LS.fb=null;LS.ok=L.type==='info';if(LS.ok){done.add(i);store.set('lessons',[...done]);}renderLesson();}
+function lTargets(){const s=LS.s;if(!LS.sel)return[];const p=s.pcs[0][LS.sel.pc];
+  return YUT.actions(s).filter(a=>a.pc===LS.sel.pc||(p.node!==HOME&&s.pcs[0][a.pc].node===p.node)).map((a,k)=>({...a,key:k}));}
+function renderLesson(){
+  const L=LESSONS[LS.i];
+  $('chips').innerHTML=LESSONS.map((l,k)=>`<button class="chip${k===LS.i?' on':''}${done.has(k)?' done':''}" data-k="${k}">${k+1}. ${l.title}</button>`).join('');
+  $('lstep').textContent=`${LS.i+1}강`;$('ltitle').textContent=L.title;$('ltext').innerHTML=L.text;
+  const can=L.type==='move'&&!LS.ok;
+  drawBoard($('lboard'),LS.s,{targets:can?lTargets():[],sel:LS.sel,clickable:can?0:-1});
+  $('ltrays').innerHTML=[0,1].map(pl=>trayHtml(LS.s,pl,{name:pl?'파랑 · 상대':'빨강 · 나',can:can&&pl===0&&!LS.s.results.every(r=>r==='back'),sel:LS.sel&&LS.s.pcs[0][LS.sel.pc].node===HOME&&pl===0})).join('');
+  $('lsticks').innerHTML=sticksHtml(L.flat,true,false)+(LS.s.results.length?`<div class="lres">${LS.s.results.map(r=>`<span class="yres">${RNAME[r]}</span>`).join('')}</div>`:'');
+  if(L.type==='quiz'){$('lquiz').innerHTML=`<div class="quiz">${L.quiz.opts.map((v,k)=>`<button class="btn" data-i="${k}">${v}</button>`).join('')}</div>`;
+    $('lquiz').querySelectorAll('button').forEach(b=>b.onclick=()=>{const ok=+b.dataset.i===L.quiz.ans;LS.fb={kind:ok?'ok':'no',msg:ok?L.quiz.msg:L.quiz.wrong};if(ok){LS.ok=true;done.add(LS.i);store.set('lessons',[...done]);}renderLesson();});}
+  else $('lquiz').innerHTML='';
+  $('lfb').innerHTML=LS.fb?`<div class="fb ${LS.fb.kind}">${LS.fb.msg}</div>`:'';
+  const last=LS.i===LESSONS.length-1;$('lnext').textContent=last?'실전 하러 가기':'다음 강의';$('lnext').disabled=!LS.ok;$('lreset').hidden=L.type==='info';
+}
+$('lboard').addEventListener('click',e=>{const L=LESSONS[LS.i];if(L.type!=='move'||LS.ok)return;
+  const t=e.target.closest('.ytgt');
+  if(t&&LS.sel){const a=lTargets().find(x=>String(x.key)===t.dataset.t);if(a){const info=YUT.apply(LS.s,a);const r=L.check(a,info)||{};LS.fb={kind:r.ok?'ok':'no',msg:r.msg};LS.sel=null;
+      if(r.ok){LS.ok=true;done.add(LS.i);store.set('lessons',[...done]);}else{LS.s=L.state();}renderLesson();}return;}
+  const pc=e.target.closest('.ypc');if(pc&&+pc.dataset.pl===0){const i=+pc.dataset.pc;LS.sel=LS.sel&&LS.sel.pc===i?null:{pl:0,pc:i};renderLesson();return;}
+  LS.sel=null;renderLesson();});
+$('ltrays').addEventListener('click',e=>{const b=e.target.closest('.ytray');if(!b||b.disabled||+b.dataset.home!==0)return;const i=LS.s.pcs[0].findIndex(p=>p.node===HOME);if(i>=0){LS.sel={pl:0,pc:i};renderLesson();}});
+$('chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b)loadLesson(+b.dataset.k);});
+$('lreset').onclick=()=>loadLesson(LS.i);
+$('lnext').onclick=()=>{if(LS.i<LESSONS.length-1)loadLesson(LS.i+1);else showTab('play');};
+
+/* ---------- 탭 ---------- */
+function showTab(t){$('learn').hidden=t!=='learn';$('play').hidden=t!=='play';
+  $('tabLearn').setAttribute('aria-selected',t==='learn');$('tabPlay').setAttribute('aria-selected',t==='play');}
+$('tabLearn').onclick=()=>showTab('learn');$('tabPlay').onclick=()=>showTab('play');
+renderSetup();renderRec();newGame();loadLesson(0);
+if(location.hash==='#play')showTab('play');
+
+</script>
+
+<a href="index.html" class="pwa-home" aria-label="처음 화면으로">← 처음</a>
+<style>.pwa-home{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:80;padding:7px 13px;border-radius:999px;
+background:rgba(20,24,22,.78);color:#fff;font:600 13px "Noto Sans KR","Malgun Gothic",sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.pwa-home:focus-visible{outline:2px solid #fff;outline-offset:2px}</style>
+<div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
+<style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
+padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);
+max-width:calc(100vw - 24px);white-space:nowrap}.sw-upd[hidden]{display:none!important}
+.sw-upd button{border:0;border-radius:999px;padding:6px 12px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+#swNow{background:#4cc38a;color:#0b1a12}#swLater{background:transparent;color:#cfd8d3}</style>
+<script>(function(){if(!('serviceWorker' in navigator))return;
+let reloading=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(reloading)return;reloading=true;location.reload();});
+function show(w){var b=document.getElementById('swUpd');b.hidden=false;
+  document.getElementById('swNow').onclick=function(){document.getElementById('swMsg').textContent='바꾸는 중…';w.postMessage('SKIP');};
+  document.getElementById('swLater').onclick=function(){b.hidden=true;};}
+addEventListener('load',function(){navigator.serviceWorker.register('sw.js').then(function(reg){
+  if(reg.waiting&&navigator.serviceWorker.controller)show(reg.waiting);
+  reg.addEventListener('updatefound',function(){var w=reg.installing;if(w)w.addEventListener('statechange',function(){if(w.state==='installed'&&navigator.serviceWorker.controller)show(w);});});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reg.update().catch(function(){});});
+}).catch(function(){});});})();</script>
+</body>
+</html>

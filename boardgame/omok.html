@@ -684,17 +684,25 @@ function pickMove(c){
     el.hidden=false;el.onclick=e=>{const b=e.target.closest('button');if(!b)return;el.hidden=true;res(c[+b.dataset.i]);};});
 }
 function makeInteractor(svg,getState,onMove){
-  let sel=-1,dots=[];
-  svg.addEventListener('click',e=>{const sq=GAME.hit(svg,e);if(sq>=0)handle(sq);});
+  let sel=-1,dots=[],rmc=null,ghost=null;
+  svg.addEventListener('click',e=>{const sq=GAME.hit(svg,e,getState().pos);if(sq>=0)handle(sq);});
+  // 같은 자리로 가는 수가 '잡을 말'만 다르면, 판에서 잡을 말을 직접 누르게 한다
+  async function choose(c,st){
+    if(c.length>1&&c.some(m=>m.rm>=0)){rmc=c;ghost={f:c[0].f,t:c[0].t};sel=-1;dots=c.map(m=>({f:-2,t:m.rm,rmDot:true}));st.redraw();return;}
+    const m=await pickMove(c);sel=-1;dots=[];onMove(m);
+  }
   async function handle(sq){
     const st=getState();if(!st.canMove)return;
+    if(rmc){const c=rmc.filter(m=>m.rm===sq);rmc=null;ghost=null;sel=-1;dots=[];if(c.length)onMove(c[0]);else st.redraw();return;}
     if(GAME.placement){const c=st.legal.filter(m=>m.t===sq);if(c.length){sel=-1;dots=[];onMove(c[0]);}else if(GAME.badClick)GAME.badClick(st.pos,sq);return;}
-    if(sel>=0){const c=dots.filter(m=>m.t===sq);if(c.length){const m=await pickMove(c);sel=-1;dots=[];onMove(m);return;}}
+    if(sel>=0){const c=dots.filter(m=>m.t===sq);if(c.length){choose(c,st);return;}}
+    const drop=st.legal.filter(m=>m.f===-1&&m.t===sq);
+    if(drop.length){sel=-1;dots=[];choose(drop,st);return;}
     const pc=st.pos.b[sq];
     if(pc&&Math.sign(pc)===st.pos.side&&sq!==sel){sel=sq;dots=st.legal.filter(m=>m.f===sq);}else{sel=-1;dots=[];}
     st.redraw();
   }
-  return{handle,get sel(){return sel;},get dots(){return dots;},clear(){sel=-1;dots=[];}};
+  return{handle,get sel(){return sel;},get dots(){return dots;},get ghost(){return ghost;},get choosing(){return !!rmc;},clear(){sel=-1;dots=[];rmc=null;ghost=null;}};
 }
 const checkSq=p=>RULES.inCheck(p)?RULES.kingOf(p,p.side):-1;
 
@@ -727,7 +735,7 @@ function renderLesson(){
   $('chips').innerHTML=LESSONS.map((l,k)=>`<button class="chip${k===LS.li?' on':''}${lessonDone.has(k)?' done':''}" data-k="${k}">${k+1}. ${l.title}</button>`).join('');
   $('lstep').textContent=`${LS.li+1}강 · ${L.steps.length>1?`단계 ${LS.si+1}/${L.steps.length}`:'한 단계'}`;
   $('ltitle').innerHTML=L.title;$('ltext').innerHTML=st.text;
-  $('lturn').innerHTML=st.type==='move'&&!LS.done?`<div class="turn">${GAME.sideChip(LS.pos.side)}${GAME.sideName(LS.pos.side)} 차례 · ${GAME.turnHint||'말을 누르면 갈 수 있는 곳이 보여요'}</div>`:'';
+  $('lturn').innerHTML=st.type==='move'&&!LS.done?`<div class="turn">${GAME.sideChip(LS.pos.side)}${GAME.sideName(LS.pos.side)} 차례 · ${lint.choosing?GAME.rmPrompt:(GAME.turnHint||'말을 누르면 갈 수 있는 곳이 보여요')}</div>`:'';
   if(st.type==='quiz'){const q=st.quiz(LS);
     $('lquiz').innerHTML=`<div class="quiz">${q.opts.map((v,i)=>`<button class="btn" data-i="${i}">${v}</button>`).join('')}</div>`;
     $('lquiz').querySelectorAll('button').forEach(b=>b.onclick=()=>{const okk=+b.dataset.i===q.ans;LS.fb={kind:okk?'ok':'no',msg:okk?q.msg:q.wrong||'다시 생각해 보세요.'};if(okk)finishStep();renderLesson();});
@@ -736,7 +744,7 @@ function renderLesson(){
   const lastL=LS.li===LESSONS.length-1&&LS.si===L.steps.length-1;
   $('lnext').textContent=lastL?'실전 대국 하러 가기':(LS.si<L.steps.length-1?'다음 단계':'다음 강의');
   $('lnext').disabled=!LS.done;$('lreset').hidden=st.type==='info';
-  GAME.draw($('lboard'),LS.pos,{sel:lint.sel,dots:GAME.placement?(GAME.showAllDots?LS.legal:[]):lint.dots,last:LS.last,marks:st.marks,labels:true,check:checkSq(LS.pos)});
+  GAME.draw($('lboard'),LS.pos,{sel:lint.sel,ghost:lint.ghost,dots:GAME.placement?(GAME.showAllDots?LS.legal:[]):lint.dots,last:LS.last,marks:st.marks,labels:true,check:checkSq(LS.pos)});
 }
 $('chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(b)loadStep(+b.dataset.k,0);});
 $('lreset').onclick=()=>{setLessonPos(LS.start.pos);LS.last=LS.start.last;LS.done=step().type==='info';LS.fb=null;lint.clear();renderLesson();};
@@ -872,14 +880,14 @@ function renderPlay(){
   $('sb').classList.toggle('cur',!G.over&&G.pos.side===US);$('sw').classList.toggle('cur',!G.over&&G.pos.side===AS);
   $('pmsg').className='fb '+G.kind+(G.thinking?' thinking':'');
   $('pmsg').innerHTML=(G.evalHtml?`<div style="margin-bottom:4px">방금 내 수: ${G.evalHtml}</div>`:'')+G.coach+
-    (G.thinking?`<div class="sub">컴퓨터(${GAME.sideName(AS)})가 생각 중이에요</div>`:'');
+    (G.thinking?`<div class="sub">컴퓨터(${GAME.sideName(AS)})가 생각 중이에요</div>`:'')+(pint.choosing?`<div class="turn" style="margin-top:6px">${GAME.rmPrompt}</div>`:'');
   const myTurn=!G.over&&!G.thinking&&(!ai||G.pos.side===US);
   $('phint').disabled=!myTurn;$('presign').disabled=G.over||!G.hist.length;$('pundo').disabled=G.over||!G.hist.length;
   if($('ppass'))$('ppass').disabled=!myTurn||RULES.inCheck(G.pos);
   const showW=ai&&G.winUser!=null;$('wwrap').hidden=!showW;
   if(showW){const p=Math.round(G.winUser*100);$('wbarB').style.width=p+'%';$('wB').textContent=`${GAME.sideName(US)}(나) ${p}%`;$('wW').textContent=`${GAME.sideName(AS)} ${100-p}%`;}
-  const arrows=G.hint?[{f:G.hint.f,t:G.hint.t,color:BLUE}]:[];
-  const o={sel:pint.sel,dots:$('optDots').checked?(GAME.placement?(GAME.showAllDots&&!G.over?G.legal:[]):pint.dots):[],last:G.last,labels:$('optLabels').checked,check:checkSq(G.pos),arrows};
+  const arrows=G.hint?[{f:G.hint.f,t:G.hint.t,rm:G.hint.rm,color:BLUE}]:[];
+  const o={sel:pint.sel,ghost:pint.ghost,dots:$('optDots').checked||pint.choosing?(GAME.placement?(GAME.showAllDots&&!G.over?G.legal:[]):pint.dots):[],last:G.last,labels:$('optLabels').checked,check:checkSq(G.pos),arrows};
   const in3d=use3d&&V3;$('p3d').hidden=!in3d;$('pboard').toggleAttribute('hidden',!!in3d);$('vreset').hidden=$('vhelp').hidden=!in3d;
   $('v3d').textContent=in3d?'2D로 보기':'3D로 보기';
   if(in3d)V3.draw(G.pos,o);else GAME.draw($('pboard'),G.pos,o);
@@ -939,11 +947,11 @@ function drawReview(){
   $('rvTitle').innerHTML=`<span class="tag ${e.cls}">${e.cls==='b'?'큰 실수':'아쉬운 수'}</span>이길 확률 −${pct}%`;
   $('rvMine').setAttribute('aria-pressed',mine);$('rvBest').setAttribute('aria-pressed',!mine);
   let pos,arrows,legend;
-  if(mine){pos=RULES.make(e.before,e.move);arrows=[{f:e.move.f,t:e.move.t,color:RED,label:'1'}];
-    if(rep){pos=RULES.make(pos,rep);arrows.push({f:rep.f,t:rep.t,color:ORANGE,label:'2'});}
+  if(mine){pos=RULES.make(e.before,e.move);arrows=[{f:e.move.f,t:e.move.t,rm:e.move.rm,color:RED,label:'1'}];
+    if(rep){pos=RULES.make(pos,rep);arrows.push({f:rep.f,t:rep.t,rm:rep.rm,color:ORANGE,label:'2'});}
     legend=`<span class="lg" style="--c:${RED}"></span>① 내가 둔 수 (${GAME.moveText(e.before,e.move)})`+(rep?` &nbsp; <span class="lg" style="--c:${ORANGE}"></span>② 상대의 응수`:'');}
   else{pos=e.before;arrows=[{f:e.move.f,t:e.move.t,color:RED,dash:true,op:.55}];
-    if(e.best)arrows.push({f:e.best.f,t:e.best.t,color:BLUE});
+    if(e.best)arrows.push({f:e.best.f,t:e.best.t,rm:e.best.rm,color:BLUE});
     legend=e.best?`<span class="lg" style="--c:${BLUE}"></span>추천 수 (${GAME.moveText(e.before,e.best)}) &nbsp; <span class="lg dash" style="--c:${RED}"></span>내가 둔 수`:'추천 수가 없어요';}
   $('rvLegend').innerHTML=legend;$('rvText').innerHTML=reasons(e).join('<br>');
   GAME.draw($('rvBoard'),pos,{arrows,labels:$('optLabels').checked,check:checkSq(pos)});
