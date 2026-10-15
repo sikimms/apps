@@ -243,7 +243,7 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .nbody{min-width:0;flex:1}.nname{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px}
 .nwin{font-size:12px;font-weight:700;color:var(--print-ink);background:var(--print);border-radius:999px;padding:0 8px}.ndist{font:600 12px var(--f-num);color:var(--fix)}
 .nlinks{display:flex;flex-wrap:wrap;gap:10px;margin-top:3px;font-size:12.5px}.nlinks a{color:var(--fix)}
-.pnav{position:sticky;top:0;z-index:40;display:flex;gap:6px;overflow-x:auto;padding:calc(8px + env(safe-area-inset-top,0px)) 2px 8px;margin:0 0 10px;background:var(--paper);border-bottom:1px solid var(--rule);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.pnav{position:sticky;top:0;z-index:40;display:flex;flex-wrap:wrap;gap:6px;padding:calc(8px + env(safe-area-inset-top,0px)) 2px 8px;margin:0 0 10px;background:var(--paper);border-bottom:1px solid var(--rule);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .pnav::-webkit-scrollbar{display:none}
 .pnav button{flex:none;border:1px solid var(--rule);background:var(--card);color:var(--ink);font:600 13.5px var(--f-body);padding:7px 13px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .pnav button.on{background:var(--print);border-color:var(--print);color:var(--print-ink)}
@@ -11436,7 +11436,7 @@ $('mMock').onclick=async()=>{
 <script>
 /* ===== 상단 메뉴 탭 =====
    PC·모든 메뉴 보기: 누르면 그 메뉴로 이동.
-   휴대폰 간단 보기: 추첨기는 늘 위에 두고, 탭으로 고른 메뉴 하나만 아래에 보여 준다.
+   휴대폰 간단 보기: 탭으로 고른 메뉴 하나만 보여 준다. 탭은 여러 줄로 접혀 늘 다 보인다.
    "순서 바꾸기"로 탭(=메뉴) 순서를 ‹ › 로 옮길 수 있다. 순서는 메뉴 끌기와 같은 곳에 저장된다. */
 (function(){
   const NAME={machine:'추첨기',slip:'용지',rec:'숫자 추천',draw:'이번 회차',win:'QR 맞춰보기',near:'내 주변',hist:'역대 조회',odds:'확률'};
@@ -11447,7 +11447,7 @@ $('mMock').onclick=async()=>{
   // 이번 버전부터 확률은 맨 끝으로 (한 번만)
   if(!store.get('order-v2',false)){const o=store.get('order',null);if(Array.isArray(o)){store.set('order',o.filter(x=>x!=='odds').concat('odds'));}store.set('order-v2',true);
     const od=box.querySelector('[data-id="odds"]');if(od)box.appendChild(od);}
-  let cur=store.get('tab','rec'),edit=false;
+  let cur=store.get('tab','machine'),edit=false;
   const ids=()=>[...box.children].map(p=>p.dataset.id).filter(Boolean);
   const shown=()=>[...box.children].filter(p=>p.dataset.id&&!p.classList.contains('mhide'));
   function saveOrder(){const o=ids();if(mach.parentNode!==box)o.unshift('machine');store.set('order',o);}
@@ -11457,7 +11457,7 @@ $('mMock').onclick=async()=>{
       const after=i>=0?o.slice(i+1).map(id=>box.querySelector(`[data-id="${id}"]`)).find(Boolean):box.firstChild;box.insertBefore(mach,after||null);}
   }
   function render(){
-    const tm=tabMode();placeMachine(tm);
+    const tm=tabMode();placeMachine(false);
     const ps=shown();if(!ps.some(p=>p.dataset.id===cur))cur=ps[0]?ps[0].dataset.id:'';
     nav.classList.toggle('editing',edit);
     nav.innerHTML=ps.map((p,i)=>{const id=p.dataset.id,lbl=NAME[id]||p.querySelector('h2').textContent;
@@ -11474,13 +11474,12 @@ $('mMock').onclick=async()=>{
     if(tabMode()){const y=nav.getBoundingClientRect().top+scrollY;if(scrollY>y)window.scrollTo(0,y);window.dispatchEvent(new Event('resize'));}
     else{const y=p.getBoundingClientRect().top+scrollY-nav.offsetHeight-8,y0=scrollY;window.scrollTo({top:y,behavior:'smooth'});
       setTimeout(()=>{if(Math.abs(scrollY-y0)<2&&Math.abs(y-y0)>2)window.scrollTo(0,y);},700);}   // 부드러운 스크롤이 안 되는 환경이면 바로 이동
-    const b=nav.querySelector('.on');if(b)b.scrollIntoView({inline:'center',block:'nearest'});
   }
   // 보이는 메뉴끼리 한 칸 옮기기 (숨은 메뉴는 건너뜀)
   function move(id,d){
     const ps=shown(),i=ps.findIndex(p=>p.dataset.id===id),j=i+d;if(i<0||j<0||j>=ps.length)return;
     const p=ps[i],q=ps[j];if(d<0)box.insertBefore(p,q);else box.insertBefore(p,q.nextSibling);
-    saveOrder();render();const b=nav.querySelector(`[data-id="${id}"][data-mv="${d}"]`)||nav.querySelector(`[data-id="${id}"]`);if(b){b.focus();b.scrollIntoView({inline:'center',block:'nearest'});}
+    saveOrder();render();const b=nav.querySelector(`[data-id="${id}"][data-mv="${d}"]`)||nav.querySelector(`[data-id="${id}"]`);if(b)b.focus();
   }
   nav.addEventListener('click',e=>{
     const m=e.target.closest('[data-mv]');if(m){move(m.dataset.id,+m.dataset.mv);return;}
