@@ -720,6 +720,14 @@ h1 span{color:var(--ink)}
 .tagline{color:var(--muted);font-size:13px;margin-top:6px}
 .odds{font-family:var(--f-num);font-size:12.5px;color:var(--muted);text-align:right}
 .odds b{color:var(--print);font-weight:600}
+.prizes{display:grid;gap:10px;margin-top:10px}
+.prz{border:1px solid var(--rule);border-radius:12px;padding:10px 12px;background:var(--card)}
+.prz .pzh{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 10px}
+.prz .pzr{font:700 18px var(--f-display);color:var(--print)}.prz .pzc{font-size:13.5px}.prz .pzo{font:600 12.5px var(--f-num);color:var(--muted);margin-left:auto}
+.prz .pzm{margin-top:4px;font-size:14px}.prz .pzm b{font-size:16px;color:var(--ink)}
+.prz .pzw{display:flex;gap:6px;margin-top:6px;font-size:13px;color:var(--muted)}.prz .pzw span:first-child{flex:none;font-weight:700;color:var(--fix)}
+.prz.top{border-color:#fbc400;background:linear-gradient(0deg,var(--card),#fff8dc)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .prz.top{background:var(--card)}}
 @media (max-width:420px){#saved .ball,#rows .ball{width:28px;height:28px;font-size:12px}#saved .balls,#rows .balls{gap:3px}}
 .srt{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 9px;margin-right:6px}
 .srt.win{background:#fbc400;color:#3a2a00}.srt.lose{background:var(--ex-soft);color:var(--ex)}.srt.wait{background:var(--fix-soft);color:var(--fix)}
@@ -1090,16 +1098,10 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
   </section>
 
   <section class="card facts panel" data-id="odds" aria-labelledby="hOdds">
-    <h2 id="hOdds">등수별 확률</h2>
-    <div class="tblwrap"><table>
-      <thead><tr><th>등수</th><th>조건</th><th>확률 (한 게임)</th><th>당첨금</th></tr></thead>
-      <tbody>
-        <tr><td>1등</td><td>6개 모두 일치</td><td class="n">1 / 8,145,060</td><td>총 당첨금의 75%를 나눠 가짐</td></tr>
-        <tr><td>2등</td><td>5개 + 보너스 번호 일치</td><td class="n">1 / 1,357,510</td><td>총 당첨금의 12.5%를 나눠 가짐</td></tr>
-        <tr><td>3등</td><td>5개 일치</td><td class="n">1 / 35,724</td><td>총 당첨금의 12.5%를 나눠 가짐</td></tr>
-        <tr><td>4등</td><td>4개 일치</td><td class="n">1 / 733</td><td class="n">50,000원</td></tr>
-        <tr><td>5등</td><td>3개 일치</td><td class="n">1 / 45</td><td class="n">5,000원</td></tr>
-      </tbody></table></div>
+    <h2 id="hOdds">당첨금과 받는 법</h2>
+    <div class="sub" id="prizeSub">등수별 확률과 지난 회차 1인당 당첨금, 세금을 뗀 실수령액(대략), 받는 곳을 알려 드려요.</div>
+    <div class="prizes" id="prizeList"></div>
+    <div class="note" style="margin-top:8px">· 당첨금은 추첨 다음 날부터 <b>1년 안에</b> 받아야 해요. 지나면 복권기금으로 들어가요.<br>· 세금: 200만 원 이하는 없음, 3억 원까지는 22%, 3억 원 넘는 부분은 33%(소득세+지방소득세). 위 실수령액은 이 기준으로 계산한 대략값이에요.<br>· 받으러 갈 때는 <b>당첨 복권 실물</b>과 <b>신분증</b>을 꼭 챙기세요. 정확한 안내는 동행복권(dhlottery.co.kr)과 NH농협은행에서 확인해 주세요.</div>
     <div class="note" style="margin-top:8px">이 페이지는 번호를 무작위로 골라 줄 뿐, 당첨 가능성을 높이지 않아요. 지난 회차에 많이 나온 숫자도 다음 회차 확률은 같아요. 로또는 만 19세 이상만 살 수 있어요.</div>
   </section>
   </div>
@@ -11412,7 +11414,25 @@ $('hgo').onclick=()=>{if(pick.size===6)$('hres').innerHTML=histDetail([...pick].
 $('hclear').onclick=()=>{pick.clear();renderPick();$('hres').innerHTML='';};
 /* 최근 회차 */
 function wonText(p){p=+p||0;if(!p)return"";const e=Math.floor(p/1e8),m=Math.round(p%1e8/1e4);return (e?e+"억 ":"")+(m?m.toLocaleString()+"만":"")+"원";}
-function renderHdr(){const H=HIST(),h=H[H.length-1],el=document.getElementById("hdrLast");if(!el||!h)return;
+const DIV0={r:1245,d:[[3006515775,10],[55064392,91],[1615365,3102],[50000,163177],[5000,2786728]]};
+const PRIZE_INFO=[
+  {k:'1등',c:'6개 모두 일치',o:'1 / 8,145,060',w:'NH농협은행 <b>본점</b> 방문 (서울 중구 통일로 120). 평일 은행 영업시간에 가요.'},
+  {k:'2등',c:'5개 + 보너스 번호 일치',o:'1 / 1,357,510',w:'NH농협은행 <b>전국 지점</b> (지역 단위농협은 안 돼요)'},
+  {k:'3등',c:'5개 일치',o:'1 / 35,724',w:'NH농협은행 <b>전국 지점</b> (지역 단위농협은 안 돼요)'},
+  {k:'4등',c:'4개 일치',o:'1 / 733',w:'가까운 <b>로또 판매점</b> 어디서나, 또는 농협은행 지점'},
+  {k:'5등',c:'3개 일치',o:'1 / 45',w:'가까운 <b>로또 판매점</b> 어디서나 (5,000원은 바로 현금이나 복권으로)'}];
+const lottoTax=p=>p<=2e6?0:Math.round(Math.min(p,3e8)*0.22+Math.max(0,p-3e8)*0.33);
+const wonFull=p=>p>=1e8?wonText(p):(+p).toLocaleString()+'원';
+function renderPrize(){
+  const el=document.getElementById('prizeList');if(!el)return;
+  const H=HIST(),last=H[H.length-1];let dv=store.get('div-latest',null);if(!dv||!Array.isArray(dv.d)||dv.r<DIV0.r)dv=DIV0;
+  if(last&&dv.r<last[0]&&last[9])dv={r:last[0],d:[[last[9],last[10]]].concat(dv.d.slice(1).map(()=>[0,0]))};   // 새 회차는 1등만 알 때
+  el.innerHTML=PRIZE_INFO.map((p,i)=>{const [amt,win]=dv.d[i]||[0,0],tax=lottoTax(amt),net=amt-tax;
+    const money=amt?`${dv.r}회 1인당 <b>${wonFull(amt)}</b>${win?` · ${win.toLocaleString()}명`:''}${tax?`<br><span class="note">세금 약 ${wonFull(tax)} → 실수령 약 <b style="font-size:14px">${wonFull(net)}</b></span>`:i<3?'<br><span class="note">200만 원 이하라 세금 없음</span>':''}`:`${dv.r}회 당첨금은 아직 확인 중이에요`;
+    return `<div class="prz${i===0?' top':''}"><div class="pzh"><span class="pzr">${p.k}</span><span class="pzc">${p.c}</span><span class="pzo">${p.o}</span></div>
+      <div class="pzm">${money}</div><div class="pzw"><span>받는 곳</span><span>${p.w}</span></div></div>`;}).join('');
+}
+function renderHdr(){setTimeout(renderPrize,0);const H=HIST(),h=H[H.length-1],el=document.getElementById("hdrLast");if(!el||!h)return;
   const d=String(h[1]),dt=d.length===8?new Date(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6)):null,days=dt?(Date.now()-dt)/864e5:99;
   const when=days<8?"지난주":"최근",won=wonText(h[9]);
   el.innerHTML=`<div class="hl1">${when} 당첨번호 · ${h[0]}회${d.length===8?" ("+(+d.slice(4,6))+"/"+(+d.slice(6))+")":""}</div><div class="hlb">${h.slice(2,8).map(n=>ballHtml(n)).join("")}<span class="plus">+</span>${ballHtml(h[8])}</div>`+
@@ -11682,6 +11702,7 @@ if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))$('qrCamBtn').
   async function fromMirror(){
     const get=u=>fetch(u,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();});
     const top=await get(MIRROR+'latest.json'),have=latest(),rows=[toRow(top)];
+    try{store.set('div-latest',{r:+top.draw_no,d:(top.divisions||[]).map(x=>[+x.prize||0,+x.winners||0])});}catch(e){}
     for(let n=have+1;n<top.draw_no&&rows.length<60;n++)rows.push(toRow(await get(MIRROR+n+'.json')));
     return{added:addRows(rows),top:top.draw_no};
   }
@@ -12242,7 +12263,7 @@ $('mMock').onclick=async()=>{
    휴대폰 간단 보기: 탭으로 고른 메뉴 하나만 보여 준다. 탭은 여러 줄로 접혀 늘 다 보인다.
    "순서 바꾸기"로 탭(=메뉴) 순서를 ‹ › 로 옮길 수 있다. 순서는 메뉴 끌기와 같은 곳에 저장된다. */
 (function(){
-  const NAME={machine:'추첨기',slip:'용지',rec:'숫자 추천',draw:'이번 회차',win:'QR 맞춰보기',near:'내 주변',hist:'역대 조회',odds:'확률'};
+  const NAME={machine:'추첨기',slip:'용지',rec:'숫자 추천',draw:'이번 회차',win:'QR 맞춰보기',near:'내 주변 로또',hist:'역대 조회',odds:'당첨금'};
   const box=$('panels'),mach=box.querySelector('[data-id="machine"]');
   const nav=document.createElement('nav');nav.className='pnav';nav.setAttribute('aria-label','메뉴 바로가기');
   box.parentNode.insertBefore(nav,box);
