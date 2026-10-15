@@ -11278,6 +11278,15 @@ $('slipClear').onclick=()=>{slip=[0,1,2,3,4].map(()=>({marks:[],auto:false}));sa
 /* 번호 만들기: 칠한 숫자는 그대로, 나머지는 보안 난수로 */
 const noRun=()=>$('noRun').checked;
 {const v=store.get('opt-noRun',null);if(v!=null)$('noRun').checked=v;$('noRun').addEventListener('change',()=>store.set('opt-noRun',$('noRun').checked));}
+// 추첨기가 고른 공을 받을지: 칠한 숫자는 빼고, 옵션이 켜져 있으면 3개 연속이 되는 공은 안 받음
+function machineAccept(fixed){return (n,got)=>{if(fixed.has(n))return false;if(!noRun())return true;const s=new Set(got.concat(n));for(const a of [n-2,n-1,n])if(s.has(a)&&s.has(a+1)&&s.has(a+2))return false;return true;};}
+async function machineGame(g,status){
+  const fixed=new Set(g.type==='수동'?g.nums:(g.pinned||[]));
+  const order=g.type==='수동'?shuffled(g.nums):[...fixed].concat(Array(6-fixed.size).fill(null));
+  const got=await Machine.draw(order,{status,onBall:trayAdd,accept:machineAccept(fixed)});
+  if(got&&got.length===6)g.nums=got.slice().sort((a,b)=>a-b);
+  return g;
+}
 function hasAutoRun(nums,fixed){
   for(let i=0;i+2<nums.length;i++)if(nums[i+1]===nums[i]+1&&nums[i+2]===nums[i]+2&&![nums[i],nums[i+1],nums[i+2]].every(n=>fixed.has(n)))return true;
   return false;
@@ -11949,9 +11958,10 @@ renderRows(true);
 const Machine=(()=>{
   const R=3,r=0.3,BALLC={1:0xf5b800,2:0x2f9fde,3:0xf05050,4:0x9a9a9a,5:0x86c232};
   const ORD=['첫 번째','두 번째','세 번째','네 번째','다섯 번째','여섯 번째','보너스'];
-  let renderer,scene,camera,host,cap,balls=[],mixing=false,running=false,speed=1,last=0,tubeCurve,time=0;
+  let renderer,scene,camera,host,cap,balls=[],mixing=false,running=false,speed=1,last=0,tubeCurve,time=0,air=0,capWait=null,valve=null;
   let focus=null,camPos,camTgt,basePos,baseTgt;
   const V=(x,y,z)=>new THREE.Vector3(x,y,z),tmp=V(0,0,0),q=new THREE.Quaternion(),ax=V(0,0,0);
+  const INTAKE=V(0,R-r-0.14,0);   // 위쪽 흡입구: 바람에 밀려 여기 먼저 들어온 공이 뽑힌다
   const SLOT=k=>V(-2.9+k*0.84+(k===6?0.42:0),-R-1.05,R+1.0);
   /* ---------- 소리 (WebAudio로 직접 합성) ---------- */
   const S={ctx:null,on:true,air:null,airGain:null,last:0,count:0,
@@ -11971,6 +11981,8 @@ const Machine=(()=>{
     ding(){if(!this.ctx||!this.on)return;const c=this.ctx,now=c.currentTime;
       for(const [f,v] of [[880,0.18],[1320,0.09],[1760,0.05]]){const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.value=f;
         g.gain.setValueAtTime(v,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.9);o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+0.95);}},
+    thunk(){if(!this.ctx||!this.on)return;const c=this.ctx,now=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.setValueAtTime(220,now);o.frequency.exponentialRampToValueAtTime(70,now+0.18);
+      g.gain.setValueAtTime(0.28,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.22);o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+0.25);},
     whoosh(){if(!this.ctx||!this.on)return;const c=this.ctx,now=c.currentTime,s=c.createBufferSource();s.buffer=this.noise;
       const f=c.createBiquadFilter();f.type='bandpass';f.Q.value=1.2;f.frequency.setValueAtTime(300,now);f.frequency.exponentialRampToValueAtTime(2400,now+0.35);
       const g=c.createGain();g.gain.setValueAtTime(0.0001,now);g.gain.exponentialRampToValueAtTime(0.22,now+0.08);g.gain.exponentialRampToValueAtTime(0.0001,now+0.45);
@@ -12043,6 +12055,9 @@ const Machine=(()=>{
     const base=new THREE.Mesh(new THREE.CylinderGeometry(2.25,2.55,0.55,96),new THREE.MeshPhysicalMaterial({color:0xc8325f,metalness:0.2,roughness:0.28,clearcoat:1,clearcoatRoughness:0.08}));
     base.position.y=-R-0.68;base.castShadow=true;base.receiveShadow=true;scene.add(base);
     const baseRim=new THREE.Mesh(new THREE.TorusGeometry(2.42,0.05,12,96),chrome);baseRim.rotation.x=Math.PI/2;baseRim.position.y=-R-0.41;scene.add(baseRim);
+    const funnel=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.2,0.42,40,1,true),new THREE.MeshStandardMaterial({color:0xe9e4e6,metalness:1,roughness:0.15,side:THREE.DoubleSide,envMapIntensity:1.4}));
+    funnel.position.y=R-0.3;scene.add(funnel);
+    valve=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.035,10,48),new THREE.MeshBasicMaterial({color:0xffd34d,transparent:true,opacity:0}));valve.rotation.x=Math.PI/2;valve.position.y=R-0.52;scene.add(valve);
     const capTop=new THREE.Mesh(new THREE.CylinderGeometry(0.44,0.44,0.38,40,1,true),chrome);capTop.position.y=R+0.12;scene.add(capTop);
     // 위로 빠져나가 옆으로 내려오는 유리관
     tubeCurve=new THREE.CatmullRomCurve3([V(0,R+0.25,0),V(0.35,R+1.05,0.2),V(1.9,R+0.95,0.7),V(R+1.3,1.3,1.4),V(R+1.45,-R+0.3,R*0.55),V(3.8,-R-0.95,R+1.0)]);
@@ -12077,13 +12092,15 @@ const Machine=(()=>{
     const live=balls.filter(b=>b.inside&&b.visible);
     for(const b of live){
       b.v.y-=9.8*dt;
-      if(mixing){
-        const hr=Math.hypot(b.p.x,b.p.z);
-        if(b.p.y<0.6&&hr<R*0.8)b.v.y+=(150+Math.random()*120)*(1-hr/(R*0.95))*dt;
-        b.v.x+=-b.p.z*2.2*dt+(Math.random()-0.5)*55*dt;
-        b.v.z+=b.p.x*2.2*dt+(Math.random()-0.5)*55*dt;
+      if(air>0.02){
+        const hr=Math.hypot(b.p.x,b.p.z),hy=(b.p.y+R)/(2*R);   // 0(바닥)~1(꼭대기)
+        if(hr<R*0.62)b.v.y+=air*(95+Math.random()*110)*(1-hr/(R*0.62))*(1.15-hy*0.75)*dt;   // 송풍구 바람 기둥
+        if(hy>0.62){b.v.x+=air*b.p.x*4.2*dt;b.v.z+=air*b.p.z*4.2*dt;}                   // 꼭대기에서 바깥으로 퍼짐
+        b.v.x+=air*(-b.p.z*1.4+(Math.random()-0.5)*80)*dt;                              // 소용돌이 + 난류
+        b.v.z+=air*(b.p.x*1.4+(Math.random()-0.5)*80)*dt;
+        b.v.y+=air*(Math.random()-0.5)*50*dt;
       }
-      b.v.multiplyScalar(mixing?0.994:0.982);
+      b.v.multiplyScalar(air>0.02?0.993:0.982);
       b.p.addScaledVector(b.v,dt);
       const d=b.p.length(),lim=R-r-0.03;
       if(d>lim){const nrm=tmp.copy(b.p).divideScalar(d);b.p.copy(nrm).multiplyScalar(lim);const vn=b.v.dot(nrm);
@@ -12095,6 +12112,16 @@ const Machine=(()=>{
         a.p.x-=nx*push;a.p.y-=ny*push;a.p.z-=nz*push;c.p.x+=nx*push;c.p.y+=ny*push;c.p.z+=nz*push;
         const rv=(c.v.x-a.v.x)*nx+(c.v.y-a.v.y)*ny+(c.v.z-a.v.z)*nz;
         if(rv<0){const k=-0.92*rv;a.v.x-=nx*k;a.v.y-=ny*k;a.v.z-=nz*k;c.v.x+=nx*k;c.v.y+=ny*k;c.v.z+=nz*k;if(-rv>3)S.clack(-rv*0.018);}}}
+    if(capWait){const c=capWait;c.el+=dt;
+      let tgt=c.target!=null?live.find(b=>b.n===c.target):null;
+      if(!tgt&&c.el>6.5){const cand=live.filter(b=>!c.accept||c.accept(b.n)).sort((a,b)=>a.p.distanceTo(INTAKE)-b.p.distanceTo(INTAKE))[0];if(cand){c.target=cand.n;c.pullFrom=c.el;tgt=cand;}}
+      if(tgt&&c.el>c.pullFrom){const pull=Math.min(1,(c.el-c.pullFrom)/2.2);tmp.copy(INTAKE).sub(tgt.p);const d=tmp.length();
+        tgt.v.addScaledVector(tmp.divideScalar(Math.max(d,1e-3)),(18+70*pull)*dt);if(d<1.3)tgt.v.multiplyScalar(0.95);}   // 정해진 공은 바람을 타고 흡입구로
+      if(c.el>=c.minT)for(const b of live){if(b.p.distanceTo(INTAKE)<0.4&&b.v.y>-1.5){   // 흡입구가 열리고 잠깐 뒤부터 잡힘
+        const ok=c.target!=null?b.n===c.target:(!c.accept||c.accept(b.n));
+        if(ok){capWait=null;b.v.set(0,0,0);S.thunk();c.res(b);break;}
+        else b.v.y=-Math.abs(b.v.y)-2;}}                  // 다른 공은 튕겨 내려감
+    }
     for(const b of live){b.m.position.copy(b.p);roll(b,b.v,dt);}
   }
   function roll(b,v,dt){const sp=Math.hypot(v.x,v.z,v.y*0.3);if(sp<0.01)return;
@@ -12112,7 +12139,9 @@ const Machine=(()=>{
     if(!ioSet&&window.IntersectionObserver&&host instanceof Element){ioSet=true;new IntersectionObserver(es=>{onScreen=es[0].isIntersecting;}).observe(host);}
     const raw=Math.min(0.033,(t-(last||t))/1000);last=t;const dt=raw*speed;time+=raw;
     if(host.offsetParent===null)return;
-    if(!onScreen&&!mixing&&!balls.some(b=>b.path||b.settle))return;   // 화면 밖이고 쉬는 중이면 계산·그리기 쉬기 (스크롤이 부드럽게)
+    if(!onScreen&&!mixing&&air<0.02&&!capWait&&!balls.some(b=>b.path||b.settle))return;   // 화면 밖이고 쉬는 중이면 계산·그리기 쉬기 (스크롤이 부드럽게)
+    air+=((mixing?1:0)-air)*Math.min(1,dt*(mixing?0.9:1.6));
+    if(valve)valve.material.opacity=capWait?0.55+0.4*Math.sin(time*9):Math.max(0,valve.material.opacity-raw*2);
     const steps=speed>1?5:3;for(let k=0;k<steps;k++)physics(dt/steps);
     for(const b of balls)if(b.path){
       const P=b.path;P.t=Math.min(1,P.t+dt/P.dur);
@@ -12131,7 +12160,7 @@ const Machine=(()=>{
   function extract(b,slot){
     return new Promise(res=>{
       b.inside=false;S.whoosh();
-      const pts=[b.p.clone(),V(b.p.x*0.3,R-r-0.05,b.p.z*0.3),V(0,R+0.1,0)];
+      const pts=[b.p.clone(),V(b.p.x*0.5,R-r-0.02,b.p.z*0.5),V(0,R+0.1,0)];
       for(let k=1;k<=30;k++)pts.push(tubeCurve.getPoint(k/30));
       pts.push(V(3.3,-R-1.05,R+1.0),SLOT(slot));
       b.path={curve:new THREE.CatmullRomCurve3(pts,false,'centripetal'),t:0,dur:2.4,done:res};
@@ -12146,18 +12175,20 @@ const Machine=(()=>{
     for(const b of balls){b.visible=!(opt.hide&&opt.hide.has(b.n));b.m.visible=b.visible;b.settle=null;if(!b.inside){b.inside=true;placeRandom(b);}}
     cap.classList.remove('show');
     opt.status&&opt.status('송풍기를 켜고 공을 섞는 중이에요');
-    mixing=true;S.air(0.16);await wait(3200);
+    mixing=true;S.air(0.16);await wait(3600);
+    const got=[];
     for(let k=0;k<nums.length;k++){
-      const b=balls.find(x=>x.n===nums[k]);
-      opt.status&&opt.status(`${ORD[k]} ${k===6?'번호':'공'}을 꺼내요`);
-      await wait(900);
+      const want=nums[k]==null?null:nums[k];
+      opt.status&&opt.status(`흡입구를 열었어요 · ${ORD[k]} ${k===6?'번호':'공'}을 기다려요`);
+      const b=await new Promise(res=>{capWait={target:want,minT:0.9+Math.random()*1.3,pullFrom:want!=null?1.4:1e9,accept:opt.accept?(n=>opt.accept(n,got)):null,el:0,res};});
+      got.push(b.n);opt.status&&opt.status(`${b.n}번 공이 빨려 올라가요`);
       focus=b;await extract(b,k);
-      caption(k,nums[k]);opt.onBall&&opt.onBall(nums[k],k);
-      await wait(1100);focus=null;
+      caption(k,b.n);opt.onBall&&opt.onBall(b.n,k);
+      await wait(1000);focus=null;await wait(500);
     }
     mixing=false;S.air(0);running=false;
     setTimeout(()=>cap.classList.remove('show'),2500);
-    return nums;
+    return got;
   }
   return{init,draw,setSpeed(s){speed=s;},setSound(on){S.on=on;if(!on&&S.ctx)S.air(0);},get running(){return running;}};
 })();
@@ -12180,7 +12211,7 @@ async function drawMany(n){
   if(filled.length){saveSlip();renderSlip();}
   current=[];renderRows(false);setBusy(true);$('mCount').disabled=true;
   for(let k=0;k<gis.length;k++){const g=makeGame(gis[k]),fixed=new Set(g.type==='반자동'?g.pinned:[]);$('mtray').innerHTML='';
-    await Machine.draw(g.nums.filter(x=>fixed.has(x)).concat(shuffled(g.nums.filter(x=>!fixed.has(x)))),{status:t=>mstat(`<b>${k+1}/${n}게임</b> · ${t}`),onBall:trayAdd});
+    await machineGame(g,t=>mstat(`<b>${k+1}/${n}게임</b> · ${t}`));
     current.push(g);renderRows(true);}
   mstat(`<b>${n}게임을 다 뽑았어요.</b> ${document.querySelector(".mpicked")?"아래 뽑은 번호":"이번 회차 번호"}에서 보관할 수 있어요.${filled.length?` (${filled.join('·')}게임은 자동으로 뽑았어요)`:''}`);
   setBusy(false);$('mCount').disabled=false;
@@ -12196,16 +12227,15 @@ $('mMine').onclick=async()=>{
   const g=makeGame(gi),fixed=new Set(g.type==='반자동'?g.pinned:[]);
   setBusy(true);$('mtray').innerHTML='';
   if(g.type==='수동')mstat(`${g.game}게임은 수동이라 칠한 번호를 그대로 추첨기에 태워요.`);
-  await Machine.draw(g.nums.filter(n=>fixed.has(n)).concat(shuffled(g.nums.filter(n=>!fixed.has(n)))),{status:t=>mstat(t),onBall:trayAdd});
+  await machineGame(g,t=>mstat(t));
   current=current.filter(x=>x.game!==g.game).concat(g).sort((x,y)=>LAB.indexOf(x.game)-LAB.indexOf(y.game));renderRows(true);
   const left=p.games.filter(i=>!current.some(c=>c.game===LAB[i])).length;
   mstat(`<b>${g.game}게임 (${g.type})</b>: ${g.nums.join(', ')}${left?' · 한 번 더 누르면 다음 게임을 뽑아요.':' · 용지의 게임을 다 뽑았어요.'}`);
   setBusy(false);
 };
 $('mMock').onclick=async()=>{
-  const all=[];for(let n=1;n<=45;n++)all.push(n);const seven=shuffled(all).slice(0,7);
   setBusy(true);$('mtray').innerHTML='';
-  await Machine.draw(seven,{status:t=>mstat(t),onBall:trayAdd});
+  const seven=await Machine.draw(Array(7).fill(null),{status:t=>mstat(t),onBall:trayAdd});   // 7개 모두 추첨기가 직접 고름
   const W={main:new Set(seven.slice(0,6)),bonus:seven[6]},main=seven.slice(0,6).sort((a,b)=>a-b);
   const lines=[...current.map((g,i)=>[LAB[i]+'줄',rank(g.nums,W)]),...saved.map((g,i)=>['보관 '+(i+1),rank(g.nums,W)])];
   const order=['1등','2등','3등','4등','5등'],wins=lines.filter(x=>x[1]!=='낙첨').sort((a,b)=>order.indexOf(a[1])-order.indexOf(b[1]));
