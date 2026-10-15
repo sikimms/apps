@@ -52,6 +52,12 @@ h1 span{color:var(--ink)}
 .tagline{color:var(--muted);font-size:13px;margin-top:6px}
 .odds{font-family:var(--f-num);font-size:12.5px;color:var(--muted);text-align:right}
 .odds b{color:var(--print);font-weight:600}
+@media (max-width:420px){#saved .ball,#rows .ball{width:28px;height:28px;font-size:12px}#saved .balls,#rows .balls{gap:3px}}
+.srt{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 9px;margin-right:6px}
+.srt.win{background:#fbc400;color:#3a2a00}.srt.lose{background:var(--ex-soft);color:var(--ex)}.srt.wait{background:var(--fix-soft);color:var(--fix)}
+.sbanner{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-6px 0 14px;padding:10px 14px;border-radius:12px;font-size:14px;border:1px solid var(--rule);background:var(--card)}
+.sbanner.win{background:#fff6cf;border-color:#fbc400;color:#3a2a00}
+.sbanner .sbt{flex:1 1 220px}.sbanner .sbt b{font-size:15px}
 .reclist{margin-top:12px;border:1px solid var(--rule);border-radius:12px;padding:10px 12px;background:var(--card)}
 .reclist .rlh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;font-weight:700;font-size:14px;margin-bottom:4px}
 .reclist .rlr{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--rule)}
@@ -298,6 +304,7 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
     <div class="odds">1등 확률 <b>1 / 8,145,060</b><div class="hdrlast" id="hdrLast"></div></div>
   </header>
 
+  <div class="sbanner" id="sBanner" hidden role="status"></div>
   <div class="layoutbar"><span class="note">메뉴는 ⠿를 끌어서 순서를 바꾸고, 오른쪽 버튼으로 접고 펼 수 있어요.</span><button class="mini" id="layAll">모두 펼치기</button><button class="mini" id="layNone">모두 접기</button><button class="mini" id="layReset">처음 순서로</button></div>
   <div id="panels">
   <section class="card machine panel" data-id="machine" aria-labelledby="hMachine">
@@ -10622,13 +10629,28 @@ function winSet(){const w=[1,2,3,4,5,6].map(k=>+$('w'+k).value).filter(n=>n>=1&&
   return new Set(w).size===6?{main:new Set(w),bonus:b>=1&&b<=45&&!w.includes(b)?b:0}:null;}
 function rank(nums,W){if(!W)return null;const hit=nums.filter(n=>W.main.has(n)).length,bon=nums.includes(W.bonus);
   return hit===6?'1등':hit===5&&bon?'2등':hit===5?'3등':hit===4?'4등':hit===3?'5등':'낙첨';}
+/* 보관한 번호의 회차: 판매 마감(토요일 20:00) 전에 보관하면 그 주 회차, 지나면 다음 주 회차 */
+const WEEK=7*864e5;
+function drawTime(round){const H=HIST(),b=H[H.length-1],d=String(b[1]);if(d.length!==8)return null;
+  return Date.UTC(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6),11,0)+(round-b[0])*WEEK;}   // 20:00 한국 시각 = 11:00 UTC
+function roundOf(t){const H=HIST(),b=H[H.length-1],base=drawTime(b[0]);if(base==null)return null;return b[0]+Math.ceil((t-base)/WEEK);}
+function savedResult(g){
+  const r=g.round||roundOf(g.t||Date.now());if(!r)return null;
+  const h=HIST().find(x=>x[0]===r);
+  if(!h){const dt=drawTime(r);const dd=dt?new Date(dt):null;return{r,pending:true,when:dd?`${dd.getUTCMonth()+1}/${dd.getUTCDate()}`:''};}
+  const W={main:new Set(h.slice(2,8)),bonus:h[8]};return{r,rank:rank(g.nums,W),W};
+}
+function savedTag(g){const s=savedResult(g);if(!s)return '';
+  if(s.pending)return `<span class="srt wait">${s.r}회 추첨 전${s.when?' ('+s.when+' 토)':''}</span>`;
+  return s.rank==='낙첨'?`<span class="srt lose">${s.r}회 낙첨</span>`:`<span class="srt win">🎉 ${s.r}회 ${s.rank} 당첨!</span>`;}
 function rowHtml(g,i,kind,W){
+  if(kind==='saved'&&!W){const s=savedResult(g);if(s&&s.W)W=s.W;}
   const r=rank(g.nums,W),pins=new Set(g.pinned||[]);
   const balls=g.nums.map(n=>ballHtml(n,(kind==='cur'?' drop':'')+(W?(W.main.has(n)?' hit':' miss'):pins.has(n)&&g.type==='반자동'?' pin':''))).join('');
   const act=kind==='cur'?`<button class="mini" data-act="save" data-i="${i}">보관</button>${!['수동','추천'].includes(g.type)?`<button class="mini" data-act="redo" data-i="${i}">다시</button>`:''}`
     :`<button class="mini" data-act="del" data-i="${i}">삭제</button>`;
   return `<div class="row"><div class="lab">${kind==='cur'?g.game:i+1}</div><div class="balls">${balls}</div><div class="act">${act}</div>
-    <div class="rinfo">${g.type?`<span class="ty">${g.type}</span>`:''}${r?(r==='낙첨'?'<span class="note">이번 맞춰보기: 낙첨</span>':`<span class="prize">이번 맞춰보기 ${r}</span>`):''}${histInline(g.nums)}</div></div>`;
+    <div class="rinfo">${kind==='saved'?savedTag(g):''}${g.type?`<span class="ty">${g.type}</span>`:''}${kind!=='saved'&&r?(r==='낙첨'?'<span class="note">이번 맞춰보기: 낙첨</span>':`<span class="prize">이번 맞춰보기 ${r}</span>`):''}${histInline(g.nums)}</div></div>`;
 }
 function renderRows(anim){
   const W=winSet();
@@ -10650,7 +10672,7 @@ $('draw').onclick=()=>{
 $('rows').addEventListener('click',e=>{const b=e.target.closest('.mini');if(!b)return;const i=+b.dataset.i;
   if(!current[i]){renderRows(false);return;}
   if(b.dataset.act==='save'){const g=current[i];if(saved.some(s=>s.nums.join()===g.nums.join())){showMsg('이미 보관한 번호예요.');return;}
-    saved.unshift({nums:g.nums,type:g.type,t:Date.now()});saved=saved.slice(0,50);store.set('saved',saved);showMsg(`${g.game}게임을 보관했어요.`,true);renderRows(false);}
+    saved.unshift({nums:g.nums,type:g.type,t:Date.now(),round:roundOf(Date.now())});saved=saved.slice(0,50);store.set('saved',saved);showMsg(`${g.game}게임을 보관했어요.`,true);renderRows(false);}
   else if(b.dataset.act==='redo'){const gi=LAB.indexOf(current[i].game);current[i]=makeGame(gi);renderRows(false);
     const row=$('rows').children[i];row.querySelectorAll('.ball').forEach((x,k)=>{x.classList.add('drop');x.style.animationDelay=(k*45)+'ms';});}});
 $('saved').addEventListener('click',e=>{const b=e.target.closest('.mini');if(!b)return;saved.splice(+b.dataset.i,1);store.set('saved',saved);renderRows(false);});
@@ -10721,7 +10743,24 @@ function renderHdr(){const H=HIST(),h=H[H.length-1],el=document.getElementById("
   const when=days<8?"지난주":"최근",won=wonText(h[9]);
   el.innerHTML=`<div class="hl1">${when} 당첨번호 · ${h[0]}회${d.length===8?" ("+(+d.slice(4,6))+"/"+(+d.slice(6))+")":""}</div><div class="hlb">${h.slice(2,8).map(n=>ballHtml(n)).join("")}<span class="plus">+</span>${ballHtml(h[8])}</div>`+
     `<div class="hlp">${won?`1등 <b>${won}</b>${h[10]?` · ${h[10]}명`:""}`:"1등 금액은 발표 후 들어와요"}</div>`;}
-function renderLatest(){renderHdr();const H=HIST(),h=H[H.length-1];
+function savedNotice(){
+  const el=document.getElementById('sBanner');if(!el)return;
+  const seen=new Set(store.get('saved-seen',[]));const res=saved.map(g=>({g,s:savedResult(g)})).filter(x=>x.s&&!x.s.pending);
+  const H=HIST(),lastR=H[H.length-1][0];
+  const rounds=[...new Set(res.map(x=>x.s.r))].filter(r=>!seen.has(r)&&r>=lastR-1).sort((a,b)=>b-a);   // 최근 2회차만 알림
+  if(!rounds.length){el.hidden=true;return;}
+  const mine=res.filter(x=>rounds.includes(x.s.r)),wins=mine.filter(x=>x.s.rank!=='낙첨');
+  const cnt={};wins.forEach(x=>cnt[x.s.rank]=(cnt[x.s.rank]||0)+1);
+  const rl=rounds.length===1?rounds[0]+'회':rounds.slice().reverse().join('·')+'회';
+  el.className='sbanner'+(wins.length?' win':'');el.hidden=false;
+  el.innerHTML=`<span class="sbt">${wins.length?`🎉 <b>보관한 번호 ${wins.length}게임이 ${rl}에 당첨됐어요!</b> (${Object.keys(cnt).sort().map(k=>k+' '+cnt[k]+'게임').join(', ')})`:`보관한 번호 ${mine.length}게임의 ${rl} 결과: 아쉽지만 모두 낙첨이에요.`}</span>`+
+    `<button class="btn" id="sbGo">보관함 보기</button><button class="mini" id="sbOk">확인</button>`;
+  const done=()=>{store.set('saved-seen',[...seen,...rounds].slice(-60));el.hidden=true;};
+  document.getElementById('sbOk').onclick=done;
+  document.getElementById('sbGo').onclick=()=>{done();const b=document.querySelector('.pnav [data-go="'+(document.querySelector('.mpicked')?'win':'draw')+'"]');if(b)b.click();
+    setTimeout(()=>{const s=document.getElementById('saved');if(s)s.scrollIntoView({block:'center',behavior:'smooth'});},120);};
+}
+function renderLatest(){renderHdr();setTimeout(savedNotice,0);const H=HIST(),h=H[H.length-1];
   $('hlatest').innerHTML=`<span class="note"><b>최근 ${h[0]}회</b> ${fmtDate(h[1])}</span><span class="balls">${h.slice(2,8).map(n=>ballHtml(n)).join('')}<span class="plus">+</span>${ballHtml(h[8])}</span>`+
     `<button class="mini" id="useLatest">이 번호로 맞춰보기</button>`;
   $('useLatest').onclick=()=>{h.slice(2,8).forEach((n,k)=>$('w'+(k+1)).value=n);$('wb').value=h[8];
@@ -10780,7 +10819,7 @@ function renderRec(){
 let recResults=[],recDesc="";
 const savedWhere=()=>document.querySelector(".mpicked")?"<b>QR 맞춰보기</b> 메뉴 맨 아래 보관함":"<b>이번 회차 번호</b> 메뉴 아래 보관함";
 const recCompact=()=>!!document.querySelector('.mpicked');
-function saveNums(nums,type){if(saved.some(s=>s.nums.join()===nums.join()))return false;saved.unshift({nums:nums.slice(),type,t:Date.now()});saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);return true;}
+function saveNums(nums,type){if(saved.some(s=>s.nums.join()===nums.join()))return false;saved.unshift({nums:nums.slice(),type,t:Date.now(),round:roundOf(Date.now())});saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);return true;}
 function renderRecList(){
   const el=$('recList');if(!recResults.length){el.innerHTML='';return;}
   el.innerHTML=`<div class="reclist"><div class="rlh">추천 번호 ${recResults.length}게임<button class="btn" id="recSaveAll">모두 보관</button></div><div class="note" style="margin-bottom:4px">${recDesc}</div>`+
@@ -10912,7 +10951,7 @@ function showQR(res){
 function toastMsg(t){showMsg(t);}
 $('qrRes').addEventListener('click',e=>{const b=e.target.closest('[data-qsave]');if(!b||!qrLast)return;const g=qrLast.games[+b.dataset.qsave];
   if(saved.some(s=>s.nums.join()===g.nums.join())){showMsg('이미 보관한 번호예요.');return;}
-  saved.unshift({nums:g.nums,type:g.type,t:Date.now()});saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);showMsg('보관함에 넣었어요.',true);});
+  saved.unshift({nums:g.nums,type:g.type,t:Date.now(),round:qrLast.round});saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);showMsg('보관함에 넣었어요.',true);});
 /* 이미지(캔버스)에서 QR 읽기: 가능하면 기기 내장 인식기, 아니면 jsQR */
 const qrDetector=('BarcodeDetector' in window)?(()=>{try{return new BarcodeDetector({formats:['qr_code']});}catch(e){return null;}})():null;
 async function decodeSource(src,w,h){
