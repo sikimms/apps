@@ -11959,6 +11959,7 @@ const Machine=(()=>{
   const R=3,r=0.3,BALLC={1:0xf5b800,2:0x2f9fde,3:0xf05050,4:0x9a9a9a,5:0x86c232};
   const ORD=['첫 번째','두 번째','세 번째','네 번째','다섯 번째','여섯 번째','보너스'];
   let renderer,scene,camera,host,cap,balls=[],mixing=false,running=false,speed=1,last=0,tubeCurve,time=0,air=0,capWait=null,valve=null;
+  let FX=null;   // 그래픽 효과: 유리 테두리 빛, LED, 조명 빛줄기, 바람 입자
   let focus=null,camPos,camTgt,basePos,baseTgt;
   const V=(x,y,z)=>new THREE.Vector3(x,y,z),tmp=V(0,0,0),q=new THREE.Quaternion(),ax=V(0,0,0);
   const INTAKE=V(0,R-r-0.14,0);   // 위쪽 흡입구: 바람에 밀려 여기 먼저 들어온 공이 뽑힌다
@@ -12068,10 +12069,11 @@ const Machine=(()=>{
     for(const x of [-3.55,3.85]){const e=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.05,12,40),chrome);e.rotation.y=Math.PI/2;e.position.set(x,-R-1.05,R+1.0);scene.add(e);}
     const stand=new THREE.Mesh(new THREE.BoxGeometry(7.6,0.14,0.7),new THREE.MeshPhysicalMaterial({color:0x2b1620,roughness:0.35,clearcoat:0.6}));
     stand.position.set(0.15,-R-1.5,R+1.0);stand.receiveShadow=true;scene.add(stand);
+    FX=makeFX();
     // 공 45개
     const geo=new THREE.SphereGeometry(r,48,32);
     for(let n=1;n<=45;n++){
-      const m=new THREE.Mesh(geo,new THREE.MeshPhysicalMaterial({map:ballTex(n),roughness:0.2,metalness:0,clearcoat:1,clearcoatRoughness:0.06,envMapIntensity:1.1}));
+      const m=new THREE.Mesh(geo,new THREE.MeshPhysicalMaterial({map:ballTex(n),roughness:0.14,metalness:0,clearcoat:1,clearcoatRoughness:0.03,envMapIntensity:1.45,reflectivity:0.6}));
       m.castShadow=true;
       const b={n,m,p:V(0,0,0),v:V(0,0,0),inside:true,path:null,visible:true};
       placeRandom(b);m.quaternion.setFromEuler(new THREE.Euler(Math.random()*6,Math.random()*6,Math.random()*6));scene.add(m);balls.push(b);
@@ -12081,6 +12083,58 @@ const Machine=(()=>{
     if(window.ResizeObserver)new ResizeObserver(ro).observe(host);ro();
     requestAnimationFrame(loop);
     return true;
+  }
+  function makeFX(){
+    const fx={};
+    // 1) 유리구 테두리 반사 (보는 각도가 비스듬할수록 밝아지는 프레넬 효과)
+    const fres=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+      uniforms:{c:{value:new THREE.Color(0xffe6f0)},k:{value:0.9}},
+      vertexShader:'varying vec3 vN;varying vec3 vV;void main(){vec4 w=modelViewMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(-w.xyz);gl_Position=projectionMatrix*w;}',
+      fragmentShader:'uniform vec3 c;uniform float k;varying vec3 vN;varying vec3 vV;void main(){float f=pow(1.0-abs(dot(vN,vV)),3.2);float s=pow(max(dot(reflect(-vV,vN),normalize(vec3(-0.4,0.8,0.45))),0.0),60.0);gl_FragColor=vec4(c*(f*k)+vec3(1.0)*s*1.6,f*0.6+s);}'});
+    const shell=new THREE.Mesh(new THREE.SphereGeometry(R+0.012,96,64),fres);shell.renderOrder=7;scene.add(shell);
+    // 2) 받침대 LED: 작은 불빛이 돌아감
+    fx.leds=[];const ledGeo=new THREE.SphereGeometry(0.055,12,8);
+    for(let i=0;i<36;i++){const a=i/36*Math.PI*2,m=new THREE.Mesh(ledGeo,new THREE.MeshBasicMaterial({color:0xffc2d8}));
+      m.position.set(Math.cos(a)*2.36,-R-0.52,Math.sin(a)*2.36);scene.add(m);fx.leds.push(m);}
+    const glowTex=(()=>{const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d'),gr=g.createRadialGradient(64,64,0,64,64,64);
+      gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(0.35,'rgba(255,255,255,.35)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);
+      const t=new THREE.CanvasTexture(c);return t;})();
+    fx.ledGlow=new THREE.Points(new THREE.BufferGeometry().setFromPoints(fx.leds.map(m=>m.position)),
+      new THREE.PointsMaterial({map:glowTex,color:0xff6fa3,size:0.55,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0.7}));
+    scene.add(fx.ledGlow);
+    // 3) 위에서 내리쬐는 무대 조명 빛줄기
+    const beamMat=new THREE.ShaderMaterial({transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,
+      uniforms:{c:{value:new THREE.Color(0xffd9e6)},o:{value:0.11}},
+      vertexShader:'varying float vY;varying vec3 vN;varying vec3 vV;void main(){vY=uv.y;vec4 w=modelViewMatrix*vec4(position,1.0);vN=normalize(normalMatrix*normal);vV=normalize(-w.xyz);gl_Position=projectionMatrix*w;}',
+      fragmentShader:'uniform vec3 c;uniform float o;varying float vY;varying vec3 vN;varying vec3 vV;void main(){float e=pow(abs(dot(vN,vV)),1.5);gl_FragColor=vec4(c,o*vY*e);}'});
+    fx.beams=[];for(const [x,z,tilt] of [[-3.2,-1.5,0.22],[3.4,-1.2,-0.2],[0,-2.2,0]]){
+      const b=new THREE.Mesh(new THREE.CylinderGeometry(0.25,2.6,14,40,1,true),beamMat.clone());b.position.set(x,3.2,z);b.rotation.z=tilt;scene.add(b);fx.beams.push(b);}
+    // 4) 바닥 반사광 (기계 아래에 은은하게 퍼지는 빛)
+    const floorGlow=new THREE.Mesh(new THREE.PlaneGeometry(9,9),new THREE.MeshBasicMaterial({map:glowTex,color:0xc8325f,transparent:true,opacity:0.55,depthWrite:false,blending:THREE.AdditiveBlending}));
+    floorGlow.rotation.x=-Math.PI/2;floorGlow.position.y=-R-1.355;scene.add(floorGlow);fx.floorGlow=floorGlow;
+    // 5) 구 안에서 바람에 날리는 미세 입자
+    const N=220,pos=new Float32Array(N*3);fx.dust=[];
+    for(let i=0;i<N;i++){const p=V(0,0,0);for(;;){p.set((Math.random()*2-1)*R,(Math.random()*2-1)*R,(Math.random()*2-1)*R);if(p.length()<R-0.15)break;}fx.dust.push({p,s:0.6+Math.random()*1.4});pos.set([p.x,p.y,p.z],i*3);}
+    const dg=new THREE.BufferGeometry();dg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    fx.dustPts=new THREE.Points(dg,new THREE.PointsMaterial({map:glowTex,color:0xffffff,size:0.09,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:0}));
+    scene.add(fx.dustPts);
+    return fx;
+  }
+  function updateFX(raw){
+    if(!FX)return;
+    // LED: 섞는 동안 빠르게 돌고 밝게
+    const sp=mixing?6:1.2,hi=0.35+air*0.65;
+    FX.leds.forEach((m,i)=>{const k=0.5+0.5*Math.sin(time*sp-i*0.55);m.material.color.setRGB(1,0.55+0.4*k*hi,0.7+0.25*k);m.scale.setScalar(0.8+0.5*k*hi);});
+    FX.ledGlow.material.opacity=0.35+0.45*hi;
+    FX.floorGlow.material.opacity=0.35+0.3*air+0.05*Math.sin(time*2);
+    FX.beams.forEach((b,i)=>{b.material.uniforms.o.value=0.07+0.04*Math.sin(time*0.7+i*2)+0.04*air;});
+    // 바람 입자: 가운데로 솟고 위에서 퍼져 벽을 타고 내려옴
+    const a=FX.dustPts.geometry.attributes.position;
+    for(let i=0;i<FX.dust.length;i++){const d=FX.dust[i],p=d.p,hr=Math.hypot(p.x,p.z);
+      const up=hr<R*0.6?(3.2*d.s):(-1.6*d.s);p.y+=up*air*raw;p.x+=(-p.z*0.6+(p.y>R*0.4?p.x*1.2:0))*air*raw;p.z+=(p.x*0.6+(p.y>R*0.4?p.z*1.2:0))*air*raw;
+      if(p.length()>R-0.12||p.y<-R+0.2){p.set((Math.random()*2-1)*0.6,-R+0.35,(Math.random()*2-1)*0.6);}
+      a.setXYZ(i,p.x,p.y,p.z);}
+    a.needsUpdate=true;FX.dustPts.material.opacity=air*0.55;
   }
   function placeRandom(b){
     for(let k=0;k<60;k++){const p=V((Math.random()*2-1)*R*0.75,-R+r+0.05+Math.random()*R*0.65,(Math.random()*2-1)*R*0.75);
@@ -12142,7 +12196,7 @@ const Machine=(()=>{
     if(!onScreen&&!mixing&&air<0.02&&!capWait&&!balls.some(b=>b.path||b.settle))return;   // 화면 밖이고 쉬는 중이면 계산·그리기 쉬기 (스크롤이 부드럽게)
     air+=((mixing?1:0)-air)*Math.min(1,dt*(mixing?0.9:1.6));
     if(valve)valve.material.opacity=capWait?0.55+0.4*Math.sin(time*9):Math.max(0,valve.material.opacity-raw*2);
-    const steps=speed>1?5:3;for(let k=0;k<steps;k++)physics(dt/steps);
+    const steps=Math.min(26,Math.ceil(3*speed));for(let k=0;k<steps;k++)physics(dt/steps);
     for(const b of balls)if(b.path){
       const P=b.path;P.t=Math.min(1,P.t+dt/P.dur);
       const e=P.t<0.25?P.t*P.t*8:0.5+(P.t-0.25)/0.75*0.5;   // 처음엔 빨려 올라가고, 관에서는 일정하게
@@ -12152,7 +12206,7 @@ const Machine=(()=>{
     }
     for(const b of balls)if(b.settle){const s=b.settle;s.t+=dt;const k=Math.min(1,s.t/0.5);
       b.m.position.x=s.x+Math.sin(k*Math.PI*2.2)*0.12*(1-k);b.m.quaternion.slerp(s.q,0.18);if(k>=1){b.m.quaternion.copy(s.q);b.settle=null;}}
-    updateCamera(raw);
+    updateCamera(raw);updateFX(raw);
     renderer.render(scene,camera);
   }
   function settle(b,done){const front=new THREE.Quaternion();b.settle={t:0,x:b.m.position.x,q:front};S.ding();done();}
@@ -12190,7 +12244,8 @@ const Machine=(()=>{
     setTimeout(()=>cap.classList.remove('show'),2500);
     return got;
   }
-  return{init,draw,setSpeed(s){speed=s;},setSound(on){S.on=on;if(!on&&S.ctx)S.air(0);},get running(){return running;}};
+  return{init,draw,_advance(ms){let t=last||performance.now();for(let k=0;k<ms/16.7;k++){t+=16.7;loop(t);}},   // 시험용: 화면 없이 시간을 흘려 보냄
+    setSpeed(s){speed=s;},setSound(on){S.on=on;if(!on&&S.ctx)S.air(0);},get running(){return running;}};
 })();
 
 /* ===== 추첨기 연결 ===== */
@@ -12203,7 +12258,9 @@ if(!mOK){$('stage').hidden=true;$('mMine').disabled=$('mMock').disabled=$('mFast
   mstat('이 기기에서는 3D 추첨기를 표시할 수 없어요. 아래 "번호 뽑기" 버튼을 써 주세요.');}
 {let on=store.get('sound',true);const upd=()=>{$('mSound').setAttribute('aria-pressed',on);$('mSound').textContent=on?'소리 켜짐':'소리 꺼짐';if(window.Machine&&Machine.setSound)Machine.setSound(on);};upd();
   $('mSound').onclick=()=>{on=!on;store.set('sound',on);upd();};}
-$('mFast').onclick=()=>{const on=$('mFast').getAttribute('aria-pressed')!=='true';$('mFast').setAttribute('aria-pressed',on);Machine.setSpeed(on?2.5:1);};
+// 빨리 보기: 누를 때마다 ×2 → ×4 → ×8 → 보통
+let mSpeed=1;const mSpeedLabel=()=>{$('mFast').textContent=mSpeed>1?`빨리 보기 ×${mSpeed}`:'빨리 보기';$('mFast').setAttribute('aria-pressed',mSpeed>1);};
+$('mFast').onclick=()=>{mSpeed=mSpeed>=8?1:mSpeed*2;Machine.setSpeed(mSpeed);mSpeedLabel();};mSpeedLabel();
 // 한 번에 여러 게임: A게임부터 고른 수만큼 차례로 추첨기를 돌린다 (빈 게임은 자동으로)
 async function drawMany(n){
   const gis=[0,1,2,3,4].slice(0,n);let filled=[];
