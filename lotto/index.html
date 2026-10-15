@@ -11399,7 +11399,9 @@ $('mMock').onclick=async()=>{
 /* ===== 휴대폰 간단 보기: 손으로 칠하는 메뉴(용지·이번 회차 번호·역대 조회)는 숨기고,
    꼭 필요한 것(뽑은 번호·보관함·최근 회차·최신 회차 받기)은 다른 메뉴로 옮긴다. PC 화면은 그대로 ===== */
 (function(){
-  const isPhone=matchMedia('(max-width:760px)').matches||/Android|iPhone|iPod/i.test(navigator.userAgent);
+  // 휴대폰 판단: 좁은 화면, 휴대폰 브라우저, 홈 화면에 설치한 앱, 손가락 터치가 주 입력인 기기
+  const mq=q=>window.matchMedia&&matchMedia(q).matches;
+  const isPhone=mq('(max-width:760px)')||/Android|iPhone|iPod|Mobile|SamsungBrowser/i.test(navigator.userAgent)||mq('(display-mode: standalone)')||navigator.standalone===true||(mq('(pointer:coarse)')&&!mq('(pointer:fine)'));
   if(!isPhone)return;
   const HIDE=['slip','draw','hist'];
   // 옮길 곳 만들기
@@ -11408,6 +11410,7 @@ $('mMock').onclick=async()=>{
   const picked=document.createElement('div');picked.className='mpicked';picked.innerHTML='<div class="mptitle">뽑은 번호 <span class="note">보관을 누르면 아래 당첨 번호 맞춰보기의 보관함에 남아요</span></div>';
   const savedBox=draw.querySelector('.facts'),hupd=hist.querySelector('.hupd'),hl=$('hlatest');
   const latestBox=document.createElement('div');latestBox.className='mlatest';
+  if(!store.get('compact-v2',false)){store.set('compact',true);store.set('compact-v2',true);}   // 이번 업데이트에서 한 번은 간단 보기로
   let compact=store.get('compact',true);
   function apply(){
     for(const id of HIDE){const p=document.querySelector(`[data-id="${id}"]`);if(p)p.classList.toggle('mhide',compact);}
