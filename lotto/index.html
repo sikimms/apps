@@ -10759,6 +10759,7 @@ function renderRecCtl(){
 }
 function renderRec(){
   const box=$('recChart');
+  if(recResults.length){box.innerHTML='';$('recTop').innerHTML='';return;}   // 한 번에 채우기: 게임별 목록만
   if(!rec){box.innerHTML='<div class="empty">추첨을 돌리면 숫자별로 몇 번 나왔는지 여기에 그래프로 보여줘요.</div>';$('recTop').innerHTML='';return;}
   const c=rec.counts,order=byCount(c),top=new Set(order.slice(0,6)),max=Math.max(1,...c.slice(1)),avg=rec.total*6/45;
   let bars='';for(let n=1;n<=45;n++){const pct=c[n]/max*100;
@@ -10830,6 +10831,7 @@ async function simCounts(total,label){
   $('recKeep').addEventListener('change',()=>store.set('recKeep',$('recKeep').checked));}
 $('recFill').onclick=async()=>{
   if(recBusy)return;recBusy=true;$('recFill').disabled=$('recGo').disabled=true;
+  recResults=[];renderRecList();
   const want=+$('recGames').value,keep=$('recKeep').checked;
   const targets=[];for(let i=0;i<5&&targets.length<want;i++){const g=slip[i];if(keep&&g.marks.length&&!g.rec)continue;targets.push(i);}
   if(!targets.length){$('recStat').textContent='채울 게임이 없어요. "내가 칠한 게임은 그대로 두기"를 끄거나 게임 수를 늘려 주세요.';recBusy=false;$('recFill').disabled=$('recGo').disabled=false;return;}
