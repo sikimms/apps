@@ -10771,18 +10771,20 @@ function renderRec(){
   $('recTop').innerHTML=`<div class="rectop"><div><div class="sub">${rec.label}에서 가장 많이 나온 6개</div>
       <div class="balls">${six.map(n=>ballHtml(n,' pin')).join('')}</div>
       <div class="note">${order.slice(0,6).map(n=>`${n}번 ${c[n].toLocaleString()}회`).join(' · ')} · 가장 적게 나온 숫자 ${order[44]}번 ${c[order[44]].toLocaleString()}회</div></div>
-    <div class="opt"><button class="btn" id="recAdd">이번 번호에 넣기</button><button class="btn" id="recMark">용지 ${LAB[slipTab]}게임에 칠하기</button></div></div>`;
+    <div class="opt"><span class="note recwhere" style="flex-basis:100%">보관한 번호는 ${savedWhere()}에서 볼 수 있어요.</span><button class="btn" id="recAdd">이번 번호에 넣기</button><button class="btn" id="recMark">용지 ${LAB[slipTab]}게임에 칠하기</button></div></div>`;
   $('recAdd').onclick=()=>{current=current.filter(x=>x.game!=='★').concat({nums:six,game:'★',type:'추천',pinned:[]});renderRows(true);showMsg('추천 번호를 이번 번호 맨 아래(★)에 넣었어요.',true);};
   $('recMark').onclick=()=>{slip[slipTab]={marks:six.slice(),auto:false,rec:true};saveSlip();renderSlip();renderRec();showMsg(`추천 번호를 용지 ${LAB[slipTab]}게임에 칠했어요.`,true);};
+  {const w=$('recTop').querySelector('.recwhere');if(w)w.hidden=!recCompact();}
   if(recCompact()){$('recMark').hidden=true;$('recAdd').textContent='보관';$('recAdd').onclick=()=>{const ok=saveNums(six,'추천');$('recAdd').textContent=ok?'보관됨':'이미 보관';$('recAdd').disabled=true;};}
 }
 let recResults=[],recDesc="";
+const savedWhere=()=>document.querySelector(".mpicked")?"<b>QR 맞춰보기</b> 메뉴 맨 아래 보관함":"<b>이번 회차 번호</b> 메뉴 아래 보관함";
 const recCompact=()=>!!document.querySelector('.mpicked');
 function saveNums(nums,type){if(saved.some(s=>s.nums.join()===nums.join()))return false;saved.unshift({nums:nums.slice(),type,t:Date.now()});saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);return true;}
 function renderRecList(){
   const el=$('recList');if(!recResults.length){el.innerHTML='';return;}
   el.innerHTML=`<div class="reclist"><div class="rlh">추천 번호 ${recResults.length}게임<button class="btn" id="recSaveAll">모두 보관</button></div><div class="note" style="margin-bottom:4px">${recDesc}</div>`+
-    recResults.map((g,i)=>`<div class="rlr"><span class="lab">${g.game}</span><span class="balls">${g.nums.map(n=>ballHtml(n)).join('')}</span><button class="mini" data-rsave="${i}">보관</button></div>`).join('')+'</div>';
+    recResults.map((g,i)=>`<div class="rlr"><span class="lab">${g.game}</span><span class="balls">${g.nums.map(n=>ballHtml(n)).join('')}</span><button class="mini" data-rsave="${i}">보관</button></div>`).join('')+`<div class="note" style="margin-top:6px">보관한 번호는 ${savedWhere()}에서 볼 수 있어요.</div></div>`;
 }
 $('recList').addEventListener('click',e=>{
   if(e.target.closest('#recSaveAll')){let n=0;for(const g of recResults)if(saveNums(g.nums,'추천'))n++;showMsg(n?`추천 번호 ${n}게임을 보관함에 넣었어요.`:'이미 모두 보관한 번호예요.',true);$('recStat').textContent=n?`${n}게임을 보관함에 넣었어요 (QR 맞춰보기 메뉴 아래).`:'이미 모두 보관한 번호예요.';return;}
@@ -11454,7 +11456,7 @@ $('mMock').onclick=async()=>{
   // 옮길 곳 만들기
   const mach=document.querySelector('[data-id="machine"]'),win=document.querySelector('[data-id="win"]'),draw=document.querySelector('[data-id="draw"]'),hist=document.querySelector('[data-id="hist"]');
   const home={rows:[$('rows').parentNode,$('rows').nextSibling],msg:[$('msg').parentNode,$('msg').nextSibling],box:null,hupd:null,hl:null};
-  const picked=document.createElement('div');picked.className='mpicked';picked.innerHTML='<div class="mptitle">뽑은 번호 <span class="note">보관을 누르면 아래 당첨 번호 맞춰보기의 보관함에 남아요</span></div>';
+  const picked=document.createElement('div');picked.className='mpicked';picked.innerHTML='<div class="mptitle">뽑은 번호 <span class="note">보관한 번호는 QR 맞춰보기 메뉴 맨 아래 보관함에서 볼 수 있어요</span></div>';
   const savedBox=draw.querySelector('.facts'),hupd=hist.querySelector('.hupd'),hl=$('hlatest');
   const latestBox=document.createElement('div');latestBox.className='mlatest';
   if(!store.get('compact-v2',false)){store.set('compact',true);store.set('compact-v2',true);}   // 이번 업데이트에서 한 번은 간단 보기로
