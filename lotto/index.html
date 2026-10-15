@@ -52,6 +52,13 @@ h1 span{color:var(--ink)}
 .tagline{color:var(--muted);font-size:13px;margin-top:6px}
 .odds{font-family:var(--f-num);font-size:12.5px;color:var(--muted);text-align:right}
 .odds b{color:var(--print);font-weight:600}
+.reclist{margin-top:12px;border:1px solid var(--rule);border-radius:12px;padding:10px 12px;background:var(--card)}
+.reclist .rlh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;font-weight:700;font-size:14px;margin-bottom:4px}
+.reclist .rlr{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--rule)}
+.reclist .rlr .lab{font:700 14px var(--f-num);color:var(--print);width:16px}
+.reclist .rlr .balls{display:flex;flex-wrap:nowrap;gap:3px;flex:1;min-width:0}
+.reclist .ball{width:30px;height:30px;font-size:12.5px;flex:none}
+@media (max-width:400px){.reclist .ball{width:27px;height:27px;font-size:11.5px}.reclist{padding:8px 8px}}
 .mcount{display:inline-flex;align-items:center;gap:6px}
 #mCount{font:600 15px var(--f-body);padding:8px 6px;border-radius:10px;border:2px solid var(--print);background:var(--card);color:var(--print)}
 .hdrlast{margin-top:6px;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
@@ -321,6 +328,7 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       <label><input type="checkbox" id="recKeep"> 내가 칠한 게임은 그대로 두기</label>
       <span class="note">게임마다 추첨을 따로 돌려 많이 나온 6개로 용지를 칠하고, 이번 회차 번호에 바로 넣어요.</span>
     </div>
+    <div id="recList"></div>
     <div id="recChart" style="margin-top:12px"></div>
     <div id="recTop"></div>
     <div class="note" style="margin-top:8px">추첨은 매번 독립이라, 많이 나온 숫자가 다음에도 잘 나오는 건 아니에요. 횟수를 늘릴수록 모든 숫자가 점선(평균)에 가까워지고, 다시 돌리면 순위가 바뀌어요. 재미로 고르는 방법으로 써 주세요.</div>
@@ -10764,7 +10772,20 @@ function renderRec(){
     <div class="opt"><button class="btn" id="recAdd">이번 번호에 넣기</button><button class="btn" id="recMark">용지 ${LAB[slipTab]}게임에 칠하기</button></div></div>`;
   $('recAdd').onclick=()=>{current=current.filter(x=>x.game!=='★').concat({nums:six,game:'★',type:'추천',pinned:[]});renderRows(true);showMsg('추천 번호를 이번 번호 맨 아래(★)에 넣었어요.',true);};
   $('recMark').onclick=()=>{slip[slipTab]={marks:six.slice(),auto:false,rec:true};saveSlip();renderSlip();renderRec();showMsg(`추천 번호를 용지 ${LAB[slipTab]}게임에 칠했어요.`,true);};
+  if(recCompact()){$('recMark').hidden=true;$('recAdd').textContent='보관';$('recAdd').onclick=()=>{const ok=saveNums(six,'추천');$('recAdd').textContent=ok?'보관됨':'이미 보관';$('recAdd').disabled=true;};}
 }
+let recResults=[];
+const recCompact=()=>!!document.querySelector('.mpicked');
+function saveNums(nums,type){if(saved.some(s=>s.nums.join()===nums.join()))return false;saved.unshift({nums:nums.slice(),type,t:Date.now()});saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);return true;}
+function renderRecList(){
+  const el=$('recList');if(!recResults.length){el.innerHTML='';return;}
+  el.innerHTML=`<div class="reclist"><div class="rlh">추천 번호 ${recResults.length}게임<button class="btn" id="recSaveAll">모두 보관</button></div>`+
+    recResults.map((g,i)=>`<div class="rlr"><span class="lab">${g.game}</span><span class="balls">${g.nums.map(n=>ballHtml(n)).join('')}</span><button class="mini" data-rsave="${i}">보관</button></div>`).join('')+'</div>';
+}
+$('recList').addEventListener('click',e=>{
+  if(e.target.closest('#recSaveAll')){let n=0;for(const g of recResults)if(saveNums(g.nums,'추천'))n++;showMsg(n?`추천 번호 ${n}게임을 보관함에 넣었어요.`:'이미 모두 보관한 번호예요.',true);$('recStat').textContent=n?`${n}게임을 보관함에 넣었어요 (QR 맞춰보기 메뉴 아래).`:'이미 모두 보관한 번호예요.';return;}
+  const b=e.target.closest('[data-rsave]');if(!b)return;const g=recResults[+b.dataset.rsave];const ok=saveNums(g.nums,'추천');
+  b.textContent=ok?'보관됨':'이미 보관';b.disabled=true;});
 async function runRec(){
   if(recBusy)return;recBusy=true;$('recGo').disabled=true;
   const counts=new Array(46).fill(0);
@@ -10829,6 +10850,8 @@ $('recFill').onclick=async()=>{
   saveSlip();renderSlip();renderRec();
   current=playable().games.map(makeGame);renderRows(true);
   showMsg(`용지 ${targets.map(g=>LAB[g]).join('·')}게임을 추천 번호로 칠하고, 이번 회차 번호에 넣었어요.`,true);
+  recResults=targets.map(gi=>({game:LAB[gi],nums:slip[gi].marks.slice().sort((a,b)=>a-b)}));renderRecList();
+  $('recList').scrollIntoView({block:'nearest',behavior:'smooth'});
   recBusy=false;$('recFill').disabled=$('recGo').disabled=false;
 };
 renderRecCtl();renderRec();
@@ -11444,7 +11467,7 @@ $('mMock').onclick=async()=>{
     const kp=$('recKeep').closest('label');if(kp)kp.hidden=compact;if(compact)$('recKeep').checked=false;
     $('mCompact').textContent=compact?'모든 메뉴 보기':'휴대폰 간단 보기';
     const n=document.querySelector('#hRec')&&document.querySelector('[data-id="rec"] .autofill .note');
-    if(n)n.textContent=compact?'게임마다 추첨을 따로 돌려 많이 나온 6개로 골라, 추첨기 아래 "뽑은 번호"에 넣어요.':'게임마다 추첨을 따로 돌려 많이 나온 6개로 용지를 칠하고, 이번 회차 번호에 바로 넣어요.';
+    if(n)n.textContent=compact?'게임마다 추첨을 따로 돌려 많이 나온 6개를 골라, 바로 아래에 게임별로 보여 줘요. 마음에 들면 보관하세요.':'게임마다 추첨을 따로 돌려 많이 나온 6개로 용지를 칠하고, 이번 회차 번호에 바로 넣어요.';
   }
   // 용지를 안 보이게 하면 추첨기가 뽑을 게임이 없을 수 있으니, 비어 있으면 A게임을 자동으로
   if(compact&&!playable().games.length){slip[0].auto=true;if(typeof saveSlip==='function')saveSlip();renderSlip();}
