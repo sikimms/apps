@@ -10766,6 +10766,7 @@ function renderRec(){
   box.innerHTML=`<div class="chart"><div class="yax"><span>${max.toLocaleString()}</span><span>0</span></div>
     <div class="bars">${bars}<div class="avg" style="bottom:${(16+avg/max*180).toFixed(1)}px"><span>평균 ${Math.round(avg).toLocaleString()}</span></div></div></div>`;
   const six=order.slice(0,6).sort((a,b)=>a-b);
+  if(recResults.length){$("recTop").innerHTML="";return;}   // 한 번에 채우기: 위 게임별 목록만
   $('recTop').innerHTML=`<div class="rectop"><div><div class="sub">${rec.label}에서 가장 많이 나온 6개</div>
       <div class="balls">${six.map(n=>ballHtml(n,' pin')).join('')}</div>
       <div class="note">${order.slice(0,6).map(n=>`${n}번 ${c[n].toLocaleString()}회`).join(' · ')} · 가장 적게 나온 숫자 ${order[44]}번 ${c[order[44]].toLocaleString()}회</div></div>
@@ -10774,12 +10775,12 @@ function renderRec(){
   $('recMark').onclick=()=>{slip[slipTab]={marks:six.slice(),auto:false,rec:true};saveSlip();renderSlip();renderRec();showMsg(`추천 번호를 용지 ${LAB[slipTab]}게임에 칠했어요.`,true);};
   if(recCompact()){$('recMark').hidden=true;$('recAdd').textContent='보관';$('recAdd').onclick=()=>{const ok=saveNums(six,'추천');$('recAdd').textContent=ok?'보관됨':'이미 보관';$('recAdd').disabled=true;};}
 }
-let recResults=[];
+let recResults=[],recDesc="";
 const recCompact=()=>!!document.querySelector('.mpicked');
 function saveNums(nums,type){if(saved.some(s=>s.nums.join()===nums.join()))return false;saved.unshift({nums:nums.slice(),type,t:Date.now()});saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);return true;}
 function renderRecList(){
   const el=$('recList');if(!recResults.length){el.innerHTML='';return;}
-  el.innerHTML=`<div class="reclist"><div class="rlh">추천 번호 ${recResults.length}게임<button class="btn" id="recSaveAll">모두 보관</button></div>`+
+  el.innerHTML=`<div class="reclist"><div class="rlh">추천 번호 ${recResults.length}게임<button class="btn" id="recSaveAll">모두 보관</button></div><div class="note" style="margin-bottom:4px">${recDesc}</div>`+
     recResults.map((g,i)=>`<div class="rlr"><span class="lab">${g.game}</span><span class="balls">${g.nums.map(n=>ballHtml(n)).join('')}</span><button class="mini" data-rsave="${i}">보관</button></div>`).join('')+'</div>';
 }
 $('recList').addEventListener('click',e=>{
@@ -10788,6 +10789,7 @@ $('recList').addEventListener('click',e=>{
   b.textContent=ok?'보관됨':'이미 보관';b.disabled=true;});
 async function runRec(){
   if(recBusy)return;recBusy=true;$('recGo').disabled=true;
+  recResults=[];renderRecList();   // 1게임 추첨: 게임별 목록은 지우고 '가장 많이 나온 6개'만
   const counts=new Array(46).fill(0);
   if(recMode==='hist'){
     const H=HIST();for(const h of H)for(const n of h.slice(2,8))counts[n]++;
@@ -10850,7 +10852,9 @@ $('recFill').onclick=async()=>{
   saveSlip();renderSlip();renderRec();
   current=playable().games.map(makeGame);renderRows(true);
   showMsg(`용지 ${targets.map(g=>LAB[g]).join('·')}게임을 추천 번호로 칠하고, 이번 회차 번호에 넣었어요.`,true);
-  recResults=targets.map(gi=>({game:LAB[gi],nums:slip[gi].marks.slice().sort((a,b)=>a-b)}));renderRecList();
+  recResults=targets.map(gi=>({game:LAB[gi],nums:slip[gi].marks.slice().sort((a,b)=>a-b)}));
+  recDesc=recMode==="hist"?`역대 실제 당첨 번호 ${HIST().length}회에서 많이 나온 순서대로 6개씩 묶은 조합이에요 (A 1~6위, B 7~12위 …).`:`게임마다 추첨을 ${recN.toLocaleString()}회씩 따로 돌려서, 가장 많이 나온 숫자 6개를 조합했어요.`;
+  $("recStat").textContent="";renderRecList();renderRec();
   $('recList').scrollIntoView({block:'nearest',behavior:'smooth'});
   recBusy=false;$('recFill').disabled=$('recGo').disabled=false;
 };
