@@ -52,6 +52,14 @@ h1 span{color:var(--ink)}
 .tagline{color:var(--muted);font-size:13px;margin-top:6px}
 .odds{font-family:var(--f-num);font-size:12.5px;color:var(--muted);text-align:right}
 .odds b{color:var(--print);font-weight:600}
+.hdrlast{margin-top:6px;display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.hdrlast .hl1{font-family:var(--f-body);font-size:12px}
+.hdrlast .hlb{display:flex;align-items:center;gap:3px}
+.hdrlast .ball{width:24px;height:24px;font-size:11px}
+.hdrlast .plus{color:var(--muted);font-size:12px}
+.hdrlast .hlp{font-family:var(--f-body);font-size:12.5px;color:var(--ink)}
+.hdrlast .hlp b{font-size:14px}
+@media (max-width:560px){.odds{text-align:left}.hdrlast{align-items:flex-start}}
 .grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;align-items:start}
 @media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
 .card{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:18px;min-width:0}
@@ -240,6 +248,13 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .pnav button{flex:none;border:1px solid var(--rule);background:var(--card);color:var(--ink);font:600 13.5px var(--f-body);padding:7px 13px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .pnav button.on{background:var(--print);border-color:var(--print);color:var(--print-ink)}
 .ptabhide{display:none!important}
+.pinned{margin-bottom:10px}
+.pnav .pedit{border-style:dashed;color:var(--muted)}
+.pnav.editing .pedit{border-style:solid;background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pchip{flex:none;display:inline-flex;align-items:center;gap:2px;border:1px solid var(--print);border-radius:999px;padding:2px;background:var(--print-soft);font-size:13px;white-space:nowrap}
+.pchip b{padding:0 4px;color:var(--print)}
+.pnav .pchip .mv{border:0;background:var(--card);color:var(--print);width:30px;height:30px;padding:0;border-radius:50%;font:700 17px var(--f-body);line-height:1}
+.pnav .pchip .mv:disabled{opacity:.3;cursor:default}
 .tabmode .ptog,.tabmode .pdrag{display:none}
 .tabmode .layoutbar>:not(#mCompact){display:none}
 .tabmode .layoutbar{justify-content:flex-end;margin-bottom:4px}
@@ -271,7 +286,7 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       <h1>로또 <span>6/45</span> 번호뽑기</h1>
       <div class="tagline">1부터 45까지 중 6개. 고정할 숫자와 뺄 숫자를 마킹하고 뽑아 보세요.</div>
     </div>
-    <div class="odds">1등 확률 <b>1 / 8,145,060</b><br>한 게임 1,000원</div>
+    <div class="odds">1등 확률 <b>1 / 8,145,060</b><div class="hdrlast" id="hdrLast"></div></div>
   </header>
 
   <div class="layoutbar"><span class="note">메뉴는 ⠿를 끌어서 순서를 바꾸고, 오른쪽 버튼으로 접고 펼 수 있어요.</span><button class="mini" id="layAll">모두 펼치기</button><button class="mini" id="layNone">모두 접기</button><button class="mini" id="layReset">처음 순서로</button></div>
@@ -10690,7 +10705,13 @@ $('hfrom').addEventListener('click',e=>{const b=e.target.closest('[data-from]');
 $('hgo').onclick=()=>{if(pick.size===6)$('hres').innerHTML=histDetail([...pick].sort((a,b)=>a-b));};
 $('hclear').onclick=()=>{pick.clear();renderPick();$('hres').innerHTML='';};
 /* 최근 회차 */
-function renderLatest(){const H=HIST(),h=H[H.length-1];
+function wonText(p){p=+p||0;if(!p)return"";const e=Math.floor(p/1e8),m=Math.round(p%1e8/1e4);return (e?e+"억 ":"")+(m?m.toLocaleString()+"만":"")+"원";}
+function renderHdr(){const H=HIST(),h=H[H.length-1],el=document.getElementById("hdrLast");if(!el||!h)return;
+  const d=String(h[1]),dt=d.length===8?new Date(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6)):null,days=dt?(Date.now()-dt)/864e5:99;
+  const when=days<8?"지난주":"최근",won=wonText(h[9]);
+  el.innerHTML=`<div class="hl1">${when} 당첨번호 · ${h[0]}회${d.length===8?" ("+(+d.slice(4,6))+"/"+(+d.slice(6))+")":""}</div><div class="hlb">${h.slice(2,8).map(n=>ballHtml(n)).join("")}<span class="plus">+</span>${ballHtml(h[8])}</div>`+
+    `<div class="hlp">${won?`1등 <b>${won}</b>${h[10]?` · ${h[10]}명`:""}`:"1등 금액은 발표 후 들어와요"}</div>`;}
+function renderLatest(){renderHdr();const H=HIST(),h=H[H.length-1];
   $('hlatest').innerHTML=`<span class="note"><b>최근 ${h[0]}회</b> ${fmtDate(h[1])}</span><span class="balls">${h.slice(2,8).map(n=>ballHtml(n)).join('')}<span class="plus">+</span>${ballHtml(h[8])}</span>`+
     `<button class="mini" id="useLatest">이 번호로 맞춰보기</button>`;
   $('useLatest').onclick=()=>{h.slice(2,8).forEach((n,k)=>$('w'+(k+1)).value=n);$('wb').value=h[8];
@@ -11413,40 +11434,67 @@ $('mMock').onclick=async()=>{
 })();
 </script>
 <script>
-/* ===== 상단 메뉴: 누르면 그 메뉴로 이동. 휴대폰 간단 보기에서는 고른 메뉴 하나만 보여 줘서 스크롤이 짧아진다 ===== */
+/* ===== 상단 메뉴 탭 =====
+   PC·모든 메뉴 보기: 누르면 그 메뉴로 이동.
+   휴대폰 간단 보기: 추첨기는 늘 위에 두고, 탭으로 고른 메뉴 하나만 아래에 보여 준다.
+   "순서 바꾸기"로 탭(=메뉴) 순서를 ‹ › 로 옮길 수 있다. 순서는 메뉴 끌기와 같은 곳에 저장된다. */
 (function(){
   const NAME={machine:'추첨기',slip:'용지',rec:'숫자 추천',draw:'이번 회차',win:'QR 맞춰보기',near:'내 주변',hist:'역대 조회',odds:'확률'};
-  const box=$('panels'),nav=document.createElement('nav');nav.className='pnav';nav.setAttribute('aria-label','메뉴 바로가기');
+  const box=$('panels'),mach=box.querySelector('[data-id="machine"]');
+  const nav=document.createElement('nav');nav.className='pnav';nav.setAttribute('aria-label','메뉴 바로가기');
   box.parentNode.insertBefore(nav,box);
   const tabMode=()=>!!$('mCompact')&&store.get('compact',true);
-  let cur=store.get('tab','machine');
+  // 이번 버전부터 확률은 맨 끝으로 (한 번만)
+  if(!store.get('order-v2',false)){const o=store.get('order',null);if(Array.isArray(o)){store.set('order',o.filter(x=>x!=='odds').concat('odds'));}store.set('order-v2',true);
+    const od=box.querySelector('[data-id="odds"]');if(od)box.appendChild(od);}
+  let cur=store.get('tab','rec'),edit=false;
+  const ids=()=>[...box.children].map(p=>p.dataset.id).filter(Boolean);
   const shown=()=>[...box.children].filter(p=>p.dataset.id&&!p.classList.contains('mhide'));
+  function saveOrder(){const o=ids();if(mach.parentNode!==box)o.unshift('machine');store.set('order',o);}
+  function placeMachine(tm){
+    if(tm&&mach.parentNode===box){nav.parentNode.insertBefore(mach,nav);mach.classList.add('pinned');}
+    else if(!tm&&mach.parentNode!==box){mach.classList.remove('pinned');const o=store.get('order',[]),i=o.indexOf('machine');
+      const after=i>=0?o.slice(i+1).map(id=>box.querySelector(`[data-id="${id}"]`)).find(Boolean):box.firstChild;box.insertBefore(mach,after||null);}
+  }
   function render(){
+    const tm=tabMode();placeMachine(tm);
     const ps=shown();if(!ps.some(p=>p.dataset.id===cur))cur=ps[0]?ps[0].dataset.id:'';
-    nav.innerHTML=(tabMode()?'':'')+ps.map(p=>`<button type="button" data-go="${p.dataset.id}"${p.dataset.id===cur?' class="on" aria-current="true"':''}>${NAME[p.dataset.id]||p.querySelector('h2').textContent}</button>`).join('');
-    const tm=tabMode();
-    for(const p of box.children)if(p.dataset.id)p.classList.toggle('ptabhide',tm&&p.dataset.id!==cur);
+    nav.classList.toggle('editing',edit);
+    nav.innerHTML=ps.map((p,i)=>{const id=p.dataset.id,lbl=NAME[id]||p.querySelector('h2').textContent;
+      return edit?`<span class="pchip"><button type="button" class="mv" data-mv="-1" data-id="${id}" aria-label="${lbl} 앞으로"${i?'':' disabled'}>‹</button><b>${lbl}</b><button type="button" class="mv" data-mv="1" data-id="${id}" aria-label="${lbl} 뒤로"${i<ps.length-1?'':' disabled'}>›</button></span>`
+        :`<button type="button" data-go="${id}"${id===cur?' class="on" aria-current="true"':''}>${lbl}</button>`;}).join('')+
+      `<button type="button" class="pedit" data-edit="1">${edit?'완료':'순서 바꾸기'}</button>`;
+    for(const p of box.children)if(p.dataset.id)p.classList.toggle('ptabhide',tm&&!edit&&p.dataset.id!==cur);
     document.body.classList.toggle('tabmode',tm);
   }
   function go(id){
     cur=id;store.set('tab',id);const p=box.querySelector(`[data-id="${id}"]`);if(!p)return;
     if(p.classList.contains('collapsed')){const t=p.querySelector('.ptog');if(t)t.click();}
     render();
-    if(tabMode()){window.scrollTo({top:Math.max(0,box.getBoundingClientRect().top+scrollY-nav.offsetHeight-6),behavior:'instant'});window.dispatchEvent(new Event('resize'));}
+    if(tabMode()){const y=nav.getBoundingClientRect().top+scrollY;if(scrollY>y)window.scrollTo(0,y);window.dispatchEvent(new Event('resize'));}
     else{const y=p.getBoundingClientRect().top+scrollY-nav.offsetHeight-8,y0=scrollY;window.scrollTo({top:y,behavior:'smooth'});
       setTimeout(()=>{if(Math.abs(scrollY-y0)<2&&Math.abs(y-y0)>2)window.scrollTo(0,y);},700);}   // 부드러운 스크롤이 안 되는 환경이면 바로 이동
     const b=nav.querySelector('.on');if(b)b.scrollIntoView({inline:'center',block:'nearest'});
   }
-  nav.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b)go(b.dataset.go);});
+  // 보이는 메뉴끼리 한 칸 옮기기 (숨은 메뉴는 건너뜀)
+  function move(id,d){
+    const ps=shown(),i=ps.findIndex(p=>p.dataset.id===id),j=i+d;if(i<0||j<0||j>=ps.length)return;
+    const p=ps[i],q=ps[j];if(d<0)box.insertBefore(p,q);else box.insertBefore(p,q.nextSibling);
+    saveOrder();render();const b=nav.querySelector(`[data-id="${id}"][data-mv="${d}"]`)||nav.querySelector(`[data-id="${id}"]`);if(b){b.focus();b.scrollIntoView({inline:'center',block:'nearest'});}
+  }
+  nav.addEventListener('click',e=>{
+    const m=e.target.closest('[data-mv]');if(m){move(m.dataset.id,+m.dataset.mv);return;}
+    if(e.target.closest('[data-edit]')){edit=!edit;render();return;}
+    const b=e.target.closest('[data-go]');if(b)go(b.dataset.go);});
   // 긴 화면(PC)에서는 지금 보고 있는 메뉴를 표시
-  const io=new IntersectionObserver(es=>{if(tabMode())return;let best=null;
-    for(const p of shown()){const r=p.getBoundingClientRect();if(r.top<innerHeight*0.45&&r.bottom>nav.offsetHeight+20){best=p.dataset.id;}}
-    if(best&&best!==cur){cur=best;nav.querySelectorAll('button').forEach(b=>{const on=b.dataset.go===cur;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current');});}},{threshold:[0,0.25,0.5,1]});
-  for(const p of box.children)if(p.dataset.id)io.observe(p);
-  addEventListener('scroll',()=>{if(!tabMode()){clearTimeout(go._t);go._t=setTimeout(()=>io.takeRecords&&io.takeRecords(),60);}},{passive:true});
-  // 순서를 바꾸거나 간단 보기를 켜고 끄면 다시 그림
+  const io=new IntersectionObserver(()=>{if(tabMode()||edit)return;let best=null;
+    for(const p of shown()){const r=p.getBoundingClientRect();if(r.top<innerHeight*0.45&&r.bottom>nav.offsetHeight+20)best=p.dataset.id;}
+    if(best&&best!==cur){cur=best;nav.querySelectorAll('[data-go]').forEach(b=>{const on=b.dataset.go===cur;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current');});}},{threshold:[0,0.25,0.5,1]});
+  for(const p of [...box.children,mach])if(p.dataset&&p.dataset.id)io.observe(p);
+  // 메뉴를 끌어 옮기거나 처음 순서로 되돌리면 다시 그림
   new MutationObserver(()=>{clearTimeout(render._t);render._t=setTimeout(render,0);}).observe(box,{childList:true});
-  document.addEventListener('click',e=>{if(e.target.id==='mCompact')setTimeout(()=>{render();if(tabMode())go(cur);},0);});
+  document.addEventListener('click',e=>{if(e.target.id==='mCompact')setTimeout(()=>{edit=false;render();if(tabMode())go(cur);},0);
+    if(e.target.id==='layReset'){setTimeout(()=>{const od=box.querySelector('[data-id="odds"]');if(od)box.appendChild(od);saveOrder();render();},0);}});
   render();
 })();
 </script>
