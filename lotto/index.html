@@ -11075,13 +11075,14 @@ if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))$('qrCamBtn').
   const mobile=/Android|iPhone|iPad/i.test(navigator.userAgent);
   const say=(t,kind)=>{const el=$('nearMsg');el.innerHTML=t;el.className='note nearmsg'+(kind?' '+kind:'');};
   // 지도 링크
+  const merc=(lat,lng)=>{const R=6378137,x=lng*Math.PI/180*R,y=Math.log(Math.tan(Math.PI/4+lat*Math.PI/360))*R;return x.toFixed(4)+','+y.toFixed(4);};
   const Q='로또 판매점';
   const mapsAround=p=>({
-    naver:`https://map.naver.com/p/search/${encodeURIComponent(Q)}?c=${p.lng.toFixed(6)},${p.lat.toFixed(6)},15,0,0,0,dh`,
+    naver:`https://map.naver.com/p/search/${encodeURIComponent(Q)}?c=${merc(p.lat,p.lng)},15,0,0,0,dh`,
     kakao:mobile?`kakaomap://search?q=${encodeURIComponent(Q)}&p=${p.lat.toFixed(6)},${p.lng.toFixed(6)}`:`https://map.kakao.com/link/search/${encodeURIComponent((p.label&&p.label!=='내 위치'?p.label+' ':'')+Q)}`,
     google:`https://www.google.com/maps/search/${encodeURIComponent(Q)}/@${p.lat.toFixed(6)},${p.lng.toFixed(6)},15z`});
   const mapsStore=s=>({
-    naver:`https://map.naver.com/p/search/${encodeURIComponent(s.n+' '+s.a)}`,
+    naver:`https://map.naver.com/p/search/${encodeURIComponent(s.n)}?c=${merc(s.lat,s.lng)},17,0,0,0,dh`,
     kakao:`https://map.kakao.com/link/to/${encodeURIComponent(s.n)},${s.lat},${s.lng}`,
     google:`https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`});
   const linkRow=(m,lbl)=>`<a class="btn" href="${esc(m.naver)}" target="_blank" rel="noopener">네이버 지도</a><a class="btn" href="${esc(m.kakao)}" target="_blank" rel="noopener">카카오맵</a><a class="btn" href="${esc(m.google)}" target="_blank" rel="noopener">구글 지도</a>${lbl?`<span class="note">${lbl}</span>`:''}`;
