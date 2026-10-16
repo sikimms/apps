@@ -288,15 +288,17 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
   </section>
   <section id="dori" class="grid" hidden>
     <div class="boardcol"><div class="stable" id="dtable"><div class="spot" id="dpot"></div></div>
-      <div class="sbar"><button class="btn" id="dauto">자동 짓기</button><button class="btn call" id="dmake">짓기</button><button class="btn die" id="dnomade">노메이드</button></div></div>
+      <div class="sbar" id="dbetbar" hidden><button class="btn die" data-bet="die">다이<small>포기</small></button><button class="btn call" data-bet="stay">그대로<small>안 더 걸기</small></button><button class="btn raise" data-bet="more" id="dbMore">더 걸기</button><button class="btn raise" data-bet="big" id="dbBig">크게 걸기</button></div>
+      <div class="sbar" id="dmakebar" hidden><button class="btn" id="dauto">자동 짓기</button><button class="btn call" id="dmake">짓기</button><button class="btn die" id="dnomade">노메이드</button></div></div>
     <div class="panel">
       <div id="dmsg" class="fb info"></div>
       <div class="row"><button class="btn primary" id="dnext" hidden>다음 판</button></div>
-      <div class="eyebrow" style="margin:16px 0 6px">걸 돈 (다음 판부터)</div>
+      <div class="eyebrow" style="margin:16px 0 6px">기본 돈 (다음 판부터)</div>
       <div class="betchips" id="dBet"></div>
       <div class="opts"><label>같이 하는 사람 <select id="dOthers"><option value="0">없음 (나와 선)</option><option value="1">1명</option><option value="2">2명</option></select></label></div>
       <div class="tips"><strong>도리짓고땡 하는 법</strong><ul>
-        <li>5장을 받아서 <b>3장의 달 합이 10·20·30</b>이 되게 골라 '짓고', 남은 2장으로 선(물주)과 겨뤄요.</li>
+        <li>기본 돈을 걸고 카드 <b>3장</b>을 받아요. 패를 보고 <b>다이·그대로·더 걸기·크게 걸기</b> 중에 고르고, <b>4번째 장</b>을 받은 뒤 한 번 더 걸어요.</li>
+        <li>5장을 다 받으면 <b>3장의 달 합이 10·20·30</b>이 되게 골라 '짓고', 남은 2장으로 선(물주)과 겨뤄요.</li>
         <li>남은 2장이 같은 달이면 <b>땡</b>(장땡이 가장 셈), 아니면 두 장 합의 끝자리 <b>끗</b>(9끗 갑오 … 0 망통). 짓지 못하면 <b>노메이드</b>로 져요.</li>
         <li>선보다 높으면 건 돈만큼 받고, <b>땡으로 이기면 2배</b>. 비기면 선이 이겨요. 카드를 눌러 3장을 고르거나 <b>자동 짓기</b>를 눌러 보세요.</li>
       </ul></div>
@@ -894,50 +896,94 @@ function seotdaSettle(){
 function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,dealer:S.s.dealer});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
 $('snext').onclick=()=>{$('snext').hidden=true;S.result=null;S.reveal=false;seotdaNew();};
 
-/* ================= 도리짓고땡 ================= */
+/* ================= 도리짓고땡 =================
+   기본 돈을 걸고 3장을 받은 뒤 한 번, 4번째 장을 받은 뒤 한 번 더 걸 수 있다. 5장째를 받으면 짓기. */
 const dopt={others:store.get('dothers',1),bet:store.get('dbet',5000)};
 let D=null;
+// 지금까지 받은 카드로 선을 이길 확률 (남은 카드를 여러 번 채워 보며 계산)
+function doriWinProb(seen,dealerKnown){
+  const rest=SD.DECK.filter(c=>!seen.includes(c)&&!(dealerKnown||[]).includes(c));let w=0,N=160;
+  for(let k=0;k<N;k++){const r=SD.shuffle(rest),mine=seen.concat(r.slice(0,5-seen.length)),dl=r.slice(5-seen.length,10-seen.length);
+    if(SD.doriBest(mine).h.v>SD.doriBest(dl).h.v)w++;}
+  return w/N;
+}
 function doriNew(){
-  if(money<dopt.bet){money=100000;bigText('돈 충전!');}
+  if(money<dopt.bet*5){money=100000;bigText('돈 충전!');}
   const n=dopt.others+2;   // 나 + 다른 사람 + 선
-  const bets=[dopt.bet];for(let i=0;i<dopt.others;i++)bets.push([1000,5000,10000][Math.floor(Math.random()*3)]);bets.push(0);
-  D={s:SD.newDori({players:n,bets}),chosen:[],done:false,reveal:false,gen:(D?D.gen:0)+1,res:null};
+  const base=[dopt.bet];for(let i=0;i<dopt.others;i++)base.push([1000,5000,10000][Math.floor(Math.random()*3)]);base.push(0);
+  D={s:SD.newDori({players:n,bets:base}),base,vis:0,stage:'deal',chosen:[],done:false,reveal:false,folded:Array(n).fill(false),acts:{},gen:(D?D.gen:0)+1,res:null};
   money-=dopt.bet;saveMoney();
-  dmsg(`${won(dopt.bet)}을 걸었어요. 5장 중 <b>달 합이 10·20·30</b>이 되는 3장을 골라 짓고, 남은 2장으로 선과 겨뤄요.`);
-  doriRender(true);$('dnext').hidden=true;
+  dmsg(`기본 돈 ${won(dopt.bet)}을 걸었어요. 카드 3장을 나눠 줄게요.`);
+  $('dnext').hidden=true;doriDealTo(3);
+}
+async function doriDealTo(k){
+  const gen=D.gen,from=D.vis;D.vis=k;D.stage='deal';doriRender(from);SND.card();
+  await sleep(700+(k-from)*120);if(gen!==D.gen)return;
+  if(k<5){D.stage=k===3?'bet1':'bet2';D.acts={};
+    // 다른 사람(컴퓨터)도 패를 보고 걸기
+    for(let p=1;p<D.s.n-1;p++){if(D.folded[p])continue;const pr=doriWinProb(D.s.hands[p].slice(0,k)),b=D.base[p];
+      if(pr<0.22&&Math.random()<0.6){D.folded[p]=true;D.acts[p]='다이';}
+      else if(pr>0.62){D.s.bets[p]+=b*2;D.acts[p]=`크게 +${won(b*2)}`;}
+      else if(pr>0.48){D.s.bets[p]+=b;D.acts[p]=`더 +${won(b)}`;}
+      else D.acts[p]='그대로';}
+    const pr=doriWinProb(D.s.hands[0].slice(0,k));
+    dmsg(`카드 ${k}장을 받았어요. 더 걸까요? <span class="sub">(지금 패로 선을 이길 확률 약 ${Math.round(pr*100)}%)</span>`);
+    doriRender();return;}
+  D.stage='make';dmsg('5장을 다 받았어요. <b>달 합이 10·20·30</b>이 되는 3장을 골라 짓고, 남은 2장으로 선과 겨뤄요. 카드를 누르거나 <b>자동 짓기</b>를 눌러 보세요.');doriRender();
+}
+function doriBet(kind){
+  if(!D||(D.stage!=='bet1'&&D.stage!=='bet2'))return;const b=dopt.bet,s=D.s;
+  if(kind==='die'){D.folded[0]=true;D.stage='fold';SND.tick(400,.15,.08);
+    dmsg(`다이했어요. 건 돈 ${won(s.bets[0])}은 선이 가져가요.`);rec.dl++;store.set('rec',rec);doriRender();$('dnext').hidden=false;renderRec();return;}
+  const add=kind==='more'?b:kind==='big'?b*2:0;
+  if(add&&money<add){dmsg('돈이 모자라요.');return;}
+  if(add){money-=add;s.bets[0]+=add;saveMoney();SND.chip();if(kind==='big')bigText('크게!');}
+  D.acts[0]=add?`+${won(add)}`:'그대로';
+  doriDealTo(D.vis+1);
 }
 const dpos=n=>{const m=n-2;return [[50,74]].concat(m===0?[]:m===1?[[18,46]]:[[16,50],[84,50]]).concat([[50,17]]);};
-function doriRender(dealing){
-  const s=D.s,n=s.n,pos=dpos(n),dealer=n-1;
+function doriRender(dealFrom){
+  const s=D.s,n=s.n,pos=dpos(n),dealer=n-1,dealing=dealFrom!=null;
   $('dtable').querySelectorAll('.seat').forEach(e=>e.remove());
   for(let p=0;p<n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat dori'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
-    const best=D.reveal||p===0?null:null,r=D.res&&D.res[p];
-    const order=p===0&&D.done?D.mine.three.concat(D.mine.two):D.reveal&&p!==0?D.best[p].three.concat(D.best[p].two):s.hands[p];
-    const cards=order.map((id,i)=>cardHtml(id,{down:p!==0&&!D.reveal,deal:dealing,delay:dealing?(p*120+i*40):0,pick:p===0&&!D.done,chosen:p===0&&!D.done&&D.chosen.includes(id),reveal:D.reveal&&p!==0})).join('');
+    const r=D.res&&D.res[p],out=D.folded[p];
+    let order=s.hands[p].slice(0,D.vis);
+    if(p===0&&D.done)order=D.mine.three.concat(D.mine.two);
+    if(D.reveal&&p!==0&&!out)order=D.best[p].three.concat(D.best[p].two);
+    const cards=order.map((id,i)=>cardHtml(id,{down:p!==0&&!(D.reveal&&!out),deal:dealing&&i>=dealFrom,delay:dealing?((i-dealFrom)*260+p*90):0,
+      pick:p===0&&D.stage==='make'&&!D.done,chosen:p===0&&D.stage==='make'&&!D.done&&D.chosen.includes(id),reveal:D.reveal&&p!==0&&!out})).join('');
     const name=p===dealer?NAMES[5]:NAMES[p];
-    const handTxt=(p===0&&D.done)?D.mine.h.name:(D.reveal?D.best[p].h.name:'');
-    el.innerHTML=(p===0?'':`<div class="splate">${avatar(p===dealer?5:p)}<span class="sn"><b>${name}</b><small>${p===dealer?'물주':'건 돈 '+won(s.bets[p])}</small></span></div>`)+
-      `<div class="scards">${cards}</div>`+(handTxt?`<span class="shand${r==='win'?' win':''}">${handTxt}${r?` · ${r==='win'?'이김':'짐'}`:''}</span>`:'')+
-      (p===0?`<div class="splate">${avatar(0)}<span class="sn"><b>나</b><small>${won(money)} · 건 돈 ${won(s.bets[0])}</small></span></div>`:'');
+    const handTxt=out?'다이':(p===0&&D.done)?D.mine.h.name:(D.reveal?D.best[p].h.name:'');
+    const act=D.acts[p]&&!D.reveal?`<span class="sact ${D.acts[p]==='다이'?'die':D.acts[p]==='그대로'?'call':'raise'}">${D.acts[p]}</span>`:'';
+    el.innerHTML=(p===0?'':`<div class="splate${out?' out':''}">${avatar(p===dealer?5:p)}<span class="sn"><b>${name}</b><small>${p===dealer?'물주':'건 돈 '+won(s.bets[p])}</small></span></div>`)+
+      `<div class="scards">${cards}</div>`+(handTxt?`<span class="shand${r==='win'?' win':''}">${handTxt}${r?` · ${r==='win'?'이김':'짐'}`:''}</span>`:'')+act+
+      (p===0?`<div class="splate${out?' out':''}">${avatar(0)}<span class="sn"><b>나</b><small>${won(money)} · 건 돈 ${won(s.bets[0])}</small></span></div>`:'');
     $('dtable').appendChild(el);}
+  const total=s.bets.reduce((a,b)=>a+b,0);
   const sum=D.chosen.reduce((a,c)=>a+mon(c),0),ok=D.chosen.length===3&&sum%10===0;
-  $('dpot').innerHTML=D.done?'':`<span class="dsum${ok?' ok':''}">고른 3장 합: ${D.chosen.length?sum:'-'}${ok?' ✓ 짓기 가능':D.chosen.length===3?' (10·20·30이 아니에요)':''}</span>`;
-  $('dmake').disabled=D.done||!ok;$('dauto').disabled=D.done;$('dnomade').disabled=D.done;
+  $('dpot').innerHTML=`<div class="chips">${chipsHtml(total)}</div><b>${won(total)}</b><small>${D.stage==='make'&&!D.done?'':`카드 ${D.vis}장`}</small>`+
+    (D.stage==='make'&&!D.done?`<span class="dsum${ok?' ok':''}" style="margin-top:4px">고른 3장 합: ${D.chosen.length?sum:'-'}${ok?' ✓ 짓기 가능':D.chosen.length===3?' (10·20·30이 아니에요)':''}</span>`:'');
+  const betting=D.stage==='bet1'||D.stage==='bet2',making=D.stage==='make'&&!D.done,b=dopt.bet;
+  $('dbetbar').hidden=!betting;$('dmakebar').hidden=!making;
+  if(betting){$('dbMore').innerHTML=`더 걸기<small>+${won(b)}</small>`;$('dbBig').innerHTML=`크게 걸기<small>+${won(b*2)}</small>`;}
+  $('dmake').disabled=!making||!ok;$('dauto').disabled=!making;$('dnomade').disabled=!making;
 }
-$('dtable').addEventListener('click',e=>{const c=e.target.closest('.card.pick');if(!c||!D||D.done)return;const id=+c.dataset.id;
+$('dtable').addEventListener('click',e=>{const c=e.target.closest('.card.pick');if(!c||!D||D.done||D.stage!=='make')return;const id=+c.dataset.id;
   const i=D.chosen.indexOf(id);if(i>=0)D.chosen.splice(i,1);else if(D.chosen.length<3)D.chosen.push(id);SND.card();doriRender();});
+$('dbetbar').addEventListener('click',e=>{const b=e.target.closest('[data-bet]');if(b)doriBet(b.dataset.bet);});
 $('dauto').onclick=()=>{const b=SD.doriBest(D.s.hands[0]);if(b.h.v<0){dmsg('어떤 3장으로도 10·20·30을 만들 수 없어요. <b>노메이드</b>를 눌러 주세요.');return;}D.chosen=b.three.slice();doriRender();dmsg(`가장 좋은 짓기를 골랐어요: 남은 2장이 <b>${b.h.name}</b>이에요. <b>짓기</b>를 누르세요.`);};
 $('dmake').onclick=()=>{const three=D.chosen.slice();if(!SD.checkThree(three))return;const two=D.s.hands[0].filter(c=>!three.includes(c));doriFinish({three,two,h:SD.doriHand(two)});};
 $('dnomade').onclick=()=>{if(SD.doriBest(D.s.hands[0]).h.v>=0&&!confirm('지을 수 있는 3장이 있어요. 그래도 노메이드로 할까요?'))return;doriFinish({three:[],two:D.s.hands[0].slice(),h:{v:-1,name:'노메이드'}});};
 async function doriFinish(mine){
   const s=D.s,n=s.n,dealer=n-1,gen=D.gen;D.mine=mine;D.done=true;D.best=s.hands.map((h,p)=>p===0?mine:SD.doriBest(h));doriRender();SND.card();
   dmsg('선과 다른 사람들이 패를 펼쳐요…');await sleep(900);if(gen!==D.gen)return;
-  D.reveal=true;D.res={};const dv=D.best[dealer].h.v;let delta=0,lines=[];
-  for(let p=0;p<dealer;p++){const pv=D.best[p].h.v,win=pv>dv;D.res[p]=win?'win':'lose';
+  D.reveal=true;D.res={};const dv=D.best[dealer].h.v;let line='';
+  for(let p=0;p<dealer;p++){if(D.folded[p]){D.res[p]='lose';continue;}const pv=D.best[p].h.v,win=pv>dv;D.res[p]=win?'win':'lose';
     const mult=win&&pv>=100?2:1;   // 땡으로 이기면 2배
-    if(p===0){if(win){delta=s.bets[0]*(1+mult);money+=delta;}lines.push(win?`🎉 <b>내가 이겼어요!</b> ${D.best[0].h.name} > 선의 ${D.best[dealer].h.name}${mult>1?' (땡이라 2배)':''} · +${won(s.bets[0]*mult)}`:`선의 ${D.best[dealer].h.name}에 졌어요 (내 패 ${D.best[0].h.name}${pv===dv?', 비기면 선이 이겨요':''}) · -${won(s.bets[0])}`);}}
+    if(p===0){if(win){money+=s.bets[0]*(1+mult);}
+      line=win?`🎉 <b>내가 이겼어요!</b> ${D.best[0].h.name} > 선의 ${D.best[dealer].h.name}${mult>1?' (땡이라 2배)':''} · +${won(s.bets[0]*mult)}`:`선의 ${D.best[dealer].h.name}에 졌어요 (내 패 ${D.best[0].h.name}${pv===dv?', 비기면 선이 이겨요':''}) · -${won(s.bets[0])}`;}}
   saveMoney();if(D.res[0]==='win'){rec.dw++;SND.win();bigText('승리!');}else rec.dl++;store.set('rec',rec);
-  doriRender();dmsg(lines.join('<br>'));$('dnext').hidden=false;renderRec();
+  doriRender();dmsg(line);$('dnext').hidden=false;renderRec();
 }
 function dmsg(h){$('dmsg').innerHTML=h;}
 $('dnext').onclick=doriNew;
