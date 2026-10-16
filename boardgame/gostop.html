@@ -197,6 +197,12 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .gpass.can{cursor:pointer;box-shadow:0 0 0 2px #ffcc33,0 0 14px rgba(255,204,51,.7)}
 .gpass[hidden]{display:none!important}
 
+.gcard.capc{cursor:zoom-in}
+.gbox.wide{max-width:560px}
+.cvr{margin-top:8px}.cvh{font-size:13px;color:var(--muted);margin-bottom:3px}.cvh b{color:var(--ink)}
+.cvc{display:flex;flex-wrap:wrap;gap:4px}.cvc span{width:44px;display:block}.cvc svg{display:block;width:100%;height:auto;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.cvs{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule);font-size:14px}
+
 </style>
 </head>
 <body>
@@ -235,6 +241,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="tips"><strong>치는 법</strong><ul>
         <li>손패를 누르면 내요. 손패에 마우스를 올리면 바닥의 같은 달 패가 반짝여요.</li>
         <li>같은 달이 바닥에 2장이면 어느 것을 먹을지 물어봐요.</li>
+        <li>먹은 패(내 것·상대 것)를 누르면 종류별로 크게 펼쳐 보여 줘요.</li>
         <li>맞고는 7점, 3명은 3점이 넘으면 고/스톱을 고를 수 있어요.</li>
         <li>점수와 돈은 모두 가짜예요. 1점 = 100원. <button class="linkbtn" id="gReset">돈·기록 처음으로</button></li>
       </ul></div>
@@ -635,14 +642,14 @@ function makeTable(el){
     const gw=(x1-x0)/4,piN=GS.scoreOf(list).pi;let gi=0;
     for(const k of ['gwang','yeol','tti','pi']){const g=groups[k].slice().sort((a,b)=>CARDS[a].pi-CARDS[b].pi||a-b),n=g.length;
       const step=n>1?Math.min(cw*0.42,(gw-cw-4)/(n-1)):0;
-      g.forEach((id,i)=>put(id,x0+gi*gw+2+i*step,y,cw,40+i,true));
+      g.forEach((id,i)=>{put(id,x0+gi*gw+2+i*step,y,cw,40+i,true);cards[id].classList.add('capc');});
       if(n){const b=label('c'+key+k,'gcnt gcnt-'+k);b.textContent=`${GS.TNAME[k]} ${k==='pi'?piN:n}`;b.style.transform=`translate(${x0+gi*gw+2}px,${y-15}px)`;}
       gi++;}
   }
   function render(s,o={}){
     size();const me=o.viewer||0,n=s.n,others=[...Array(n).keys()].filter(q=>q!==me);
     const fw=portrait?W/8.4:H/6.4,hw=portrait?W/5.9:H/4.9,ow=portrait?W/13:H/10,cw=portrait?W/12.5:H/9,ch=x=>x*HW.H/HW.W;
-    Object.values(cards).forEach(d=>{d.style.display='none';d.classList.remove('can','hl','sel','dim','eat');});
+    Object.values(cards).forEach(d=>{d.style.display='none';d.classList.remove('can','hl','sel','dim','eat','capc');});
     usedLabels=new Set();Object.values(labels).forEach(l=>l.style.display='none');deckN.style.display=o.gallery?'none':'';mat.style.display=o.gallery?'none':'';
     if(o.gallery){   // 48장 한눈에: 달마다 4장을 나란히
       const cols=portrait?2:3,rows=12/cols,gw=(W-16)/cols,gh=(H-16)/rows,w=Math.min(gw/4.4,(gh-18)*HW.W/HW.H);
@@ -763,7 +770,18 @@ function renderPanel(){
   $('flipOnly').textContent=`뒤집기만 하기 (${s.bombPass[0]}번 남음)`;
 }
 // 내 손패 누르기
+function showCaps(T,s,q,who){
+  const caps=s.caps[q],sc=GS.scoreOf(caps),g={gwang:[],yeol:[],tti:[],pi:[]};caps.forEach(id=>g[CARDS[id].t].push(id));
+  const row=(k,label,cnt)=>g[k].length?`<div class="cvr"><div class="cvh">${label} <b>${cnt}</b></div><div class="cvc">${g[k].sort((a,b)=>a-b).map(id=>`<span>${faceFor(id,true,'cv_')}</span>`).join('')}</div></div>`:'';
+  const o=T.overlay(`<h3>${who}이(가) 먹은 패</h3>
+    ${caps.length?row('gwang','광',g.gwang.length+'장')+row('yeol','열끗',g.yeol.length+'장')+row('tti','띠',g.tti.length+'장')+row('pi','피',sc.pi+'장 (쌍피는 2장)'):'<div>아직 먹은 패가 없어요.</div>'}
+    <div class="cvs">${sc.parts.length?sc.parts.map(x=>`${x[0]} <b>${x[1]}점</b>`).join(' · ')+` → 모두 <b>${sc.total}점</b>`:'아직 점수가 없어요.'}</div>
+    <div class="gbtns"><button class="btn primary" id="cvClose">닫기</button></div>`);
+  o.querySelector('.gbox').classList.add('wide');
+  o.onclick=ev=>{if(ev.target.id==='cvClose'||ev.target===o){T.closeOverlay();o.onclick=null;}};
+}
 PT.el.addEventListener('click',async e=>{
+  {const c0=e.target.closest('.gcard');if(c0&&G){const id0=+c0.dataset.id,q=G.s.caps.findIndex(c=>c.includes(id0));if(q>=0){showCaps(PT,G.s,q,q===0?'내':CNAME[q]);return;}}}
   if(e.target.closest('.gpass')){if(G&&!G.busy&&!G.s.over&&G.s.turn===0&&G.s.bombPass[0]>0)humanMove({flipOnly:true});return;}
   const c=e.target.closest('.gcard');if(!c||!G||G.busy||G.s.over||G.s.turn!==0)return;const id=+c.dataset.id;
   if(!G.s.hands[0].includes(id))return;

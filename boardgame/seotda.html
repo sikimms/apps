@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="보드게임">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>섯다 · 도리짓고땡</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: 왼쪽 판, 오른쪽 수업 노트/대국 패널 — 좁은 화면에선 위아래로 쌓임 */
+:root{
+  --bg:#eceeea; --surface:#f9faf8; --ink:#1d2320; --muted:#5b6661; --rule:#d3d9d4;
+  --accent:#2d6a4f; --accent-ink:#ffffff; --accent-soft:#dcebe2;
+  --danger:#b3362c; --danger-soft:#f6e1de; --ok:#2b7a47; --ok-soft:#dff0e4;
+  --f-display:"Gowun Batang","Nanum Myeongjo",serif;
+  --f-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131715; --surface:#1b211e; --ink:#e4eae6; --muted:#98a59e; --rule:#2c3631;
+  --accent:#74c49b; --accent-ink:#0e1411; --accent-soft:#22342a;
+  --danger:#ff8074; --danger-soft:#3a201d; --ok:#83d6a1; --ok-soft:#1d3326; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131715; --surface:#1b211e; --ink:#e4eae6; --muted:#98a59e; --rule:#2c3631;
+  --accent:#74c49b; --accent-ink:#0e1411; --accent-soft:#22342a;
+  --danger:#ff8074; --danger-soft:#3a201d; --ok:#83d6a1; --ok-soft:#1d3326; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+h1{font-family:var(--f-display);font-size:30px;margin:0;line-height:1.2;text-wrap:balance}
+h1 small{display:block;font-family:var(--f-body);font-size:13px;color:var(--muted);font-weight:400;margin-top:4px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--rule);border-radius:999px;padding:4px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:500 14px var(--f-body);padding:7px 16px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.grid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.boardbox{background:var(--frame);padding:6px;border-radius:10px;box-shadow:0 10px 30px -18px rgba(0,0,0,.55);max-width:560px;width:100%;margin:0 auto}
+svg.board{display:block;width:100%;height:auto;cursor:pointer;touch-action:manipulation;user-select:none}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:20px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.chip{border:1px solid var(--rule);background:transparent;color:var(--muted);border-radius:8px;padding:4px 10px;font:500 13px var(--f-body);cursor:pointer;font-variant-numeric:tabular-nums}
+.chip.done{color:var(--ok);border-color:var(--ok)}
+.chip.done::after{content:" ✓"}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+h2{font-family:var(--f-display);font-size:24px;margin:2px 0 10px;text-wrap:balance}
+.text{max-width:62ch}
+.text b{color:var(--accent)}
+.turn{display:inline-flex;align-items:center;gap:8px;font-weight:500;font-size:14px;margin:12px 0 4px}
+.fb{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:14.5px}
+.fb.ok{background:var(--ok-soft);border-left:4px solid var(--ok)}
+.fb.no{background:var(--danger-soft);border-left:4px solid var(--danger)}
+.fb.info{background:var(--accent-soft);border-left:4px solid var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.btn{border:1px solid var(--rule);background:var(--surface);color:var(--ink);font:500 14px var(--f-body);padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.quiz{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat{border:1px solid var(--rule);border-radius:10px;padding:10px 12px;min-width:0}
+.stat.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.stat .n{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.opts{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:14px;font-size:14px}
+.opts label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px solid var(--rule);background:var(--surface);color:var(--ink)}
+.tips{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px;font-size:13.5px;color:var(--muted)}
+.tips ul{margin:6px 0 0;padding-left:18px}
+.result{font-variant-numeric:tabular-nums}
+.rankcard{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--rule)}
+.rank{font-family:var(--f-display);font-size:34px;font-weight:700;line-height:1.1;color:var(--accent);font-variant-numeric:tabular-nums}
+.rank small{font-size:15px;color:var(--muted);font-weight:400;margin-left:6px;font-family:var(--f-body)}
+.sub{font-size:13px;color:var(--muted)}
+.linkbtn{border:0;background:none;color:var(--muted);font:13px var(--f-body);text-decoration:underline;cursor:pointer;padding:2px}
+.levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.lv{border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:10px;padding:8px 4px;cursor:pointer;font:500 15px var(--f-body);display:flex;flex-direction:column;align-items:center;gap:1px}
+.lv span{font-size:11.5px;color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
+.lv[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
+.lv:disabled{opacity:.4;cursor:not-allowed}
+.wbar{height:10px;border-radius:5px;background:var(--bar-b);box-shadow:inset 0 0 0 1px var(--rule);overflow:hidden;margin-top:4px}
+.wbar span{display:block;height:100%;background:var(--bar-a);transition:width .4s}
+.wrow{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:12px}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;margin-right:6px}
+.tag.g{background:var(--ok-soft);color:var(--ok)} .tag.m{background:var(--accent-soft);color:var(--accent)}
+.tag.s{background:var(--danger-soft);color:var(--danger)} .tag.b{background:var(--danger);color:var(--surface)}
+.hist{margin:8px 0 0;padding:0;list-style:none;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hist li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px dashed var(--rule)}
+.thinking::after{content:"";display:inline-block;width:10px;height:10px;margin-left:8px;border-radius:50%;border:2px solid var(--accent);border-right-color:transparent;animation:spin .8s linear infinite;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.thinking::after{animation:none}}
+.rv{border:0;cursor:pointer;font-family:inherit;line-height:1.6}
+.rv:hover{text-decoration:underline}
+.rvlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.modal{position:fixed;inset:0;background:rgba(8,12,10,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.sheet{background:var(--surface);color:var(--ink);border-radius:14px;width:100%;max-width:460px;max-height:100%;overflow:auto;padding:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
+.rvhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rvhead h2{font-size:20px;margin:2px 0 10px}
+.seg{display:flex;gap:4px;background:var(--bg);border-radius:999px;padding:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:500 14px var(--f-body);padding:6px 10px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.sheet .boardbox{max-width:min(420px,52vh)}
+.sheet svg.board{cursor:default}
+.legend{font-size:13px;color:var(--muted);margin:8px 0 2px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.lg{display:inline-block;width:18px;height:4px;border-radius:2px;background:var(--c)}
+.lg.dash{background:repeating-linear-gradient(90deg,var(--c) 0 5px,transparent 5px 8px)}
+.boardcol{min-width:0;max-width:560px;width:100%;margin:0 auto}
+.b3d{width:100%;aspect-ratio:var(--b3d-ratio,1);border-radius:6px;background:radial-gradient(ellipse at 50% 35%,var(--surface),var(--bg));overflow:hidden}
+.viewbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.btn.sm{padding:5px 11px;font-size:13px}
+.pk{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.pk button{font:500 16px var(--f-body);padding:10px 16px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);cursor:pointer}
+.pk button:hover{border-color:var(--accent)}
+#rvEyebrow{text-transform:none;letter-spacing:0}
+
+/* 고스톱 전용 */
+:root{--frame:#3b2414;--accent:#b3261e;--accent-soft:#f6dedb}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--accent:#f28b82;--accent-soft:#3a201d;--accent-ink:#1a0d0b}}
+:root[data-theme="dark"]{--accent:#f28b82;--accent-soft:#3a201d;--accent-ink:#1a0d0b}
+.gtable{position:relative;width:100%;border-radius:18px;overflow:hidden;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.10),rgba(0,0,0,0) 55%),radial-gradient(ellipse at 50% 50%,#2c8053 0%,#1d5e3b 55%,#123a25 100%);
+  box-shadow:inset 0 0 0 7px #6b3d1c,inset 0 0 0 9px #a8723f,inset 0 0 0 12px #4a2810,inset 0 0 60px rgba(0,0,0,.55),0 16px 36px -18px rgba(0,0,0,.75)}
+.gtable::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.04) 1px,transparent 1.4px),radial-gradient(rgba(0,0,0,.08) 1px,transparent 1.4px);background-size:4px 4px,7px 7px;background-position:0 0,2px 3px;pointer-events:none}
+.gcard{position:absolute;left:0;top:0;transition:transform .42s cubic-bezier(.2,.75,.25,1),width .3s,height .3s,filter .2s;will-change:transform;perspective:600px}
+.gcard .gin{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .45s ease}
+.gcard.down .gin{transform:rotateY(180deg)}
+.gcard .gf,.gcard .gb{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:7%;box-shadow:0 2px 4px rgba(0,0,0,.45)}
+.gcard .gb{transform:rotateY(180deg)}
+.gcard svg{display:block;width:100%;height:100%}
+.gcard.can{cursor:pointer}
+.gcard.can:hover{filter:brightness(1.08)}
+.gcard.can:hover .gf{box-shadow:0 0 0 2px #ffd34d,0 6px 12px rgba(0,0,0,.5)}
+.gcard.hl .gf{box-shadow:0 0 0 3px #ffd34d,0 0 14px 3px rgba(255,211,77,.8)}
+.gcard.sel .gf{box-shadow:0 0 0 3px #4fc3f7,0 0 14px 3px rgba(79,195,247,.8)}
+.gcard.dim{filter:brightness(.55)}
+.glabel{position:absolute;font:700 11px var(--f-body);color:#e9f5ec;text-shadow:0 1px 2px rgba(0,0,0,.6);pointer-events:none;white-space:nowrap}
+.glabel b{color:#ffd34d}
+.glabel.turn{color:#ffd34d}
+.gdeckn{position:absolute;font:800 12px var(--f-body);color:#fff;background:rgba(0,0,0,.55);border-radius:999px;padding:1px 7px;pointer-events:none}
+
+.gover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,15,10,.55);z-index:600;padding:12px}
+.gbox{background:var(--surface);color:var(--ink);border-radius:14px;padding:16px 18px;max-width:380px;width:100%;box-shadow:0 20px 50px -20px rgba(0,0,0,.8);max-height:100%;overflow:auto}
+.gbox h3{margin:0 0 6px;font:700 20px var(--f-display)}
+.gbox .gbtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.gbox .gbtns .btn{flex:1;font-size:16px;padding:10px}
+.gpick{display:flex;gap:10px;justify-content:center;margin-top:8px}
+.gpick button{border:0;background:none;padding:0;cursor:pointer;width:76px;border-radius:8px}
+.gpick button:hover{outline:3px solid #ffd34d}
+.gpick svg{display:block;width:100%;height:auto}
+.gscore{display:grid;gap:8px;margin-bottom:12px}
+.gsc{border:1px solid var(--rule);border-radius:10px;padding:8px 10px;font-size:13px}
+.gsc.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.gsc .gn{font-weight:700;font-size:14px}.gsc .gp{float:right;font:700 16px var(--f-display);color:var(--accent)}
+.gsc .gd{color:var(--muted);font-size:12px;margin-top:2px}
+.gmoney{font:700 13px var(--f-body);color:var(--muted)}
+.gres td{padding:2px 6px;font-size:13.5px}.gres td:last-child{text-align:right;font-weight:700}
+.gflip{margin-top:6px}
+
+.gcard .gf,.gcard .gb{box-shadow:0 1px 1px rgba(0,0,0,.35),0 4px 8px -2px rgba(0,0,0,.45)}
+.gcard.eat .gf{box-shadow:0 0 0 2.5px #ffcc33,0 0 12px 2px rgba(255,204,51,.75),0 6px 10px -2px rgba(0,0,0,.5)}
+.gcard.eat::after{content:"";position:absolute;left:50%;bottom:-7px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#ffcc33;box-shadow:0 0 6px #ffcc33}
+.glabel{background:rgba(0,0,0,.35);padding:2px 8px;border-radius:999px;backdrop-filter:blur(2px)}
+.gdeckn{box-shadow:0 1px 3px rgba(0,0,0,.5)}
+
+.gmat{position:absolute;border-radius:50%/40%;background:radial-gradient(ellipse at center,rgba(255,255,255,.07),rgba(255,255,255,0) 70%);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08);pointer-events:none;z-index:1}
+.gplate{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.35));border:1px solid rgba(255,255,255,.15);z-index:450;box-shadow:0 3px 8px rgba(0,0,0,.35)}
+.gplate.turn{border-color:#ffcc33;box-shadow:0 0 0 2px rgba(255,204,51,.5),0 0 16px rgba(255,204,51,.6)}
+.gplate .gav{width:24px;height:24px;flex:none}
+.gplate .gpn{display:flex;flex-direction:column;line-height:1.1}.gplate .gpn b{color:#fff;font-size:12px}.gplate .gpn small{color:#cfe8d6;font-size:10px;font-weight:500}
+.gplate .gpt{font:900 18px var(--f-display);color:#ffd34d;margin-left:4px;text-shadow:0 1px 2px rgba(0,0,0,.6)}.gplate .gpt small{font-size:10px;margin-left:1px}
+.gtag{font:800 10px var(--f-body);padding:1px 6px;border-radius:999px;margin-left:2px}.gtag.go{background:#e53935;color:#fff}.gtag.mul{background:#ffcc33;color:#3a2a00}
+.gcnt{position:absolute;font:800 10px var(--f-body);color:#fff;padding:0 6px;border-radius:999px;background:rgba(0,0,0,.45);pointer-events:none;z-index:420;white-space:nowrap;line-height:14px}
+.gcnt-gwang{background:#c62828}.gcnt-yeol{background:#1565c0}.gcnt-tti{background:#6a1b9a}.gcnt-pi{background:#455a64}
+.gbang{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) scale(.3);opacity:0;pointer-events:none;z-index:500;transition:opacity .2s,transform .45s cubic-bezier(.18,1.8,.4,1)}
+.gbang.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.gbtxt{position:relative;display:block;font:900 52px var(--f-display);white-space:nowrap;letter-spacing:2px;
+  background:linear-gradient(180deg,#fff7c2 0%,#ffd34d 45%,#ff8f00 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-text-stroke:2px #6d1010;filter:drop-shadow(0 4px 0 #6d1010) drop-shadow(0 0 16px rgba(255,150,40,.8))}
+.gburst{position:absolute;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;
+  background:repeating-conic-gradient(from 0deg,rgba(255,220,90,.55) 0 10deg,rgba(255,220,90,0) 10deg 20deg);
+  -webkit-mask:radial-gradient(circle,#000 20%,transparent 70%);mask:radial-gradient(circle,#000 20%,transparent 70%);animation:gspin 1.2s linear}
+@keyframes gspin{from{transform:rotate(0) scale(.6)}to{transform:rotate(60deg) scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.gburst{animation:none}}
+
+.gpass{position:absolute;left:0;top:0;z-index:330;border-radius:7%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:repeating-linear-gradient(45deg,#3b2a12 0 6px,#4a3517 6px 12px);border:2px dashed #ffcc33;color:#ffe08a;font:800 12px var(--f-body);
+  box-shadow:0 4px 8px rgba(0,0,0,.45);transition:transform .35s cubic-bezier(.2,.75,.25,1)}
+.gpass b{font:900 15px var(--f-display);color:#ff7043}
+.gpass.can{cursor:pointer;box-shadow:0 0 0 2px #ffcc33,0 0 14px rgba(255,204,51,.7)}
+.gpass[hidden]{display:none!important}
+
+.gcard.capc{cursor:zoom-in}
+.gbox.wide{max-width:560px}
+.cvr{margin-top:8px}.cvh{font-size:13px;color:var(--muted);margin-bottom:3px}.cvh b{color:var(--ink)}
+.cvc{display:flex;flex-wrap:wrap;gap:4px}.cvc span{width:44px;display:block}.cvc svg{display:block;width:100%;height:auto;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.cvs{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule);font-size:14px}
+
+/* 섯다 · 도리짓고땡 */
+.stable{position:relative;width:100%;aspect-ratio:1/1.05;border-radius:50%/42%;overflow:hidden;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.10),rgba(0,0,0,0) 55%),radial-gradient(ellipse at 50% 50%,#2c8053 0%,#1d5e3b 58%,#123a25 100%);
+  box-shadow:inset 0 0 0 9px #6b3d1c,inset 0 0 0 11px #a8723f,inset 0 0 0 15px #4a2810,inset 0 0 70px rgba(0,0,0,.55),0 16px 36px -18px rgba(0,0,0,.75)}
+@media (min-width:700px){.stable{aspect-ratio:1.35/1}}
+.seat{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;width:34%;z-index:5}
+.seat .scards{display:flex;gap:4px;justify-content:center;min-height:10px}
+.seat .card{width:42px;aspect-ratio:60/92;position:relative;perspective:500px}
+.seat.me .card{width:62px}
+.seat.dori .card{width:31px}.seat.dori.me .card{width:54px}
+.card .ci{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .5s ease}
+.card.down .ci{transform:rotateY(180deg)}
+.card .cf,.card .cb{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:7%;box-shadow:0 1px 1px rgba(0,0,0,.35),0 4px 8px -2px rgba(0,0,0,.5)}
+.card .cb{transform:rotateY(180deg)}
+.card svg{display:block;width:100%;height:100%}
+.card.deal{animation:sdeal .45s cubic-bezier(.2,.8,.3,1) both}
+@keyframes sdeal{from{transform:translate(var(--dx,0),var(--dy,-120px)) rotate(-25deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.card.pick{cursor:pointer}.card.pick:hover .cf{box-shadow:0 0 0 2px #ffd34d}
+.card.chosen{transform:translateY(-10px)}.card.chosen .cf{box-shadow:0 0 0 3px #4fc3f7,0 0 14px rgba(79,195,247,.8)}
+.card{transition:transform .2s}
+.splate{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,.38));border:1px solid rgba(255,255,255,.15);box-shadow:0 3px 8px rgba(0,0,0,.35);max-width:100%}
+.splate.turn{border-color:#ffcc33;box-shadow:0 0 0 2px rgba(255,204,51,.5),0 0 16px rgba(255,204,51,.6)}
+.splate.out{opacity:.45}
+.splate svg{width:26px;height:26px;flex:none}
+.splate .sn{display:flex;flex-direction:column;line-height:1.1;min-width:0}.splate .sn b{color:#fff;font-size:12px;white-space:nowrap}.splate .sn small{color:#ffe08a;font-size:10.5px;font-weight:700;white-space:nowrap}
+.sact{font:800 11px var(--f-body);color:#fff;background:rgba(0,0,0,.55);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.sact.die{background:#616161}.sact.raise{background:#e53935}.sact.call{background:#1e88e5}
+.shand{font:900 13px var(--f-display);color:#ffd34d;text-shadow:0 1px 2px #000;white-space:nowrap}
+.shand.win{color:#fff;background:linear-gradient(180deg,#ffb300,#e65100);padding:1px 10px;border-radius:999px;text-shadow:none}
+.spot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:4;pointer-events:none}
+.spot .chips{display:flex;align-items:flex-end;gap:2px;height:34px}
+.chipstack{display:flex;flex-direction:column-reverse}
+.chipstack i{display:block;width:26px;height:6px;margin-top:-2px;border-radius:50%;background:var(--c);box-shadow:0 1px 0 rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,255,255,.55)}
+.spot b{font:900 18px var(--f-display);color:#ffd34d;text-shadow:0 2px 3px #000}
+.spot small{color:#cfe8d6;font-size:11px}
+.sbar{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.sbar .btn{flex:1 1 70px;font-size:15px;padding:10px 6px;font-weight:700}
+.sbar .btn.die{background:#757575;border-color:#757575;color:#fff}
+.sbar .btn.raise{background:#e53935;border-color:#e53935;color:#fff}
+.sbar .btn.call{background:#1e88e5;border-color:#1e88e5;color:#fff}
+.sbar .btn small{display:block;font-size:11px;font-weight:500;opacity:.9}
+.jokbo{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px;align-items:center}
+.jokbo b{color:var(--accent)}
+.jokbo .jc{display:flex;gap:2px}.jokbo .jc svg{width:20px;height:auto}
+.sover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,15,10,.5);z-index:50;padding:12px}
+.sbig{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(.3);opacity:0;pointer-events:none;z-index:40;transition:opacity .2s,transform .45s cubic-bezier(.18,1.8,.4,1)}
+.sbig.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.sbig span{display:block;font:900 40px var(--f-display);white-space:nowrap;background:linear-gradient(180deg,#fff7c2,#ffd34d 45%,#ff8f00);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:1.5px #6d1010;filter:drop-shadow(0 3px 0 #6d1010)}
+.dsum{font:800 13px var(--f-body);color:#fff;background:rgba(0,0,0,.5);border-radius:999px;padding:2px 10px}
+.dsum.ok{background:#2e7d32}
+.betchips{display:flex;gap:6px;flex-wrap:wrap}
+.betchips button{border:0;border-radius:50%;width:56px;height:56px;font:800 12px var(--f-body);color:#fff;cursor:pointer;box-shadow:inset 0 0 0 4px rgba(255,255,255,.6),0 3px 6px rgba(0,0,0,.4)}
+.betchips button[aria-pressed="true"]{outline:3px solid #ffd34d;outline-offset:2px}
+
+.card.reveal .ci{animation:sflip .55s ease both}@keyframes sflip{from{transform:rotateY(180deg)}to{transform:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>섯다 · 도리짓고땡<small>화투 20장(1~10월)으로 하는 두 가지 놀이. 컴퓨터와 가짜 돈으로만 해요. <span id="smoney" style="font-weight:700"></span></small></h1>
+    <div class="tabs" role="tablist"><button id="tab_seotda" role="tab">섯다</button><button id="tab_dori" role="tab">도리짓고땡</button><button id="tab_rules" role="tab">족보·하는 법</button></div>
+  </header>
+  <section id="seotda" class="grid">
+    <div class="boardcol"><div class="stable" id="stable"><div class="spot" id="spot"></div><div class="sbig" id="sbig"></div></div>
+      <div class="sbar" id="sbar"></div></div>
+    <div class="panel">
+      <div id="smsg" class="fb info"></div>
+      <div class="row"><button class="btn primary" id="snext" hidden>다음 판</button></div>
+      <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
+      <div class="levels" id="slevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
+      <div class="opts">
+        <label>인원 <select id="sPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
+        <label>판돈 <select id="sAnte"><option value="100">100원</option><option value="500">500원</option><option value="1000">1,000원</option></select></label>
+      </div>
+      <div class="tips"><strong>섯다 하는 법</strong><ul>
+        <li>모두 판돈을 내고 한 장씩 받아요. 첫 장을 보고 한 번, 두 번째 장을 받고 한 번 더 베팅해요.</li>
+        <li><b>다이</b> 포기 · <b>체크</b> 그냥 넘김 · <b>삥</b> 기본 판돈만큼 걸기 · <b>콜</b> 앞사람만큼 따라가기 · <b>하프</b> 판돈의 절반 더 · <b>따당</b> 앞사람이 올린 만큼의 2배 더</li>
+        <li>끝까지 남은 사람끼리 패를 펴서 족보가 높은 사람이 판돈을 다 가져가요. 족보는 위 탭에서 볼 수 있어요.</li>
+      </ul></div>
+    </div>
+  </section>
+  <section id="dori" class="grid" hidden>
+    <div class="boardcol"><div class="stable" id="dtable"><div class="spot" id="dpot"></div></div>
+      <div class="sbar"><button class="btn" id="dauto">자동 짓기</button><button class="btn call" id="dmake">짓기</button><button class="btn die" id="dnomade">노메이드</button></div></div>
+    <div class="panel">
+      <div id="dmsg" class="fb info"></div>
+      <div class="row"><button class="btn primary" id="dnext" hidden>다음 판</button></div>
+      <div class="eyebrow" style="margin:16px 0 6px">걸 돈 (다음 판부터)</div>
+      <div class="betchips" id="dBet"></div>
+      <div class="opts"><label>같이 하는 사람 <select id="dOthers"><option value="0">없음 (나와 선)</option><option value="1">1명</option><option value="2">2명</option></select></label></div>
+      <div class="tips"><strong>도리짓고땡 하는 법</strong><ul>
+        <li>5장을 받아서 <b>3장의 달 합이 10·20·30</b>이 되게 골라 '짓고', 남은 2장으로 선(물주)과 겨뤄요.</li>
+        <li>남은 2장이 같은 달이면 <b>땡</b>(장땡이 가장 셈), 아니면 두 장 합의 끝자리 <b>끗</b>(9끗 갑오 … 0 망통). 짓지 못하면 <b>노메이드</b>로 져요.</li>
+        <li>선보다 높으면 건 돈만큼 받고, <b>땡으로 이기면 2배</b>. 비기면 선이 이겨요. 카드를 눌러 3장을 고르거나 <b>자동 짓기</b>를 눌러 보세요.</li>
+      </ul></div>
+    </div>
+  </section>
+  <section id="rules" hidden>
+    <div class="panel">
+      <h2>섯다 족보 (높은 순)</h2>
+      <div class="jokbo" id="jokbo"></div>
+      <p class="sub" style="margin-top:12px">같은 족보끼리면 판돈을 나눠요. 멍텅구리구사(4·9월 열끗)는 가장 높은 패가 9땡 이하면 재경기예요.</p>
+      <div class="opts"><label><input type="checkbox" id="sLabels"> 카드에 달·종류 표시</label><label><input type="checkbox" id="sSound"> 소리</label></div>
+      <div class="sub" id="srec" style="margin-top:8px"></div>
+      <button class="linkbtn" id="sReset">돈·기록 처음으로</button>
+    </div>
+  </section>
+</div>
+<script>
+/* ===== 고스톱 규칙 (맞고 2명 / 3명) =====
+   2명: 10장씩, 바닥 8장, 7점부터 고/스톱.  3명: 7장씩, 바닥 6장, 3점부터 고/스톱.
+   화투 48장: 달(1~12) × 4장. 카드 번호 id = (달-1)*4 + 순서.
+   한 사람 10장, 바닥 8장, 더미 20장. 손에서 한 장 내고 더미에서 한 장 뒤집어 같은 달끼리 먹는다.
+   7점이 나면 고(계속) 또는 스톱(끝내기). */
+const GS=(()=>{
+const G='gwang',Y='yeol',T='tti',P='pi';
+// 달별 4장: [종류, 띠 종류 또는 특징]
+const TABLE={
+  1:[[G],[T,'hong'],[P],[P]],
+  2:[[Y,'bird'],[T,'hong'],[P],[P]],
+  3:[[G],[T,'hong'],[P],[P]],
+  4:[[Y,'bird'],[T,'cho'],[P],[P]],
+  5:[[Y],[T,'cho'],[P],[P]],
+  6:[[Y],[T,'cheong'],[P],[P]],
+  7:[[Y],[T,'cho'],[P],[P]],
+  8:[[G],[Y,'bird'],[P],[P]],
+  9:[[Y,'gukjin'],[T,'cheong'],[P],[P]],
+  10:[[Y],[T,'cheong'],[P],[P]],
+  11:[[G],[P,'ssang'],[P],[P]],
+  12:[[G,'bi'],[Y],[T,'bi'],[P,'ssang']]};
+const MONTH=['','송학','매조','벚꽃','흑싸리','난초','모란','홍싸리','공산','국진','단풍','오동','비'];
+const CARDS=[];
+for(let m=1;m<=12;m++)TABLE[m].forEach(([t,x],i)=>CARDS.push({id:(m-1)*4+i,m,t,x:x||null,pi:t===P?(x==='ssang'?2:1):0}));
+const monthOf=id=>(id>>2)+1;
+const TNAME={gwang:'광',yeol:'열끗',tti:'띠',pi:'피'};
+function cardName(id){const c=CARDS[id];
+  if(c.t===G)return `${c.m}월 ${c.x==='bi'?'비광':'광'}`;
+  if(c.t===Y)return `${c.m}월 열끗${c.x==='bird'?'(새)':c.x==='gukjin'?'(국진)':''}`;
+  if(c.t===T)return `${c.m}월 ${c.x==='hong'?'홍단':c.x==='cheong'?'청단':c.x==='cho'?'초단':''}띠`;
+  return `${c.m}월 ${c.pi===2?'쌍피':'피'}`;}
+
+/* ---------- 점수 ---------- */
+// 9월 국진은 열끗 또는 쌍피 중 유리한 쪽으로 센다
+function scoreOf(caps,opts={}){
+  const best=[false,true].map(gukAsPi=>scoreRaw(caps,gukAsPi)).sort((a,b)=>b.total-a.total)[0];
+  return best;
+}
+function scoreRaw(caps,gukAsPi){
+  const cs=caps.map(id=>CARDS[id]);
+  const gw=cs.filter(c=>c.t===G),hasBi=gw.some(c=>c.x==='bi');
+  let yeol=cs.filter(c=>c.t===Y),tti=cs.filter(c=>c.t===T);
+  let piN=cs.filter(c=>c.t===P).reduce((a,c)=>a+c.pi,0);
+  if(gukAsPi&&yeol.some(c=>c.x==='gukjin')){yeol=yeol.filter(c=>c.x!=='gukjin');piN+=2;}
+  const parts=[];let total=0;
+  const add=(name,pt)=>{if(pt>0){parts.push([name,pt]);total+=pt;}};
+  const g=gw.length;
+  add(g===5?'5광':g===4?'4광':g===3?(hasBi?'비 3광':'3광'):'',g===5?15:g===4?4:g===3?(hasBi?2:3):0);
+  const birds=yeol.filter(c=>c.x==='bird').length;
+  add('고도리',birds===3?5:0);
+  add(`열끗 ${yeol.length}장`,yeol.length>=5?yeol.length-4:0);
+  const hong=tti.filter(c=>c.x==='hong').length,cheong=tti.filter(c=>c.x==='cheong').length,cho=tti.filter(c=>c.x==='cho').length;
+  add('홍단',hong===3?3:0);add('청단',cheong===3?3:0);add('초단',cho===3?3:0);
+  add(`띠 ${tti.length}장`,tti.length>=5?tti.length-4:0);
+  add(`피 ${piN}장`,piN>=10?piN-9:0);
+  return{total,parts,gwang:g,yeol:yeol.length,tti:tti.length,pi:piN,piScore:piN>=10,gwangScore:g>=3,gukAsPi};
+}
+const piCount=caps=>scoreOf(caps).pi;
+
+/* ---------- 판 시작 ---------- */
+function shuffle(a,rnd=Math.random){for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function newRound(o={}){
+  const n=o.players===3?3:2,hn=n===3?7:10,fn=n===3?6:8;
+  for(let tries=0;tries<50;tries++){
+    const d=shuffle([...Array(48).keys()],o.rnd),A=k=>Array.from({length:n},()=>k());
+    const hands=Array.from({length:n},(_,i)=>d.slice(i*hn,(i+1)*hn));
+    const s={n,need:n===3?3:7,hands,floor:d.slice(n*hn,n*hn+fn),deck:d.slice(n*hn+fn),caps:A(()=>[]),
+      turn:o.first||0,go:A(()=>0),goScore:A(()=>0),mult:A(()=>1),shook:A(()=>[]),bombPass:A(()=>0),ppeok:{},nagari:o.nagari||1,
+      over:false,winner:-1,log:[],last:null};
+    // 바닥에 같은 달 4장이면 다시 섞기
+    const fm={};s.floor.forEach(id=>fm[monthOf(id)]=(fm[monthOf(id)]||0)+1);
+    if(Object.values(fm).some(n=>n===4))continue;
+    s.hands.forEach(h=>h.sort((a,b)=>a-b));
+    // 총통: 손에 같은 달 4장이면 바로 승리
+    for(let p=0;p<s.n;p++){const hm={};s.hands[p].forEach(id=>hm[monthOf(id)]=(hm[monthOf(id)]||0)+1);
+      const m=Object.keys(hm).find(k=>hm[k]===4);if(m){s.over=true;s.winner=p;s.chongtong=+m;s.final=settle(s,p);return s;}}
+    return s;
+  }
+  throw new Error('deal failed');
+}
+const clone=s=>JSON.parse(JSON.stringify(s));
+const sameMonth=(list,m)=>list.filter(id=>monthOf(id)===m);
+
+/* ---------- 내기 전에 고를 수 있는 것 ---------- */
+// 손패의 달별 장수
+function handMonths(s,p){const hm={};s.hands[p].forEach(id=>hm[monthOf(id)]=(hm[monthOf(id)]||0)+1);return hm;}
+// 낼 수 있는 수: {card} 보통, {card,bomb:true} 폭탄(같은 달 3장 + 바닥 1장), {flipOnly:true} 폭탄 뒤 뒤집기만
+function moves(s,p=s.turn){
+  const out=[],hm=handMonths(s,p);
+  for(const id of s.hands[p]){const m=monthOf(id),fl=sameMonth(s.floor,m).length;
+    if(hm[m]===3&&fl===1){if(!out.some(x=>x.bomb&&monthOf(x.card)===m))out.push({card:id,bomb:true});}
+    out.push({card:id,shake:hm[m]===3&&fl===0&&!s.shook[p].includes(m)});}
+  if(s.bombPass[p]>0)out.push({flipOnly:true});
+  return out;
+}
+
+/* ---------- 한 차례 진행 ----------
+   pick(choices,kind): 바닥에 같은 달이 2장일 때 무엇을 먹을지 고르는 함수 (사람은 화면에서, 컴퓨터는 판단으로)
+   결과: 이벤트 목록 (화면 연출용) */
+function playTurn(s,mv,pick){
+  const p=s.turn,ev=[],taken=[];let steal=0;
+  const take=ids=>{for(const id of ids){s.floor=s.floor.filter(x=>x!==id);taken.push(id);}};
+  let played=null,pend=null;   // pend: 손패로 1장 맞춘 것(뒤집은 패를 보고 확정)
+  if(mv.bomb){
+    const m=monthOf(mv.card),mine=sameMonth(s.hands[p],m);s.hands[p]=s.hands[p].filter(x=>monthOf(x)!==m);
+    ev.push({k:'bomb',p,cards:mine,m});take(sameMonth(s.floor,m));taken.push(...mine);steal++;s.mult[p]*=2;s.bombPass[p]+=2;s.shook[p].push(m);
+  }else if(mv.flipOnly){s.bombPass[p]--;ev.push({k:'pass',p});}
+  else{
+    played=mv.card;const m=monthOf(played);s.hands[p]=s.hands[p].filter(x=>x!==played);
+    if(mv.shake){s.mult[p]*=2;s.shook[p].push(m);ev.push({k:'shake',p,m,cards:sameMonth(s.hands[p],m).concat(played)});}
+    const fm=sameMonth(s.floor,m);ev.push({k:'play',p,card:played,match:fm.slice()});
+    if(fm.length===3){take(fm);taken.push(played);played=null;if(s.ppeok[m]!=null){steal+=s.ppeok[m]===p?2:1;ev.push({k:'ppeokEat',p,m});delete s.ppeok[m];}else ev.push({k:'four',p,m});}
+    else if(fm.length===2){pend={played,with:pick(fm,'play'),pair:fm};}
+    else if(fm.length===1){pend={played,with:fm[0]};}
+    if(fm.length!==3)s.floor.push(played);   // 일단 바닥에 놓음 (먹으면 아래에서 가져감). 4장 다 먹은 경우는 이미 가져감
+  }
+  // 뒤집기
+  if(s.deck.length){
+    const f=s.deck.shift(),fmn=monthOf(f);ev.push({k:'flip',p,card:f});
+    if(played!=null&&fmn===monthOf(played)){
+      const m=fmn;
+      if(!pend){take([played,f].filter(x=>x!==f));taken.push(f);steal++;ev.push({k:'jjok',p,m});}                 // 쪽
+      else if(pend.pair){take([played,...pend.pair]);taken.push(f);steal++;ev.push({k:'ttadak',p,m});pend=null;}  // 따닥
+      else{s.floor.push(f);s.ppeok[m]=p;ev.push({k:'ppeok',p,m});pend=null;}                                     // 뻑
+    }else{
+      const fm=sameMonth(s.floor,fmn).filter(x=>!pend||(x!==pend.played&&x!==pend.with));
+      if(fm.length===3){take(fm);taken.push(f);if(s.ppeok[fmn]!=null){steal+=s.ppeok[fmn]===p?2:1;ev.push({k:'ppeokEat',p,m:fmn});delete s.ppeok[fmn];}else ev.push({k:'four',p,m:fmn});}
+      else if(fm.length===2){const w=pick(fm,'flip');take([w]);taken.push(f);}
+      else if(fm.length===1){take(fm);taken.push(f);}
+      else s.floor.push(f);
+    }
+  }
+  if(pend){take([pend.played,pend.with]);}
+  // 쓸: 바닥을 다 쓸어감 (마지막 판은 제외)
+  if(taken.length&&!s.floor.length&&s.deck.length){steal++;ev.push({k:'sseul',p});}
+  s.caps[p].push(...taken);
+  for(let o=0;o<s.n;o++){if(o===p)continue;   // 쪽·따닥·쓸 등: 다른 사람 모두에게서 피를 받음
+    for(let i=0;i<steal;i++){const id=stealPi(s,o);if(id==null)break;s.caps[o]=s.caps[o].filter(x=>x!==id);s.caps[p].push(id);ev.push({k:'steal',p,from:o,card:id});}}
+  ev.push({k:'take',p,cards:taken});
+  s.last={p,taken,played};
+  return ev;
+}
+// 상대에게서 가져올 피: 그냥 피 먼저, 없으면 쌍피
+function stealPi(s,o){const pis=s.caps[o].filter(id=>CARDS[id].t===P).sort((a,b)=>CARDS[a].pi-CARDS[b].pi);return pis.length?pis[0]:null;}
+
+/* ---------- 차례 끝: 고/스톱 판단이 필요한지 ---------- */
+function afterTurn(s){
+  const p=s.turn,sc=scoreOf(s.caps[p]).total;
+  if(sc>=s.need&&sc>s.goScore[p]){
+    const canGo=s.hands[p].length>0||s.bombPass[p]>0;
+    if(!canGo){finish(s,p);return'stop';}
+    return'ask';}
+  return endOrNext(s);
+}
+function endOrNext(s){
+  const has=p=>s.hands[p].length||s.bombPass[p];
+  if(!s.hands.some((_,p)=>has(p))){s.over=true;s.winner=-1;s.nagariNext=s.nagari*2;return'nagari';}
+  for(let k=1;k<=s.n;k++){const q=(s.turn+k)%s.n;if(has(q)){s.turn=q;break;}}
+  return'next';
+}
+function declareGo(s){const p=s.turn;s.go[p]++;s.goScore[p]=scoreOf(s.caps[p]).total;s.log.push(`${p}:go${s.go[p]}`);return endOrNext(s);}
+function finish(s,p){s.over=true;s.winner=p;s.final=settle(s,p);}
+// 최종 점수: 기본 점수 + 고 점수, 배수(3고부터 2배씩, 흔들기·폭탄, 멍따, 광박, 피박, 나가리)
+function settle(s,p){
+  const me=scoreOf(s.caps[p]),losers=[...Array(s.n).keys()].filter(q=>q!==p);
+  if(s.chongtong){const t=10*s.nagari;return{base:10,go:0,mul:s.nagari,total:t*losers.length,notes:[`총통 (${s.chongtong}월 4장)`].concat(s.nagari>1?[`나가리 ×${s.nagari}`]:[]),parts:[],pay:losers.map(q=>({q,amt:t,notes:[]}))};}
+  const notes=[];let base=me.total,mul=1;const go=s.go[p];
+  if(go)notes.push(`${go}고 +${go}`);
+  if(go>=3){const k=2**(go-2);mul*=k;notes.push(`${go}고 ×${k}`);}
+  if(s.mult[p]>1){mul*=s.mult[p];notes.push(`흔들기·폭탄 ×${s.mult[p]}`);}
+  if(me.yeol>=7){mul*=2;notes.push('멍따(열끗 7장↑) ×2');}
+  if(s.nagari>1){mul*=s.nagari;notes.push(`나가리 ×${s.nagari}`);}
+  // 진 사람마다: 광박·피박
+  let pay=losers.map(q=>{const op=scoreOf(s.caps[q]),pn=[];let m=1;
+    if(me.gwangScore&&op.gwang===0){m*=2;pn.push('광박 ×2');}
+    if(me.piScore&&op.pi<(s.n===3?6:7)){m*=2;pn.push('피박 ×2');}
+    return{q,amt:(base+go)*mul*m,notes:pn};});
+  // 고박: 고를 불렀다가 진 사람이 진 사람들 몫을 혼자 냄 (3명일 때)
+  const goLoser=pay.find(x=>s.go[x.q]>0);
+  if(goLoser&&s.n>2){const sum=pay.reduce((a,x)=>a+x.amt,0);pay=pay.map(x=>({...x,amt:x.q===goLoser.q?sum:0,notes:x.q===goLoser.q?x.notes.concat('고박 (혼자 다 냄)'):x.notes.concat('고박으로 면제')}));}
+  const total=pay.reduce((a,x)=>a+x.amt,0);
+  return{base,go,mul,total,notes,parts:me.parts,pay};
+}
+
+/* ---------- 컴퓨터 ---------- */
+// 카드 하나의 가치: 내 점수에 얼마나 보탬이 되는지(가까워진 족보 포함)
+function capValue(caps,ids){
+  const before=potential(caps),after=potential(caps.concat(ids));return after-before;
+}
+function potential(caps){
+  const sc=scoreOf(caps),cs=caps.map(id=>CARDS[id]);
+  let v=sc.total*10;
+  const g=sc.gwang;v+=[0,2,6,0,0,0][g]||0;
+  const birds=cs.filter(c=>c.x==='bird').length;if(birds===2)v+=8;
+  for(const t of ['hong','cheong','cho']){const n=cs.filter(c=>c.x===t).length;if(n===2)v+=7;else if(n===1)v+=1;}
+  v+=Math.min(sc.yeol,4)*1.2+Math.min(sc.tti,4)*1.0+Math.min(sc.pi,9)*0.9;
+  return v;
+}
+// 다른 사람이 볼 수 없는 패(더미·상대 손)를 섞어서 시뮬레이션
+function determinize(s,p,rnd=Math.random){
+  const t=clone(s),others=[...Array(t.n).keys()].filter(q=>q!==p);
+  let unknown=shuffle(t.deck.concat(...others.map(q=>t.hands[q])),rnd);
+  for(const q of others){const k=t.hands[q].length;t.hands[q]=unknown.slice(0,k);unknown=unknown.slice(k);}t.deck=unknown;return t;
+}
+function greedyPick(s,p){return (list)=>list.slice().sort((a,b)=>capValue(s.caps[p],[b])-capValue(s.caps[p],[a]))[0];}
+// 한 수를 해 보고 얻는 점수 변화 (상대에게 준 피도 감안)
+function evalMove(s,mv,p,rnd){
+  const t=clone(s);t.turn=p;const others=[...Array(t.n).keys()].filter(q=>q!==p);
+  const before=potential(t.caps[p]),ob=others.map(q=>potential(t.caps[q]));
+  playTurn(t,mv,greedyPick(t,p));
+  let v=potential(t.caps[p])-before;others.forEach((q,i)=>v-=(potential(t.caps[q])-ob[i])*0.9);
+  // 바닥에 남긴 패를 다음 사람이 쉽게 먹을 수 있으면 감점
+  const nx=(p+1)%t.n,oh=t.hands[nx];for(const id of t.floor){if(oh.some(x=>monthOf(x)===monthOf(id)))v-=capValue(t.caps[nx],[id])*0.35;}
+  return v;
+}
+const LEVELS=[
+  {name:'신입',choose(s,p){let ms=moves(s,p).filter(m=>!m.flipOnly);if(!ms.length)ms=moves(s,p);return Math.random()<0.6?ms[Math.floor(Math.random()*ms.length)]:bestBy(s,p,ms,1);},go:(s,p)=>Math.random()<0.5},
+  {name:'초보',choose(s,p){return bestBy(s,p,moves(s,p),3);},go:(s,p)=>Math.max(...s.caps.map((c,q)=>q===p?0:scoreOf(c).total))<s.need-4&&s.deck.length>8},
+  {name:'중수',choose(s,p){return bestBy(s,p,moves(s,p),12);},go:goJudge},
+  {name:'고수',choose(s,p){return bestBy(s,p,moves(s,p),40);},go:goJudge}
+];
+function bestBy(s,p,ms,samples,simple){
+  let best=null,bv=-1e9;
+  for(const mv of ms){let v=0;
+    if(simple){const t=determinize(s,p);t.turn=p;const b=t.caps[p].length;playTurn(t,mv,greedyPick(t,p));v=t.caps[p].length-b;}
+    else for(let k=0;k<samples;k++)v+=evalMove(determinize(s,p),mv,p);
+    if(mv.shake)v+=samples*1.5;if(mv.bomb)v+=samples*6;
+    if(v>bv){bv=v;best=mv;}}
+  return best;
+}
+// 고 판단: 상대가 거의 못 냈고 패가 남아 있으면 고
+function goJudge(s,p){
+  const left=s.hands[p].length;if(left<=1)return false;
+  let danger=-9;for(let q=0;q<s.n;q++){if(q===p)continue;const os=scoreOf(s.caps[q]);danger=Math.max(danger,os.total+(os.pi>=8?1:0)+(os.gwang>=2?1:0)-(s.need-3));}
+  if(s.go[p]>=2&&danger>=0)return false;
+  return danger<=0&&left>=3;
+}
+return{CARDS,MONTH,TNAME,monthOf,cardName,scoreOf,piCount,newRound,clone,moves,playTurn,afterTurn,declareGo,finish,endOrNext,settle,
+  potential,capValue,greedyPick,LEVELS,handMonths,sameMonth};
+})();
+
+/* ===== 화투 그림 (SVG로 직접 그림) =====
+   실제 화투처럼: 굵은 검은 윤곽선, 그러데이션, 종이 질감, 카드 광택.
+   viewBox 0 0 60 92. 초보용으로 왼쪽 위에 달 숫자, 오른쪽 위에 종류 표시. */
+const HW=(()=>{
+const W=60,H=92,K='#151515';
+const sum=(...a)=>a.join('');
+const S=(sw=1)=>` stroke="${K}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"`;
+const circ=(x,y,r,f,sw=0)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${f}"${sw?S(sw):''}/>`;
+const ell=(x,y,rx,ry,f,rot=0,sw=0)=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${f}" transform="rotate(${rot} ${x} ${y})"${sw?S(sw):''}/>`;
+const path=(d,f,sw=0,col)=>`<path d="${d}" fill="${f}"${sw?(col?` stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"`:S(sw)):''}/>`;
+const line=(x1,y1,x2,y2,c,sw)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`;
+const rg=(id,c1,c2,cx=35,cy=30)=>`<radialGradient id="${id}" cx="${cx}%" cy="${cy}%" r="75%"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></radialGradient>`;
+const lg=(id,c1,c2,x2=0,y2=1)=>`<linearGradient id="${id}" x1="0" y1="0" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>`;
+// 공통 그러데이션 (카드마다 접두어를 붙여 겹치지 않게)
+function defs(p){return sum(rg(p+'red','#ff5a4e','#b5121b'),rg(p+'pink','#ffd6e2','#f07fa0'),rg(p+'grn','#58b06a','#1d5a2c'),rg(p+'dgr','#2f7a3f','#0f3519'),
+  rg(p+'yel','#fff0a0','#e8a316'),rg(p+'blu','#7fb4ec','#1f4f9a'),rg(p+'pur','#c7a3ef','#5b2f97'),rg(p+'brn','#c08a52','#5b3416'),rg(p+'blk','#555','#0d0d0d'),
+  rg(p+'moon','#fffdf3','#e9dcb6'),lg(p+'sky','#ff6b3d','#c8161d'),lg(p+'paper','#fbf6ea','#efe4cc',0.3,1),lg(p+'gloss','rgba(255,255,255,.55)','rgba(255,255,255,0)',0.6,0.7));}
+// 꽃 한 송이 (꽃잎 5장, 윤곽선)
+function blossom(x,y,r,fill,core,rot=0){let s='';for(let i=0;i<5;i++){const a=(rot+i*72)*Math.PI/180;s+=ell(x+Math.cos(a)*r*0.58,y+Math.sin(a)*r*0.58,r*0.5,r*0.42,fill,rot+i*72,0.6);}return s+circ(x,y,r*0.3,core,0.5);}
+// 솔잎 덩어리
+const pineClump=(x,y,r,p)=>sum(ell(x,y,r,r*0.6,`url(#${p}dgr)`,-8,1),ell(x-r*0.15,y-r*0.12,r*0.72,r*0.36,`url(#${p}grn)`,-8),
+  ...[-0.6,-0.3,0,0.3,0.6].map(t=>line(x+t*r,y-r*0.35,x+t*r*1.15,y+r*0.45,'#0c2a12',0.6)));
+const PLANT={
+  1:p=>sum(path('M24 92 C22 74 30 64 25 46 C23 38 28 30 32 26 L36 28 C32 34 29 40 31 48 C35 64 28 76 31 92 Z',`url(#${p}brn)`,1),
+    pineClump(18,40,13,p),pineClump(40,30,14,p),pineClump(28,20,10,p),pineClump(44,52,11,p),pineClump(14,62,10,p)),
+  2:p=>sum(path('M2 90 C14 76 22 58 36 46 C44 38 50 26 56 10 L58 12 C52 30 46 42 38 50 C26 62 18 78 6 92 Z',`url(#${p}brn)`,1),path('M20 64 C12 56 10 48 8 40 L10 39 C13 47 16 54 23 61 Z',`url(#${p}brn)`,0.8),
+    ...[[40,40],[50,22],[30,52],[10,40],[22,66],[46,30],[14,80],[54,46]].map(([x,y],i)=>blossom(x,y,6.2,i%2?`url(#${p}red)`:'#f2566a','#ffe08a',i*23))),
+  3:p=>sum(...[[14,22],[30,14],[46,24],[22,36],[40,40],[12,52],[48,54],[28,58],[18,72],[42,72],[30,84]].map(([x,y],i)=>blossom(x,y,7,`url(#${p}pink)`,'#e6476b',i*13))),
+  4:p=>sum(...[8,20,32,44,54].map((x,i)=>sum(path(`M${x} 0 C${x+4} 18 ${x-4} 30 ${x+2} ${44+i*4}`,'none',2.2,'#111'),
+    ...[0,1,2,3,4,5].map(k=>ell(x+(k%2?2.2:-2.2),8+k*7+i*2,2.8,4.2,`url(#${p}blk)`,k%2?22:-22,0.4))))),
+  5:p=>sum(...[10,18,26,36,46,52].map((x,i)=>path(`M${x} 92 C${x+(i%2?8:-8)} 70 ${x+(i%2?-4:6)} 50 ${x+(i%2?10:-6)} ${30+i*3} L${x+(i%2?11:-5)} ${31+i*3} C${x+(i%2?-2:8)} 52 ${x+(i%2?10:-6)} 72 ${x+2} 92 Z`,`url(#${p}grn)`,0.6)),
+    ...[[18,40],[40,30],[30,54]].map(([x,y])=>sum(ell(x,y,5.4,9,`url(#${p}pur)`,-22,0.8),ell(x+5,y+2,5.4,8.5,`url(#${p}pur)`,26,0.8),ell(x+2,y+5,2.6,3.2,'#f5d061',0,0.5)))),
+  6:p=>sum(...[[16,30],[42,52],[20,72]].map(([x,y])=>sum(ell(x-10,y+9,10,4.5,`url(#${p}grn)`,-30,0.8),ell(x+10,y+9,10,4.5,`url(#${p}grn)`,30,0.8),
+    circ(x,y,13.5,`url(#${p}red)`,1.1),...[0,1,2,3,4,5].map(k=>{const a=k*60*Math.PI/180;return path(`M${x} ${y} Q${x+Math.cos(a)*12} ${y+Math.sin(a)*12} ${x+Math.cos(a+0.9)*9} ${y+Math.sin(a+0.9)*9}`,'none',0.7,'#7a0a12');}),circ(x,y,3,'#ffe08a',0.6)))),
+  7:p=>sum(...[0,1,2,3].map(i=>path(`M${6+i*14} 92 C${2+i*14} 64 ${24+i*10} 40 ${14+i*12} ${10+i*6}`,'none',1.8,'#5a2a12')),
+    ...Array.from({length:30},(_,k)=>ell(8+(k*13)%46,10+(k*29)%76,2.6,1.7,k%3?`url(#${p}red)`:'#f07a96',(k*40)%180,0.4)),
+    ...Array.from({length:10},(_,k)=>ell(12+(k*17)%40,18+(k*31)%60,3.2,1.4,`url(#${p}grn)`,(k*50)%180,0.4))),
+  8:p=>sum(path('M-2 62 C10 50 22 50 31 57 C40 48 52 46 62 54 L62 94 L-2 94 Z',`url(#${p}blk)`,1),
+    ...[5,12,19,26,33,40,47,54].map((x,i)=>path(`M${x} 66 C${x+2} 56 ${x-1} 48 ${x+3} ${40+i%3*4}`,'none',1.1,'#f8f3e6'))),
+  9:p=>sum(path('M8 92 C12 70 20 60 18 44','none',2.6,'#245a22'),path('M44 92 C40 74 46 60 42 50','none',2.6,'#245a22'),
+    ...[[12,74],[46,66]].map(([x,y])=>sum(ell(x,y,6,3,`url(#${p}grn)`,-30,0.6),ell(x+6,y+6,6,3,`url(#${p}grn)`,30,0.6))),
+    ...[[18,42],[42,48],[30,26],[12,62],[48,76]].map(([x,y])=>{let s='';for(let k=0;k<14;k++){const a=k*(360/14)*Math.PI/180;s+=ell(x+Math.cos(a)*5.2,y+Math.sin(a)*5.2,4.8,1.9,`url(#${p}yel)`,k*(360/14),0.35);}return s+circ(x,y,3.2,'#c46a12',0.5);})),
+  10:p=>sum(path('M28 92 C24 70 34 56 28 30 L31 30 C37 56 27 70 31 92 Z',`url(#${p}brn)`,0.8),
+    ...[[16,24],[40,18],[28,44],[46,50],[12,58],[36,72],[20,82],[50,32]].map(([x,y],i)=>{let s='';for(let k=0;k<5;k++){const a=(k*72-90+i*9)*Math.PI/180;
+      s+=path(`M${x} ${y} L${x+Math.cos(a-0.28)*4.5} ${y+Math.sin(a-0.28)*4.5} L${x+Math.cos(a)*10} ${y+Math.sin(a)*10} L${x+Math.cos(a+0.28)*4.5} ${y+Math.sin(a+0.28)*4.5} Z`,i%2?`url(#${p}red)`:'#f26b2a',0.5);}return s;})),
+  11:(p,v)=>sum(...[[16,66],[43,72],[30,46]].map(([x,y])=>sum(path(`M${x} ${y-15} C${x+15} ${y-13} ${x+15} ${y+8} ${x} ${y+13} C${x-15} ${y+8} ${x-15} ${y-13} ${x} ${y-15} Z`,`url(#${p}blk)`,1),line(x,y-13,x,y+12,'#4a4a4a',0.9),
+    line(x,y-2,x+8,y-8,'#4a4a4a',0.6),line(x,y-2,x-8,y-8,'#4a4a4a',0.6))),
+    v==='y'?sum(...[[14,22],[28,16],[44,24]].map(([x,y])=>sum(circ(x,y,4,`url(#${p}yel)`,0.6),circ(x,y,1.6,'#e0742a')))):''),
+  12:p=>sum(...[6,16,26,36,46,54].map((x,i)=>path(`M${x} 0 C${x+4} 24 ${x-2} 40 ${x+(i%2?6:-4)} ${60+i%3*8}`,'none',1.6,'#1f5e24')),
+    ...Array.from({length:16},(_,k)=>ell(8+(k*17)%46,12+(k*23)%62,1.5,4.8,`url(#${p}grn)`,(k*37)%60-30,0.35)))
+};
+// 광·열끗·쌍피 특징 그림
+const SPECIAL={
+  '1g':p=>sum(circ(42,20,13,`url(#${p}red)`,1.2),path('M10 72 C14 58 22 50 30 52 C33 44 40 43 45 48 L39 55 C34 61 28 67 21 73 Z','#fbf8f1',1.1),
+    path('M21 60 C25 58 30 58 33 61','none',0.8),path('M30 52 C32 40 30 32 34 25 L36 26 C33 33 35 41 33 52 Z','#fbf8f1',1),circ(35,24,2.6,`url(#${p}red)`,0.6),path('M37 24 L44 22 L37 26 Z','#d9b25b',0.6),
+    line(21,73,17,87,K,1.4),line(25,71,23,87,K,1.4)),
+  '2y':p=>sum(ell(30,40,9.5,6.4,'#86a62e',-10,1),path('M22 40 C26 36 32 35 37 38','none',0.7),circ(37,34.5,4.8,'#a6c63a',1),path('M41.5 34 L47 35.5 L41.5 37 Z','#3a2a10',0.6),circ(38.6,33.6,1,'#111'),path('M21 41 L9 47 L22 45 Z','#55701b',0.9)),
+  '3g':p=>sum(path('M2 44 L58 44 L58 80 L2 80 Z','#f7efe0',1.1),...[0,1,2,3,4,5].map(i=>path(`M${2+i*9.4} 44 L${11.4+i*9.4} 44 L${11.4+i*9.4} 80 L${2+i*9.4} 80 Z`,i%2?`url(#${p}red)`:'#f7efe0',0.5)),
+    path('M2 44 C20 52 40 52 58 44','none',1.6),...[12,30,48].map(x=>circ(x,49,2.2,'#d9b25b',0.6)),circ(48,16,9,`url(#${p}red)`,1)),
+  '4y':p=>sum(path('M40 18 A11 11 0 1 0 51 32 A9 9 0 1 1 40 18 Z',`url(#${p}yel)`,0.8),path('M12 60 C20 52 30 50 40 54 L49 50 L45 58 C36 64 24 66 12 60 Z',`url(#${p}blk)`,1),path('M28 54 C30 44 38 40 47 42 C41 46 37 50 35 56 Z','#5a5a5a',0.8),circ(43,56,1.1,'#fff')),
+  '5y':p=>sum(path('M0 58 L60 45 L60 54 L0 67 Z',`url(#${p}brn)`,1),path('M0 72 L60 59 L60 68 L0 81 Z',`url(#${p}brn)`,1),...[10,24,38,52].map(x=>line(x,64-x*0.21,x,92,'#3a2210',1.6))),
+  '6y':p=>sum(ell(21,18,7.5,4.8,`url(#${p}yel)`,-30,0.8),ell(21,24.5,5.2,3.6,'#f0a33a',30,0.8),line(22,16,24,27,K,1),line(23,15,20,11,K,0.6),
+    ell(44,36,6.5,4.2,`url(#${p}blu)`,-25,0.8),ell(44,41.5,4.6,3.1,'#4d8fc4',25,0.8),line(45,34,47,44,K,1)),
+  '7y':p=>sum(path('M6 72 C8 58 20 51 34 53 C45 53 53 60 55 70 L53 77 L47 73 L41 79 L34 75 L22 79 L16 73 L9 79 Z',`url(#${p}brn)`,1.1),
+    path('M18 58 C24 55 30 56 36 58','none',0.7),circ(48,62,1.5,'#111'),path('M53 66 L59 68 L53 71 Z','#efe2c8',0.7)),
+  '8g':p=>sum(`<rect x="0" y="0" width="60" height="62" fill="url(#${p}sky)"/>`,circ(30,30,18,`url(#${p}moon)`,1.2)),
+  '8y':p=>sum(...[[14,18],[30,11],[45,21]].map(([x,y])=>path(`M${x-9} ${y+3} Q${x-4} ${y-1} ${x} ${y} Q${x+4} ${y-1} ${x+9} ${y+3} Q${x+4} ${y+1.5} ${x} ${y+1.6} Q${x-4} ${y+1.5} ${x-9} ${y+3} Z`,'#1a1a1a',0.5))),
+  '9y':p=>sum(path('M13 50 L47 50 C47 67 40 75 30 75 C20 75 13 67 13 50 Z',`url(#${p}red)`,1.2),ell(30,50,17,4.2,'#f06a5c',0,1),
+    '<text x="30" y="67" font-size="11" text-anchor="middle" fill="#ffe08a" font-weight="900" font-family="serif" stroke="#7a1010" stroke-width=".4">壽</text>',path('M23 75 L37 75 L39 81 L21 81 Z','#7a1010',0.9)),
+  '10y':p=>sum(path('M15 77 L17 58 C13 52 17 45 26 45 L40 45 C46 43 51 47 49 54 L47 58 L47 77 L43 77 L43 63 L24 63 L22 77 Z',`url(#${p}brn)`,1.1),
+    path('M44 45 L46 34 M47 37 L51 33 M48 45 L53 37','none',1.4,'#5a3414'),circ(46,50,1.2,'#111'),...[24,30,36,28].map((x,i)=>circ(x,51+(i===3?5:0),1.5,'#f6ead3'))),
+  '11g':p=>sum(path('M30 30 C41 24 51 30 49 41 C47 51 34 55 28 51 C20 47 22 34 30 30 Z',`url(#${p}blu)`,1.1),path('M30 30 C28 19 34 13 41 15 C39 20 37 24 37 29 Z',`url(#${p}red)`,1),circ(36.5,21.5,1.4,'#111'),
+    ...[0,1,2,3,4].map(i=>path(`M30 51 C${20+i*4} 63 ${14+i*7} 75 ${10+i*9} 88`,'none',2.6,['#f5c518','#d8262f','#2f9d55','#2f7ab5','#f0a33a'][i]))),
+  '12g':p=>sum(path('M8 40 C20 24 40 24 52 40 Z',`url(#${p}red)`,1.1),...[16,30,44].map(x=>line(30,30,x,40,'#7a1010',0.6)),line(30,40,30,60,'#3a2a10',1.6),
+    path('M23 45 C19 51 21 62 27 66 L35 66 C39 62 41 51 37 45 Z','#efe8d6',1),circ(30,44,4.2,'#f1d3b8',0.9),path('M26 41 C28 38 32 38 34 41','none',1.2,'#222'),
+    path('M40 72 C44 67 51 67 53 72 C51 76 44 76 40 72 Z','#5aa83a',0.9),circ(49,70,0.8,'#111'),...[[8,16],[18,9],[44,10],[53,22],[6,34]].map(([x,y])=>line(x,y,x-3,y+9,'#7aa7d8',1.1))),
+  '12y':p=>sum(path('M7 40 L26 35 L37 28 L31 38 L50 40 L31 45 L37 54 L26 45 Z','#1b2c50',1),circ(30,38.5,2.3,`url(#${p}red)`,0.5)),
+  '12p':p=>sum(`<rect x="0" y="40" width="60" height="24" fill="url(#${p}blk)"/>`,path('M9 44 L22 44 L16 52 L26 52 L11 63 L16 54 L8 54 Z','#ffd34d',0.8),...[35,44,53].map(x=>circ(x,52,4.2,`url(#${p}red)`,0.8)))
+};
+function ribbon(kind,p){
+  const col=kind==='cheong'?`url(#${p}blu)`:`url(#${p}red)`,txt=kind==='hong'?'홍단':kind==='cheong'?'청단':'';
+  return sum(path('M19 29 L41 29 L42 78 L30 71 L18 78 Z',col,1.1),line(21,33,39,33,'rgba(255,255,255,.35)',1),
+    txt?`<text x="30" y="46" font-size="8" text-anchor="middle" fill="#fff" font-weight="900" font-family="sans-serif">${txt[0]}</text><text x="30" y="57" font-size="8" text-anchor="middle" fill="#fff" font-weight="900" font-family="sans-serif">${txt[1]}</text>`:'');
+}
+const KIND_TAG={gwang:['광','#d8262f'],yeol:['열','#2f7ab5'],tti:['띠','#7b3fa0'],pi:['피','#6b6b6b']};
+function face(id,o={}){
+  const c=GS.CARDS[id],m=c.m,p='h'+id+'_';
+  let art=c.t==='pi'&&c.x==='ssang'&&m===11?PLANT[11](p,'y'):PLANT[m](p);
+  if(c.t==='pi'&&c.x==='ssang'&&m===12)art+=SPECIAL['12p'](p);
+  if(c.t==='gwang')art+=SPECIAL[m+'g'](p);
+  if(c.t==='yeol')art+=SPECIAL[m+'y'](p);
+  if(c.t==='tti')art+=ribbon(c.x,p);
+  const bg=m===8&&c.t!=='gwang'?`url(#${p}sky)`:`url(#${p}paper)`;
+  let marks='';
+  if(c.t==='gwang')marks+=circ(50,82,7.2,'#fff',1)+`<circle cx="50" cy="82" r="5.6" fill="none" stroke="#d8262f" stroke-width="1"/><text x="50" y="85.5" font-size="8.5" text-anchor="middle" fill="#d8262f" font-weight="900" font-family="serif">光</text>`;
+  if(o.labels!==false){
+    marks+=`<rect x="2.5" y="2.5" width="12" height="11" rx="3" fill="rgba(255,255,255,.92)" stroke="rgba(0,0,0,.25)" stroke-width=".5"/><text x="8.5" y="11" font-size="8.5" text-anchor="middle" fill="#1b1b1b" font-weight="900" font-family="sans-serif">${m}</text>`;
+    const [t,col]=KIND_TAG[c.t];const lab=c.pi===2?'쌍피':c.x==='gukjin'?'열/피':t,w=lab.length>1?20:12;
+    marks+=`<rect x="${W-2.5-w}" y="2.5" width="${w}" height="11" rx="3" fill="${col}"/><text x="${W-2.5-w/2}" y="11" font-size="7.5" text-anchor="middle" fill="#fff" font-weight="900" font-family="sans-serif">${lab}</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs>${defs(p)}<clipPath id="${p}c"><rect x="3" y="3" width="54" height="86" rx="4.5"/></clipPath></defs>
+    <rect x="0.4" y="0.4" width="59.2" height="91.2" rx="6.5" fill="#101010"/><rect x="3" y="3" width="54" height="86" rx="4.5" fill="${bg}"/>
+    <g clip-path="url(#${p}c)">${art}<rect x="3" y="3" width="54" height="86" fill="url(#${p}gloss)" opacity=".55"/></g>
+    <rect x="3" y="3" width="54" height="86" rx="4.5" fill="none" stroke="rgba(0,0,0,.35)" stroke-width=".6"/>${marks}</svg>`;
+}
+function back(){return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="bk" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#e3333b"/><stop offset="1" stop-color="#8e0c13"/></radialGradient>
+  <pattern id="bkp" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 3 L3 0 L6 3 L3 6 Z" fill="rgba(255,255,255,.07)"/></pattern></defs>
+  <rect x="0.4" y="0.4" width="59.2" height="91.2" rx="6.5" fill="#5e070c"/><rect x="3" y="3" width="54" height="86" rx="4.5" fill="url(#bk)"/><rect x="3" y="3" width="54" height="86" rx="4.5" fill="url(#bkp)"/>
+  <rect x="7" y="7" width="46" height="78" rx="3" fill="none" stroke="rgba(255,220,180,.45)" stroke-width="1"/><circle cx="30" cy="46" r="10" fill="none" stroke="rgba(255,220,180,.5)" stroke-width="1.2"/><circle cx="30" cy="46" r="5" fill="rgba(255,220,180,.25)"/></svg>`;}
+const cache={};
+return{face:(id,o)=>{const k=id+(o&&o.labels===false?'n':'');return cache[k]||(cache[k]=face(id,o));},back:()=>cache.b||(cache.b=back()),W,H};
+})();
+
+/* ===== 섯다 · 도리짓고땡 규칙 =====
+   패: 1~10월 화투 2장씩, 모두 20장. 달마다 '특별한 패'(1·3·8월은 광, 나머지는 열끗)와 '보통 패'(피).
+   카드 번호는 고스톱과 같은 id를 써서 같은 그림을 쓴다: 특별 = (달-1)*4, 보통 = (달-1)*4+2 */
+const SD=(()=>{
+const DECK=[];for(let m=1;m<=10;m++){DECK.push((m-1)*4,(m-1)*4+2);}
+const mon=id=>(id>>2)+1, special=id=>id%4===0;
+const isGwang=id=>special(id)&&[1,3,8].includes(mon(id));
+function shuffle(a,rnd=Math.random){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+/* ---------- 섯다 족보 ----------
+   v: 높을수록 셈. kind: 이름. 특수패(땡잡이·암행어사·구사)는 정산 때 따로 처리 */
+const NAMED={'1-2':['알리',90],'1-4':['독사',80],'1-9':['구삥',70],'1-10':['장삥',60],'4-10':['장사',50],'4-6':['세륙',40]};
+function seotdaHand(a,b){
+  const ma=mon(a),mb=mon(b),lo=Math.min(ma,mb),hi=Math.max(ma,mb);
+  if(isGwang(a)&&isGwang(b)){if(lo===3&&hi===8)return{v:1000,name:'38광땡'};return{v:900,name:`${lo}${hi}광땡`};}
+  if(ma===mb)return{v:100+ma*10,name:ma===10?'장땡':`${ma}땡`,ttaeng:ma};
+  const key=`${lo}-${hi}`;
+  const h={v:0,name:''};
+  if(NAMED[key]){h.v=NAMED[key][1];h.name=NAMED[key][0];}
+  else{const k=(ma+mb)%10;h.v=k;h.name=k===9?'갑오':k===0?'망통':`${k}끗`;}
+  if(lo===3&&hi===7)h.ttaengjabi=true;
+  if(lo===4&&hi===7&&special(a)&&special(b))h.amhaeng=true;
+  if(lo===4&&hi===9){if(special(a)&&special(b))h.mungGusa=true;else h.gusa=true;}
+  if(h.ttaengjabi)h.name='땡잡이';if(h.amhaeng)h.name='암행어사';if(h.mungGusa)h.name='멍텅구리구사';else if(h.gusa)h.name='구사';
+  return h;
+}
+// 이긴 사람 정하기: hands = [{p, h}] (다이하지 않은 사람). 결과 {winners:[p], rematch:bool, reason}
+function seotdaShowdown(hands){
+  const best=hands.reduce((a,x)=>x.h.v>a.h.v?x:a,hands[0]);
+  // 재경기: 구사는 가장 높은 패가 알리 이하일 때, 멍텅구리구사는 9땡 이하일 때
+  const others=x=>hands.filter(y=>y!==x);
+  for(const x of hands){const top=Math.max(...others(x).map(y=>y.h.v),-1);
+    if(x.h.mungGusa&&top<=190)return{winners:[],rematch:true,reason:`멍텅구리구사(${x.p})가 나와서 다시 해요`};
+    if(x.h.gusa&&top<=90)return{winners:[],rematch:true,reason:`구사(${x.p})가 나와서 다시 해요`};}
+  // 땡잡이: 1~9땡을 잡음 / 암행어사: 13·18광땡을 잡음
+  const tj=hands.find(x=>x.h.ttaengjabi);if(tj&&best.h.v>=110&&best.h.v<=190)return{winners:[tj.p],reason:'땡잡이가 땡을 잡았어요'};
+  const ah=hands.find(x=>x.h.amhaeng);if(ah&&best.h.v===900)return{winners:[ah.p],reason:'암행어사가 광땡을 잡았어요'};
+  const top=Math.max(...hands.map(x=>x.h.v));const w=hands.filter(x=>x.h.v===top).map(x=>x.p);
+  return{winners:w,reason:w.length>1?'같은 패라 판돈을 나눠요':''};
+}
+// 패 세기를 0~1로 (모든 짝 중 몇 %보다 센지) — 컴퓨터 베팅용
+const ALLPAIRS=[];for(let i=0;i<20;i++)for(let j=i+1;j<20;j++)ALLPAIRS.push(seotdaHand(DECK[i],DECK[j]).v);ALLPAIRS.sort((a,b)=>a-b);
+function strength2(a,b){const v=seotdaHand(a,b).v;let lo=0;while(lo<ALLPAIRS.length&&ALLPAIRS[lo]<v)lo++;return lo/ALLPAIRS.length;}
+// 첫 장만 보고: 그 장으로 나올 수 있는 모든 짝의 평균 세기
+function strength1(a){let s=0,n=0;for(const b of DECK){if(b===a)continue;s+=strength2(a,b);n++;}return s/n;}
+
+/* ---------- 섯다 판 ---------- */
+// 베팅: 기본 판돈(ante)을 모두 내고 시작. 한 바퀴마다 다이·체크·삥·콜·하프·따당
+function newSeotda(o){
+  const n=o.players,deck=shuffle(DECK);
+  return{n,deck,hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),pot:o.ante*n,ante:o.ante,
+    round:0,cur:0,toCall:0,lastRaise:0,acted:Array(n).fill(false),raises:0,dealer:o.dealer||0,turn:(o.dealer||0)%n,over:false,log:[]};
+}
+function dealRound(s){for(let k=0;k<s.n;k++){const p=(s.dealer+k)%s.n;if(!s.folded[p])s.hands[p].push(s.deck.shift());}
+  s.round++;s.bet=Array(s.n).fill(0);s.toCall=0;s.lastRaise=0;s.acted=Array(s.n).fill(false);s.raises=0;s.turn=nextActive(s,s.dealer-1);}
+function nextActive(s,from){for(let k=1;k<=s.n;k++){const q=((from+k)%s.n+s.n)%s.n;if(!s.folded[q])return q;}return -1;}
+const alive=s=>s.folded.map((f,i)=>f?-1:i).filter(i=>i>=0);
+// 지금 사람이 할 수 있는 행동과 그 금액
+function actions(s){
+  const p=s.turn,need=s.toCall-s.bet[p],out=[{k:'die',amt:0,name:'다이'}];
+  if(need<=0)out.push({k:'check',amt:0,name:'체크'});else out.push({k:'call',amt:need,name:'콜'});
+  if(s.raises<3){
+    if(s.toCall===0)out.push({k:'bbing',amt:s.ante,name:'삥'});
+    const half=Math.max(s.ante,Math.round((s.pot+need)/2/100)*100);out.push({k:'half',amt:need+half,raise:half,name:'하프'});
+    if(s.lastRaise>0)out.push({k:'ddadang',amt:need+s.lastRaise*2,raise:s.lastRaise*2,name:'따당'});
+  }
+  return out;
+}
+function act(s,a){
+  const p=s.turn;s.acted[p]=true;
+  if(a.k==='die'){s.folded[p]=true;}
+  else{s.bet[p]+=a.amt;s.pot+=a.amt;
+    if(a.k==='bbing'){s.toCall=s.bet[p];s.lastRaise=a.amt;s.raises++;s.acted=s.acted.map((x,i)=>i===p);}
+    if(a.raise){s.toCall=s.bet[p];s.lastRaise=a.raise;s.raises++;s.acted=s.acted.map((x,i)=>i===p);}}
+  s.log.push({p,k:a.k,amt:a.amt});
+  const al=alive(s);
+  if(al.length===1){s.over=true;s.result={winners:al,reason:'다른 사람이 모두 다이했어요'};return'end';}
+  const done=al.every(q=>s.acted[q]&&s.bet[q]===s.toCall);
+  if(done)return s.round<2?'deal':'show';
+  s.turn=nextActive(s,p);return'next';
+}
+function showdown(s){
+  const hands=alive(s).map(p=>({p,h:seotdaHand(s.hands[p][0],s.hands[p][1])}));
+  s.result=seotdaShowdown(hands);s.result.hands=hands;s.over=true;return s.result;
+}
+// 컴퓨터: 패 세기 + 성격(등급)으로 결정
+const SLV=[
+  {name:'신입',bluff:0.25,tight:-0.15,rnd:0.35},
+  {name:'초보',bluff:0.12,tight:0,rnd:0.2},
+  {name:'중수',bluff:0.08,tight:0.05,rnd:0.1},
+  {name:'고수',bluff:0.1,tight:0.08,rnd:0.05}];
+function aiAct(s,lv){
+  const p=s.turn,h=s.hands[p],L=SLV[lv];
+  let st=h.length>=2?strength2(h[0],h[1]):strength1(h[0]);
+  if(h.length>=2){const x=seotdaHand(h[0],h[1]);if(x.ttaengjabi||x.amhaeng)st=Math.max(st,0.55);if(x.gusa||x.mungGusa)st=Math.max(st,0.5);}
+  st+= (Math.random()-0.5)*L.rnd;
+  const acts=actions(s),get=k=>acts.find(a=>a.k===k);
+  const need=s.toCall-s.bet[p],potOdds=need/(s.pot+need||1),nAlive=alive(s).length;
+  const thr=0.35+L.tight+(nAlive-2)*0.05;   // 사람이 많을수록 더 센 패가 필요
+  if(Math.random()<L.bluff&&get('half'))return get('half');
+  if(st>0.85&&get('ddadang'))return get('ddadang');
+  if(st>0.72&&get('half'))return get('half');
+  if(st>0.6&&get('bbing'))return get('bbing');
+  if(need<=0)return get('check');
+  if(st>thr+potOdds*0.6)return get('call');
+  return get('die');
+}
+
+/* ---------- 도리짓고땡 ----------
+   5장 중 3장의 달 합이 10·20·30이면 '짓기'. 남은 2장으로 땡(같은 달) 또는 끗(합의 끝자리)을 겨룸.
+   짓지 못하면 '노메이드'(가장 약함). 선(물주)과 한 사람씩 겨루고, 비기면 선이 이김. */
+function doriBest(cards){
+  let best=null;
+  for(let i=0;i<5;i++)for(let j=i+1;j<5;j++)for(let k=j+1;k<5;k++){
+    const three=[cards[i],cards[j],cards[k]],sum=three.reduce((a,c)=>a+mon(c),0);if(sum%10)continue;
+    const two=cards.filter(c=>!three.includes(c)),h=doriHand(two);
+    if(!best||h.v>best.h.v)best={three,two,h};}
+  return best||{three:[],two:[],h:{v:-1,name:'노메이드'}};
+}
+function doriHand(two){const a=mon(two[0]),b=mon(two[1]);if(a===b)return{v:100+a*10,name:a===10?'장땡':`${a}땡`};const k=(a+b)%10;return{v:k,name:k===9?'갑오':k===0?'망통':`${k}끗`};}
+function checkThree(three){return three.length===3&&three.reduce((a,c)=>a+mon(c),0)%10===0;}
+function newDori(o){const deck=shuffle(DECK),n=o.players;   // 0번이 나, n-1번이 선(물주)
+  return{n,deck,hands:Array.from({length:n},(_,i)=>deck.slice(i*5,i*5+5)),bets:o.bets.slice()};}
+return{DECK,mon,special,isGwang,seotdaHand,seotdaShowdown,strength1,strength2,newSeotda,dealRound,actions,act,showdown,alive,aiAct,SLV,
+  doriBest,doriHand,checkThree,newDori,shuffle};
+})();
+
+/* ===== 섯다 · 도리짓고땡 화면 ===== */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const store={get(k,d){try{const v=localStorage.getItem('seotda-'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem('seotda-'+k,JSON.stringify(v));}catch(e){}}};
+const won=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
+const {mon}=SD;
+let showLabels=store.get('labels',true),seq=0;
+const face=(id)=>{const t='s'+(++seq)+'_';return HW.face(id,{labels:showLabels}).split(`h${id}_`).join(`${t}h${id}_`);};
+const SND={ctx:null,on:store.get('sound',true),
+  tick(f=900,v=.2,d=.06){if(!this.on)return;try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    const c=this.ctx,now=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(v,now);g.gain.exponentialRampToValueAtTime(0.0001,now+d);o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+d+0.02);},
+  card(){this.tick(1400,.15,.05);},chip(){this.tick(2200,.12,.04);setTimeout(()=>this.tick(2600,.08,.04),40);},win(){[660,880,1320].forEach((f,i)=>setTimeout(()=>this.tick(f,.18,.25),i*110));}};
+const AVC=['#ffb74d','#64b5f6','#81c784','#ba68c8','#4db6ac','#e57373'];
+const avatar=q=>`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="${AVC[q%AVC.length]}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
+const cardHtml=(id,o={})=>`<div class="card${o.down?' down':''}${o.deal?' deal':''}${o.pick?' pick':''}${o.chosen?' chosen':''}${o.reveal?' reveal':''}" data-id="${id}" style="${o.delay?`animation-delay:${o.delay}ms;`:''}"><div class="ci"><div class="cf">${face(id)}</div><div class="cb">${HW.back()}</div></div></div>`;
+const chipsHtml=amt=>{const cols=[['#c62828',10000],['#1565c0',5000],['#2e7d32',1000],['#f9a825',100]];let left=amt,h='';
+  for(const [c,v] of cols){const n=Math.min(8,Math.floor(left/v));left-=n*v;if(n)h+=`<span class="chipstack" style="--c:${c}">${'<i></i>'.repeat(n)}</span>`;}return h||'<span class="chipstack" style="--c:#f9a825"><i></i></span>';};
+function bigText(t){const b=$('sbig');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),1200);}
+let money=store.get('money',100000),rec=store.get('rec',{sw:0,sl:0,dw:0,dl:0});
+function saveMoney(){store.set('money',money);$('smoney').textContent=won(money);}
+const SEATS={2:[[50,74],[50,18]],3:[[50,74],[17,32],[83,32]],4:[[50,75],[13,47],[50,16],[87,47]],5:[[50,75],[12,52],[26,16],[74,16],[88,52]]};
+const NAMES=['나','김 사장','이 여사','박 부장','최 선생','선(물주)'];
+
+/* ================= 섯다 ================= */
+const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500)};
+let S=null;
+function seotdaNew(carry){
+  const n=sopt.players;
+  const ai=S&&S.aiMoney&&S.aiMoney.length===n?S.aiMoney:Array(n).fill(100000);
+  if(money<sopt.ante*4){money=100000;bigText('돈 충전!');}
+  S={s:SD.newSeotda({players:n,ante:sopt.ante,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false};
+  for(let p=0;p<n;p++){if(p===0)money-=sopt.ante;else{if(S.aiMoney[p]<sopt.ante*4)S.aiMoney[p]=100000;S.aiMoney[p]-=sopt.ante;}}
+  if(carry){S.s.pot+=carry;}
+  saveMoney();smsg(`판돈 ${won(sopt.ante)}씩 내고 시작해요. 한 장씩 나눠 줄게요.`);
+  seotdaRender();seotdaDeal();
+}
+async function seotdaDeal(){
+  const gen=S.gen;SD.dealRound(S.s);seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;
+  for(let p=0;p<S.s.n;p++)S.dealt[p]=S.s.hands[p].length;
+  S.last={};seotdaRender();S.busy=false;seotdaStep();
+}
+function seotdaRender(dealing){
+  const s=S.s,pos=SEATS[s.n],show=S.reveal;
+  $('stable').querySelectorAll('.seat').forEach(e=>e.remove());
+  for(let p=0;p<s.n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
+    const hand=s.hands[p],h2=hand.length===2?SD.seotdaHand(hand[0],hand[1]):null,isWin=S.result&&S.result.winners.includes(p);
+    const cards=hand.map((id,i)=>cardHtml(id,{down:p!==0&&!(show&&!s.folded[p]),deal:dealing&&i>=S.dealt[p],delay:dealing?(p*90+i*40):0,reveal:show&&p!==0&&!s.folded[p]})).join('');
+    const la=S.last[p];
+    el.innerHTML=(p===0?'':plate(p))+`<div class="scards">${cards}</div>`+
+      ((p===0||show)&&h2&&!s.folded[p]?`<span class="shand${isWin?' win':''}">${h2.name}</span>`:'')+
+      (la?`<span class="sact ${la.k==='die'?'die':la.k==='call'||la.k==='check'?'call':'raise'}">${la.name}${la.amt?' '+won(la.amt):''}</span>`:'')+(p===0?plate(p):'');
+    $('stable').appendChild(el);}
+  $('spot').innerHTML=`<div class="chips">${chipsHtml(s.pot)}</div><b>${won(s.pot)}</b><small>${s.round>=2?'두 번째 장':'첫 번째 장'} · ${s.over?'끝':'베팅 중'}</small>`;
+  seotdaBar();
+}
+function plate(p){const s=S.s;return `<div class="splate${s.turn===p&&!s.over?' turn':''}${s.folded[p]?' out':''}">${avatar(p)}<span class="sn"><b>${NAMES[p]}${p&&!S.reveal?'':''}</b><small>${won(p===0?money:S.aiMoney[p])}</small></span></div>`;}
+function seotdaBar(){
+  const s=S.s,mine=!s.over&&!S.busy&&s.turn===0&&!s.folded[0];
+  const acts=mine?SD.actions(s):[];
+  const cls={die:'die',check:'call',call:'call',bbing:'raise',half:'raise',ddadang:'raise'};
+  $('sbar').innerHTML=['die','check','call','bbing','half','ddadang'].map(k=>{const a=acts.find(x=>x.k===k);
+    const name={die:'다이',check:'체크',call:'콜',bbing:'삥',half:'하프',ddadang:'따당'}[k];
+    return `<button class="btn ${cls[k]}" data-k="${k}"${a?'':' disabled'}>${name}${a&&a.amt?`<small>${won(a.amt)}</small>`:'<small>&nbsp;</small>'}</button>`;}).join('');
+}
+$('sbar').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b||b.disabled||!S||S.busy)return;const a=SD.actions(S.s).find(x=>x.k===b.dataset.k);if(a)seotdaDo(a);});
+function smsg(h){$('smsg').innerHTML=h;}
+async function seotdaDo(a){
+  const s=S.s,p=s.turn,gen=S.gen;
+  if(a.amt){if(p===0)money-=a.amt;else S.aiMoney[p]-=a.amt;SND.chip();}else SND.tick(500,.12,.05);
+  S.last[p]=a;const r=SD.act(s,a);saveMoney();
+  if(a.k==='ddadang'||a.k==='half')bigText(a.name+'!');
+  seotdaRender();
+  if(r==='end'){await sleep(600);if(gen===S.gen)seotdaSettle();return;}
+  if(r==='deal'){S.busy=true;seotdaRender();await sleep(700);if(gen!==S.gen)return;smsg('두 번째 장을 나눠 줘요.');await seotdaDeal();return;}
+  if(r==='show'){S.busy=true;await sleep(500);if(gen!==S.gen)return;SD.showdown(s);S.reveal=true;S.result=s.result;SND.card();seotdaRender();await sleep(900);if(gen===S.gen)seotdaSettle();return;}
+  seotdaStep();
+}
+async function seotdaStep(){
+  const s=S.s,gen=S.gen;if(s.over)return;
+  if(s.turn===0){const need=s.toCall-s.bet[0];smsg(`<b>내 차례</b>예요. ${s.hands[0].length===1?'첫 장만 보고':'두 장을 보고'} 베팅하세요.${need>0?` 따라가려면 ${won(need)}이 필요해요.`:''}`);seotdaRender();return;}
+  S.busy=true;seotdaRender();smsg(`${NAMES[s.turn]}이(가) 생각 중이에요`);await sleep(700+Math.random()*500);if(gen!==S.gen)return;
+  S.busy=false;seotdaDo(SD.aiAct(s,sopt.level));
+}
+function seotdaSettle(){
+  const s=S.s,res=s.result;S.busy=true;
+  if(res.rematch){bigText('재경기!');smsg(`<b>${res.reason.replace(/\(\d\)/,'')}</b>. 판돈을 그대로 두고 다시 해요.`);const carry=s.pot;
+    setTimeout(()=>{S.result=null;S.reveal=false;seotdaNewKeep(carry);},1800);return;}
+  const share=Math.floor(s.pot/res.winners.length);
+  res.winners.forEach(p=>{if(p===0)money+=share;else S.aiMoney[p]+=share;});saveMoney();
+  const iWon=res.winners.includes(0);if(iWon){rec.sw++;SND.win();bigText('승리!');}else{rec.sl++;}store.set('rec',rec);
+  const hands=(res.hands||[]).map(x=>`${NAMES[x.p]}: <b>${x.h.name}</b>`).join(' · ');
+  smsg(`${iWon?'🎉 <b>내가 이겼어요!</b>':`<b>${res.winners.map(p=>NAMES[p]).join(', ')}</b> 승리.`} ${res.reason||''} 판돈 ${won(s.pot)}${res.winners.length>1?' 나눔':''}.${hands?'<br>'+hands:''}`);
+  seotdaRender();$('snext').hidden=false;renderRec();
+}
+// 재경기: 판돈을 남기고 같은 사람끼리 다시 (판돈은 다시 안 냄)
+function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,dealer:S.s.dealer});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
+$('snext').onclick=()=>{$('snext').hidden=true;S.result=null;S.reveal=false;seotdaNew();};
+
+/* ================= 도리짓고땡 ================= */
+const dopt={others:store.get('dothers',1),bet:store.get('dbet',5000)};
+let D=null;
+function doriNew(){
+  if(money<dopt.bet){money=100000;bigText('돈 충전!');}
+  const n=dopt.others+2;   // 나 + 다른 사람 + 선
+  const bets=[dopt.bet];for(let i=0;i<dopt.others;i++)bets.push([1000,5000,10000][Math.floor(Math.random()*3)]);bets.push(0);
+  D={s:SD.newDori({players:n,bets}),chosen:[],done:false,reveal:false,gen:(D?D.gen:0)+1,res:null};
+  money-=dopt.bet;saveMoney();
+  dmsg(`${won(dopt.bet)}을 걸었어요. 5장 중 <b>달 합이 10·20·30</b>이 되는 3장을 골라 짓고, 남은 2장으로 선과 겨뤄요.`);
+  doriRender(true);$('dnext').hidden=true;
+}
+const dpos=n=>{const m=n-2;return [[50,74]].concat(m===0?[]:m===1?[[18,46]]:[[16,50],[84,50]]).concat([[50,17]]);};
+function doriRender(dealing){
+  const s=D.s,n=s.n,pos=dpos(n),dealer=n-1;
+  $('dtable').querySelectorAll('.seat').forEach(e=>e.remove());
+  for(let p=0;p<n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat dori'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
+    const best=D.reveal||p===0?null:null,r=D.res&&D.res[p];
+    const order=p===0&&D.done?D.mine.three.concat(D.mine.two):D.reveal&&p!==0?D.best[p].three.concat(D.best[p].two):s.hands[p];
+    const cards=order.map((id,i)=>cardHtml(id,{down:p!==0&&!D.reveal,deal:dealing,delay:dealing?(p*120+i*40):0,pick:p===0&&!D.done,chosen:p===0&&!D.done&&D.chosen.includes(id),reveal:D.reveal&&p!==0})).join('');
+    const name=p===dealer?NAMES[5]:NAMES[p];
+    const handTxt=(p===0&&D.done)?D.mine.h.name:(D.reveal?D.best[p].h.name:'');
+    el.innerHTML=(p===0?'':`<div class="splate">${avatar(p===dealer?5:p)}<span class="sn"><b>${name}</b><small>${p===dealer?'물주':'건 돈 '+won(s.bets[p])}</small></span></div>`)+
+      `<div class="scards">${cards}</div>`+(handTxt?`<span class="shand${r==='win'?' win':''}">${handTxt}${r?` · ${r==='win'?'이김':'짐'}`:''}</span>`:'')+
+      (p===0?`<div class="splate">${avatar(0)}<span class="sn"><b>나</b><small>${won(money)} · 건 돈 ${won(s.bets[0])}</small></span></div>`:'');
+    $('dtable').appendChild(el);}
+  const sum=D.chosen.reduce((a,c)=>a+mon(c),0),ok=D.chosen.length===3&&sum%10===0;
+  $('dpot').innerHTML=D.done?'':`<span class="dsum${ok?' ok':''}">고른 3장 합: ${D.chosen.length?sum:'-'}${ok?' ✓ 짓기 가능':D.chosen.length===3?' (10·20·30이 아니에요)':''}</span>`;
+  $('dmake').disabled=D.done||!ok;$('dauto').disabled=D.done;$('dnomade').disabled=D.done;
+}
+$('dtable').addEventListener('click',e=>{const c=e.target.closest('.card.pick');if(!c||!D||D.done)return;const id=+c.dataset.id;
+  const i=D.chosen.indexOf(id);if(i>=0)D.chosen.splice(i,1);else if(D.chosen.length<3)D.chosen.push(id);SND.card();doriRender();});
+$('dauto').onclick=()=>{const b=SD.doriBest(D.s.hands[0]);if(b.h.v<0){dmsg('어떤 3장으로도 10·20·30을 만들 수 없어요. <b>노메이드</b>를 눌러 주세요.');return;}D.chosen=b.three.slice();doriRender();dmsg(`가장 좋은 짓기를 골랐어요: 남은 2장이 <b>${b.h.name}</b>이에요. <b>짓기</b>를 누르세요.`);};
+$('dmake').onclick=()=>{const three=D.chosen.slice();if(!SD.checkThree(three))return;const two=D.s.hands[0].filter(c=>!three.includes(c));doriFinish({three,two,h:SD.doriHand(two)});};
+$('dnomade').onclick=()=>{if(SD.doriBest(D.s.hands[0]).h.v>=0&&!confirm('지을 수 있는 3장이 있어요. 그래도 노메이드로 할까요?'))return;doriFinish({three:[],two:D.s.hands[0].slice(),h:{v:-1,name:'노메이드'}});};
+async function doriFinish(mine){
+  const s=D.s,n=s.n,dealer=n-1,gen=D.gen;D.mine=mine;D.done=true;D.best=s.hands.map((h,p)=>p===0?mine:SD.doriBest(h));doriRender();SND.card();
+  dmsg('선과 다른 사람들이 패를 펼쳐요…');await sleep(900);if(gen!==D.gen)return;
+  D.reveal=true;D.res={};const dv=D.best[dealer].h.v;let delta=0,lines=[];
+  for(let p=0;p<dealer;p++){const pv=D.best[p].h.v,win=pv>dv;D.res[p]=win?'win':'lose';
+    const mult=win&&pv>=100?2:1;   // 땡으로 이기면 2배
+    if(p===0){if(win){delta=s.bets[0]*(1+mult);money+=delta;}lines.push(win?`🎉 <b>내가 이겼어요!</b> ${D.best[0].h.name} > 선의 ${D.best[dealer].h.name}${mult>1?' (땡이라 2배)':''} · +${won(s.bets[0]*mult)}`:`선의 ${D.best[dealer].h.name}에 졌어요 (내 패 ${D.best[0].h.name}${pv===dv?', 비기면 선이 이겨요':''}) · -${won(s.bets[0])}`);}}
+  saveMoney();if(D.res[0]==='win'){rec.dw++;SND.win();bigText('승리!');}else rec.dl++;store.set('rec',rec);
+  doriRender();dmsg(lines.join('<br>'));$('dnext').hidden=false;renderRec();
+}
+function dmsg(h){$('dmsg').innerHTML=h;}
+$('dnext').onclick=doriNew;
+
+/* ================= 설정·탭 ================= */
+function renderRec(){$('srec').textContent=`섯다 ${rec.sw}승 ${rec.sl}패 · 도리짓고땡 ${rec.dw}승 ${rec.dl}패`;}
+function renderLevels(){$('slevels').innerHTML=SD.SLV.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===sopt.level}" data-k="${k}">${l.name}<span>${['막 걸기','조심','계산','노련함'][k]}</span></button>`).join('');}
+$('slevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b)return;sopt.level=+b.dataset.k;store.set('level',sopt.level);renderLevels();});
+$('sPlayers').value=String(sopt.players);$('sPlayers').onchange=e=>{sopt.players=+e.target.value;store.set('players',sopt.players);S=null;seotdaNew();};
+$('sAnte').value=String(sopt.ante);$('sAnte').onchange=e=>{sopt.ante=+e.target.value;store.set('ante',sopt.ante);};
+$('dOthers').value=String(dopt.others);$('dOthers').onchange=e=>{dopt.others=+e.target.value;store.set('dothers',dopt.others);doriNew();};
+$('dBet').innerHTML=[1000,5000,10000].map(v=>`<button style="background:${v===1000?'#2e7d32':v===5000?'#1565c0':'#c62828'}" data-v="${v}" aria-pressed="${v===dopt.bet}">${v/1000}천원`.replace('10천원','1만원')+'</button>').join('');
+$('dBet').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;dopt.bet=+b.dataset.v;store.set('dbet',dopt.bet);$('dBet').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));});
+$('sLabels').checked=showLabels;$('sLabels').onchange=e=>{showLabels=e.target.checked;store.set('labels',showLabels);if(S)seotdaRender();if(D)doriRender();};
+$('sSound').checked=SND.on;$('sSound').onchange=e=>{SND.on=e.target.checked;store.set('sound',SND.on);};
+$('sReset').onclick=()=>{money=100000;rec={sw:0,sl:0,dw:0,dl:0};store.set('rec',rec);saveMoney();renderRec();};
+// 족보 표
+(()=>{const id=(m,sp)=>(m-1)*4+(sp?0:2);const rows=[['38광땡',[id(3,1),id(8,1)],'가장 셈'],['광땡',[id(1,1),id(8,1)],'1·3·8월 광 두 장 (13·18광땡)'],['장땡',[id(10,1),id(10,0)],'10월 두 장. 그 아래로 9땡 … 1땡'],
+  ['알리',[id(1,0),id(2,0)],'1·2월'],['독사',[id(1,0),id(4,0)],'1·4월'],['구삥',[id(1,0),id(9,0)],'1·9월'],['장삥',[id(1,0),id(10,0)],'1·10월'],['장사',[id(4,0),id(10,0)],'4·10월'],['세륙',[id(4,0),id(6,0)],'4·6월'],
+  ['갑오',[id(4,0),id(5,0)],'끗수 9. 두 장 합의 끝자리가 끗수 (8끗 … 1끗, 0은 망통)'],['땡잡이',[id(3,0),id(7,0)],'3·7월: 1~9땡을 이김 (장땡은 못 이김)'],['암행어사',[id(4,1),id(7,1)],'4·7월 열끗: 13·18광땡을 이김'],
+  ['구사',[id(4,0),id(9,0)],'4·9월: 가장 높은 패가 알리 이하면 재경기']];
+  $('jokbo').innerHTML=rows.map(([n,c,d])=>`<span class="jc">${c.map(x=>face(x)).join('')}</span><span><b>${n}</b> · ${d}</span>`).join('');})();
+function showTab(t){for(const k of ['seotda','dori','rules']){$(k).hidden=t!==k;$('tab_'+k).setAttribute('aria-selected',t===k);}
+  if(t==='seotda'&&!S)seotdaNew();if(t==='dori'&&!D)doriNew();}
+$('tab_seotda').onclick=()=>showTab('seotda');$('tab_dori').onclick=()=>showTab('dori');$('tab_rules').onclick=()=>showTab('rules');
+saveMoney();renderRec();renderLevels();showTab(location.hash==='#dori'?'dori':location.hash==='#rules'?'rules':'seotda');
+
+</script>
+
+<a href="index.html" class="pwa-home" aria-label="처음 화면으로">← 처음</a>
+<style>.pwa-home{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:80;padding:7px 13px;border-radius:999px;
+background:rgba(20,24,22,.78);color:#fff;font:600 13px "Noto Sans KR","Malgun Gothic",sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.pwa-home:focus-visible{outline:2px solid #fff;outline-offset:2px}</style>
+<div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
+<style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
+padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);
+max-width:calc(100vw - 24px);white-space:nowrap}.sw-upd[hidden]{display:none!important}
+.sw-upd button{border:0;border-radius:999px;padding:6px 12px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+#swNow{background:#4cc38a;color:#0b1a12}#swLater{background:transparent;color:#cfd8d3}</style>
+<script>(function(){if(!('serviceWorker' in navigator))return;
+let reloading=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(reloading)return;reloading=true;location.reload();});
+function show(w){var b=document.getElementById('swUpd');b.hidden=false;
+  document.getElementById('swNow').onclick=function(){document.getElementById('swMsg').textContent='바꾸는 중…';w.postMessage('SKIP');};
+  document.getElementById('swLater').onclick=function(){b.hidden=true;};}
+addEventListener('load',function(){navigator.serviceWorker.register('sw.js').then(function(reg){
+  if(reg.waiting&&navigator.serviceWorker.controller)show(reg.waiting);
+  reg.addEventListener('updatefound',function(){var w=reg.installing;if(w)w.addEventListener('statechange',function(){if(w.state==='installed'&&navigator.serviceWorker.controller)show(w);});});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reg.update().catch(function(){});});
+}).catch(function(){});});})();</script>
+</body>
+</html>

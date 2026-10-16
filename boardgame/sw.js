@@ -1,5 +1,5 @@
-// 오프라인 저장 (버전 fd127409cc)
-const CACHE='bgc-fd127409cc',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","baduk.html","chess.html","janggi.html","omok.html","othello.html","gonu.html","yut.html","gostop.html","ladder.html","icons/baduk.png","icons/chess.png","icons/janggi.png","icons/omok.png","icons/othello.png","icons/gonu.png","icons/yut.png","icons/gostop.png","icons/ladder.png"];
+// 오프라인 저장 (버전 9cc552398b)
+const CACHE='bgc-9cc552398b',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","baduk.html","chess.html","janggi.html","omok.html","othello.html","gonu.html","yut.html","gostop.html","seotda.html","ladder.html","icons/baduk.png","icons/chess.png","icons/janggi.png","icons/omok.png","icons/othello.png","icons/gonu.png","icons/yut.png","icons/gostop.png","icons/seotda.png","icons/ladder.png"];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})))));});
 self.addEventListener('message',e=>{if(e.data==='SKIP')self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('bgc-')&&k!==CACHE&&k!=='bgc-font').map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

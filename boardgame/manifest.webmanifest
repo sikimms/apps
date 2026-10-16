@@ -1,7 +1,7 @@
 {
   "name": "보드게임 교실",
   "short_name": "보드게임",
-  "description": "초보를 위한 바둑·체스·장기·오목·오델로·고누·윷놀이·고스톱 교실과 사다리타기",
+  "description": "초보를 위한 바둑·체스·장기·오목·오델로·고누·윷놀이·고스톱·섯다 교실과 사다리타기",
   "lang": "ko",
   "start_url": "./index.html",
   "scope": "./",
@@ -111,6 +111,17 @@
       "icons": [
         {
           "src": "icons/gostop.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "섯다·도리짓고땡",
+      "url": "./seotda.html",
+      "icons": [
+        {
+          "src": "icons/seotda.png",
           "sizes": "256x256",
           "type": "image/png"
         }
