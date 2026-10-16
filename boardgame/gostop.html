@@ -125,9 +125,10 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 :root{--frame:#3b2414;--accent:#b3261e;--accent-soft:#f6dedb}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--accent:#f28b82;--accent-soft:#3a201d;--accent-ink:#1a0d0b}}
 :root[data-theme="dark"]{--accent:#f28b82;--accent-soft:#3a201d;--accent-ink:#1a0d0b}
-.gtable{position:relative;width:100%;border-radius:14px;overflow:hidden;user-select:none;-webkit-user-select:none;
-  background:radial-gradient(ellipse at 50% 45%,#2f7d4f 0%,#1f5c3a 55%,#143d27 100%);box-shadow:inset 0 0 0 6px #5a3417,inset 0 0 0 9px #3b2210,0 14px 34px -18px rgba(0,0,0,.7)}
-.gtable::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.035) 1px,transparent 1.4px);background-size:5px 5px;pointer-events:none}
+.gtable{position:relative;width:100%;border-radius:18px;overflow:hidden;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.10),rgba(0,0,0,0) 55%),radial-gradient(ellipse at 50% 50%,#2c8053 0%,#1d5e3b 55%,#123a25 100%);
+  box-shadow:inset 0 0 0 7px #6b3d1c,inset 0 0 0 9px #a8723f,inset 0 0 0 12px #4a2810,inset 0 0 60px rgba(0,0,0,.55),0 16px 36px -18px rgba(0,0,0,.75)}
+.gtable::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.04) 1px,transparent 1.4px),radial-gradient(rgba(0,0,0,.08) 1px,transparent 1.4px);background-size:4px 4px,7px 7px;background-position:0 0,2px 3px;pointer-events:none}
 .gcard{position:absolute;left:0;top:0;transition:transform .42s cubic-bezier(.2,.75,.25,1),width .3s,height .3s,filter .2s;will-change:transform;perspective:600px}
 .gcard .gin{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .45s ease}
 .gcard.down .gin{transform:rotateY(180deg)}
@@ -164,6 +165,12 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .gmoney{font:700 13px var(--f-body);color:var(--muted)}
 .gres td{padding:2px 6px;font-size:13.5px}.gres td:last-child{text-align:right;font-weight:700}
 .gflip{margin-top:6px}
+
+.gcard .gf,.gcard .gb{box-shadow:0 1px 1px rgba(0,0,0,.35),0 4px 8px -2px rgba(0,0,0,.45)}
+.gcard.eat .gf{box-shadow:0 0 0 2.5px #ffcc33,0 0 12px 2px rgba(255,204,51,.75),0 6px 10px -2px rgba(0,0,0,.5)}
+.gcard.eat::after{content:"";position:absolute;left:50%;bottom:-7px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#ffcc33;box-shadow:0 0 6px #ffcc33}
+.glabel{background:rgba(0,0,0,.35);padding:2px 8px;border-radius:999px;backdrop-filter:blur(2px)}
+.gdeckn{box-shadow:0 1px 3px rgba(0,0,0,.5)}
 
 </style>
 </head>
@@ -452,92 +459,114 @@ return{CARDS,MONTH,TNAME,monthOf,cardName,scoreOf,piCount,newRound,clone,moves,p
 })();
 
 /* ===== 화투 그림 (SVG로 직접 그림) =====
-   viewBox 0 0 60 92. 달마다 식물 그림 + 광·열끗·띠의 특징 그림.
-   초보용으로 왼쪽 위에 달 숫자, 오른쪽 위에 종류 표시를 작게 넣는다. */
+   실제 화투처럼: 굵은 검은 윤곽선, 그러데이션, 종이 질감, 카드 광택.
+   viewBox 0 0 60 92. 초보용으로 왼쪽 위에 달 숫자, 오른쪽 위에 종류 표시. */
 const HW=(()=>{
-const W=60,H=92;
+const W=60,H=92,K='#151515';
 const sum=(...a)=>a.join('');
-// 기본 도형
-const circ=(x,y,r,f,s='',sw=0)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${f}"${s?` stroke="${s}" stroke-width="${sw}"`:''}/>`;
-const ell=(x,y,rx,ry,f,rot=0,extra='')=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${f}" transform="rotate(${rot} ${x} ${y})"${extra}/>`;
-const path=(d,f,s='',sw=0,extra='')=>`<path d="${d}" fill="${f}"${s?` stroke="${s}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"`:''}${extra}/>`;
-const line=(x1,y1,x2,y2,s,sw)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${s}" stroke-width="${sw}" stroke-linecap="round"/>`;
-// 꽃 한 송이 (꽃잎 5장)
-function flower(x,y,r,petal,core,rot=0){let s='';for(let i=0;i<5;i++){const a=(rot+i*72)*Math.PI/180;s+=circ(x+Math.cos(a)*r*0.62,y+Math.sin(a)*r*0.62,r*0.5,petal);}return s+circ(x,y,r*0.32,core);}
-// 달별 식물
+const S=(sw=1)=>` stroke="${K}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"`;
+const circ=(x,y,r,f,sw=0)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="${f}"${sw?S(sw):''}/>`;
+const ell=(x,y,rx,ry,f,rot=0,sw=0)=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${f}" transform="rotate(${rot} ${x} ${y})"${sw?S(sw):''}/>`;
+const path=(d,f,sw=0,col)=>`<path d="${d}" fill="${f}"${sw?(col?` stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"`:S(sw)):''}/>`;
+const line=(x1,y1,x2,y2,c,sw)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`;
+const rg=(id,c1,c2,cx=35,cy=30)=>`<radialGradient id="${id}" cx="${cx}%" cy="${cy}%" r="75%"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></radialGradient>`;
+const lg=(id,c1,c2,x2=0,y2=1)=>`<linearGradient id="${id}" x1="0" y1="0" x2="${x2}" y2="${y2}"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>`;
+// 공통 그러데이션 (카드마다 접두어를 붙여 겹치지 않게)
+function defs(p){return sum(rg(p+'red','#ff5a4e','#b5121b'),rg(p+'pink','#ffd6e2','#f07fa0'),rg(p+'grn','#58b06a','#1d5a2c'),rg(p+'dgr','#2f7a3f','#0f3519'),
+  rg(p+'yel','#fff0a0','#e8a316'),rg(p+'blu','#7fb4ec','#1f4f9a'),rg(p+'pur','#c7a3ef','#5b2f97'),rg(p+'brn','#c08a52','#5b3416'),rg(p+'blk','#555','#0d0d0d'),
+  rg(p+'moon','#fffdf3','#e9dcb6'),lg(p+'sky','#ff6b3d','#c8161d'),lg(p+'paper','#fbf6ea','#efe4cc',0.3,1),lg(p+'gloss','rgba(255,255,255,.55)','rgba(255,255,255,0)',0.6,0.7));}
+// 꽃 한 송이 (꽃잎 5장, 윤곽선)
+function blossom(x,y,r,fill,core,rot=0){let s='';for(let i=0;i<5;i++){const a=(rot+i*72)*Math.PI/180;s+=ell(x+Math.cos(a)*r*0.58,y+Math.sin(a)*r*0.58,r*0.5,r*0.42,fill,rot+i*72,0.6);}return s+circ(x,y,r*0.3,core,0.5);}
+// 솔잎 덩어리
+const pineClump=(x,y,r,p)=>sum(ell(x,y,r,r*0.6,`url(#${p}dgr)`,-8,1),ell(x-r*0.15,y-r*0.12,r*0.72,r*0.36,`url(#${p}grn)`,-8),
+  ...[-0.6,-0.3,0,0.3,0.6].map(t=>line(x+t*r,y-r*0.35,x+t*r*1.15,y+r*0.45,'#0c2a12',0.6)));
 const PLANT={
-  1:v=>sum(path('M30 92 C28 72 33 60 29 44','none','#5a3417',4),
-    ...[[18,40,12],[38,30,13],[26,22,10],[44,50,11],[14,60,10],[36,66,12]].map(([x,y,r],i)=>sum(ell(x,y,r,r*0.62,'#1d5b2a',i*17-20),ell(x-2,y-2,r*0.75,r*0.4,'#2f8a3d',i*17-20)))),
-  2:v=>sum(path('M4 88 C18 70 22 52 40 40 S54 20 56 8','none','#3a2414',3.2),path('M22 58 C14 50 10 44 8 36','none','#3a2414',2),
-    ...[[40,40],[50,22],[30,50],[12,40],[22,64],[46,30],[16,78]].map(([x,y],i)=>flower(x,y,6.5,i%2?'#e2384c':'#f06a7a','#fde68a',i*20))),
-  3:v=>sum(...[[14,22],[30,14],[46,24],[22,36],[40,40],[12,50],[48,52],[28,58],[18,70],[42,70],[30,80]].map(([x,y],i)=>flower(x,y,7,i%3?'#f7b6c8':'#ffd7e2','#e6476b',i*13))),
-  4:v=>sum(...[8,20,32,44,54].map((x,i)=>sum(path(`M${x} 0 C${x+4} 18 ${x-4} 30 ${x+2} ${44+i*4}`,'none','#141414',2.4),...[0,1,2,3,4,5].map(k=>ell(x+(k%2?2:-2),8+k*7+i*2,2.6,4,'#1a1a1a',k%2?20:-20))))),
-  5:v=>sum(...[10,18,26,36,46,52].map((x,i)=>path(`M${x} 92 C${x+(i%2?8:-8)} 70 ${x+(i%2?-4:6)} 50 ${x+(i%2?10:-6)} ${30+i*3}`,'none','#2c7a3a',3)),
-    ...[[18,40],[40,30],[30,52]].map(([x,y])=>sum(ell(x,y,5,9,'#6b3fa0',-20),ell(x+5,y+2,5,8,'#8a5cc4',25),circ(x+2,y+4,2.2,'#f5d061')))),
-  6:v=>sum(...[[16,30],[42,52],[20,70]].map(([x,y],i)=>sum(ell(x-9,y+8,9,4,'#2f7a36',-30),ell(x+9,y+8,9,4,'#2f7a36',30),
-    circ(x,y,13,'#c3172e'),circ(x,y,9.5,'#e43a4f'),circ(x,y,6,'#f26d7c'),circ(x,y,2.6,'#fde68a')))),
-  7:v=>sum(...[0,1,2,3].map(i=>path(`M${6+i*14} 92 C${2+i*14} 64 ${24+i*10} 40 ${14+i*12} ${10+i*6}`,'none','#7a3b1a',1.8)),
-    ...Array.from({length:26},(_,k)=>circ(8+(k*13)%46,10+(k*29)%74,2.4,k%3?'#d63a5c':'#ee6f8d'))),
-  8:v=>sum(path('M0 64 C14 50 24 52 32 58 C40 50 50 48 60 56 L60 92 L0 92 Z','#151515'),
-    ...[6,14,22,30,38,46,54].map((x,i)=>path(`M${x} 66 C${x+2} 56 ${x-1} 48 ${x+3} ${40+i%3*4}`,'none','#f3efe6',1.2))),
-  9:v=>sum(path('M8 92 C12 70 20 60 18 44','none','#2f6b2c',3),path('M44 92 C40 74 46 60 42 50','none','#2f6b2c',3),
-    ...[[18,42],[42,48],[30,28],[12,64],[48,70]].map(([x,y],i)=>{let s='';for(let k=0;k<12;k++){const a=k*30*Math.PI/180;s+=ell(x+Math.cos(a)*5,y+Math.sin(a)*5,4.6,1.8,'#f2b51b',k*30);}return s+circ(x,y,3.2,'#c46a12');})),
-  10:v=>sum(path('M30 92 C26 70 34 56 28 30','none','#5a2b14',3),
-    ...[[16,24],[40,18],[28,44],[46,50],[12,58],[36,72],[20,80]].map(([x,y],i)=>{let s='';for(let k=0;k<5;k++){const a=(k*72-90+i*9)*Math.PI/180;s+=path(`M${x} ${y} L${x+Math.cos(a-0.25)*4} ${y+Math.sin(a-0.25)*4} L${x+Math.cos(a)*9} ${y+Math.sin(a)*9} L${x+Math.cos(a+0.25)*4} ${y+Math.sin(a+0.25)*4} Z`,i%2?'#d9311d':'#ef5a24');}return s;})),
-  11:v=>sum(...[[16,64],[42,70],[30,46]].map(([x,y],i)=>sum(path(`M${x} ${y-14} C${x+14} ${y-12} ${x+14} ${y+8} ${x} ${y+12} C${x-14} ${y+8} ${x-14} ${y-12} ${x} ${y-14} Z`,'#141414'),line(x,y-12,x,y+11,'#3a3a3a',1))),
-    v==='y'?sum(...[[14,22],[28,18],[44,24]].map(([x,y])=>sum(circ(x,y,3.5,'#f5d061'),circ(x,y,1.6,'#e0742a')))):''),
-  12:v=>sum(...[6,16,26,36,46,54].map((x,i)=>path(`M${x} 0 C${x+4} 24 ${x-2} 40 ${x+(i%2?6:-4)} ${60+i%3*8}`,'none','#2e7d32',1.8)),
-    ...Array.from({length:14},(_,k)=>ell(8+(k*17)%46,14+(k*23)%60,1.4,4.5,'#4caf50',(k*37)%60-30)))
+  1:p=>sum(path('M24 92 C22 74 30 64 25 46 C23 38 28 30 32 26 L36 28 C32 34 29 40 31 48 C35 64 28 76 31 92 Z',`url(#${p}brn)`,1),
+    pineClump(18,40,13,p),pineClump(40,30,14,p),pineClump(28,20,10,p),pineClump(44,52,11,p),pineClump(14,62,10,p)),
+  2:p=>sum(path('M2 90 C14 76 22 58 36 46 C44 38 50 26 56 10 L58 12 C52 30 46 42 38 50 C26 62 18 78 6 92 Z',`url(#${p}brn)`,1),path('M20 64 C12 56 10 48 8 40 L10 39 C13 47 16 54 23 61 Z',`url(#${p}brn)`,0.8),
+    ...[[40,40],[50,22],[30,52],[10,40],[22,66],[46,30],[14,80],[54,46]].map(([x,y],i)=>blossom(x,y,6.2,i%2?`url(#${p}red)`:'#f2566a','#ffe08a',i*23))),
+  3:p=>sum(...[[14,22],[30,14],[46,24],[22,36],[40,40],[12,52],[48,54],[28,58],[18,72],[42,72],[30,84]].map(([x,y],i)=>blossom(x,y,7,`url(#${p}pink)`,'#e6476b',i*13))),
+  4:p=>sum(...[8,20,32,44,54].map((x,i)=>sum(path(`M${x} 0 C${x+4} 18 ${x-4} 30 ${x+2} ${44+i*4}`,'none',2.2,'#111'),
+    ...[0,1,2,3,4,5].map(k=>ell(x+(k%2?2.2:-2.2),8+k*7+i*2,2.8,4.2,`url(#${p}blk)`,k%2?22:-22,0.4))))),
+  5:p=>sum(...[10,18,26,36,46,52].map((x,i)=>path(`M${x} 92 C${x+(i%2?8:-8)} 70 ${x+(i%2?-4:6)} 50 ${x+(i%2?10:-6)} ${30+i*3} L${x+(i%2?11:-5)} ${31+i*3} C${x+(i%2?-2:8)} 52 ${x+(i%2?10:-6)} 72 ${x+2} 92 Z`,`url(#${p}grn)`,0.6)),
+    ...[[18,40],[40,30],[30,54]].map(([x,y])=>sum(ell(x,y,5.4,9,`url(#${p}pur)`,-22,0.8),ell(x+5,y+2,5.4,8.5,`url(#${p}pur)`,26,0.8),ell(x+2,y+5,2.6,3.2,'#f5d061',0,0.5)))),
+  6:p=>sum(...[[16,30],[42,52],[20,72]].map(([x,y])=>sum(ell(x-10,y+9,10,4.5,`url(#${p}grn)`,-30,0.8),ell(x+10,y+9,10,4.5,`url(#${p}grn)`,30,0.8),
+    circ(x,y,13.5,`url(#${p}red)`,1.1),...[0,1,2,3,4,5].map(k=>{const a=k*60*Math.PI/180;return path(`M${x} ${y} Q${x+Math.cos(a)*12} ${y+Math.sin(a)*12} ${x+Math.cos(a+0.9)*9} ${y+Math.sin(a+0.9)*9}`,'none',0.7,'#7a0a12');}),circ(x,y,3,'#ffe08a',0.6)))),
+  7:p=>sum(...[0,1,2,3].map(i=>path(`M${6+i*14} 92 C${2+i*14} 64 ${24+i*10} 40 ${14+i*12} ${10+i*6}`,'none',1.8,'#5a2a12')),
+    ...Array.from({length:30},(_,k)=>ell(8+(k*13)%46,10+(k*29)%76,2.6,1.7,k%3?`url(#${p}red)`:'#f07a96',(k*40)%180,0.4)),
+    ...Array.from({length:10},(_,k)=>ell(12+(k*17)%40,18+(k*31)%60,3.2,1.4,`url(#${p}grn)`,(k*50)%180,0.4))),
+  8:p=>sum(path('M-2 62 C10 50 22 50 31 57 C40 48 52 46 62 54 L62 94 L-2 94 Z',`url(#${p}blk)`,1),
+    ...[5,12,19,26,33,40,47,54].map((x,i)=>path(`M${x} 66 C${x+2} 56 ${x-1} 48 ${x+3} ${40+i%3*4}`,'none',1.1,'#f8f3e6'))),
+  9:p=>sum(path('M8 92 C12 70 20 60 18 44','none',2.6,'#245a22'),path('M44 92 C40 74 46 60 42 50','none',2.6,'#245a22'),
+    ...[[12,74],[46,66]].map(([x,y])=>sum(ell(x,y,6,3,`url(#${p}grn)`,-30,0.6),ell(x+6,y+6,6,3,`url(#${p}grn)`,30,0.6))),
+    ...[[18,42],[42,48],[30,26],[12,62],[48,76]].map(([x,y])=>{let s='';for(let k=0;k<14;k++){const a=k*(360/14)*Math.PI/180;s+=ell(x+Math.cos(a)*5.2,y+Math.sin(a)*5.2,4.8,1.9,`url(#${p}yel)`,k*(360/14),0.35);}return s+circ(x,y,3.2,'#c46a12',0.5);})),
+  10:p=>sum(path('M28 92 C24 70 34 56 28 30 L31 30 C37 56 27 70 31 92 Z',`url(#${p}brn)`,0.8),
+    ...[[16,24],[40,18],[28,44],[46,50],[12,58],[36,72],[20,82],[50,32]].map(([x,y],i)=>{let s='';for(let k=0;k<5;k++){const a=(k*72-90+i*9)*Math.PI/180;
+      s+=path(`M${x} ${y} L${x+Math.cos(a-0.28)*4.5} ${y+Math.sin(a-0.28)*4.5} L${x+Math.cos(a)*10} ${y+Math.sin(a)*10} L${x+Math.cos(a+0.28)*4.5} ${y+Math.sin(a+0.28)*4.5} Z`,i%2?`url(#${p}red)`:'#f26b2a',0.5);}return s;})),
+  11:(p,v)=>sum(...[[16,66],[43,72],[30,46]].map(([x,y])=>sum(path(`M${x} ${y-15} C${x+15} ${y-13} ${x+15} ${y+8} ${x} ${y+13} C${x-15} ${y+8} ${x-15} ${y-13} ${x} ${y-15} Z`,`url(#${p}blk)`,1),line(x,y-13,x,y+12,'#4a4a4a',0.9),
+    line(x,y-2,x+8,y-8,'#4a4a4a',0.6),line(x,y-2,x-8,y-8,'#4a4a4a',0.6))),
+    v==='y'?sum(...[[14,22],[28,16],[44,24]].map(([x,y])=>sum(circ(x,y,4,`url(#${p}yel)`,0.6),circ(x,y,1.6,'#e0742a')))):''),
+  12:p=>sum(...[6,16,26,36,46,54].map((x,i)=>path(`M${x} 0 C${x+4} 24 ${x-2} 40 ${x+(i%2?6:-4)} ${60+i%3*8}`,'none',1.6,'#1f5e24')),
+    ...Array.from({length:16},(_,k)=>ell(8+(k*17)%46,12+(k*23)%62,1.5,4.8,`url(#${p}grn)`,(k*37)%60-30,0.35)))
 };
-// 특징 그림 (광·열끗)
+// 광·열끗·쌍피 특징 그림
 const SPECIAL={
-  '1g':sum(circ(42,20,13,'#d8262f'),path('M12 70 C16 56 24 50 30 52 C34 44 40 44 44 48 L38 54 C34 60 28 66 22 72 Z','#f7f4ee','#222',1.2),path('M30 52 C32 40 30 32 34 26','none','#222',2),circ(34,25,2.4,'#d8262f'),path('M36 25 L42 23','none','#c8a050',1.6),line(22,72,18,86,'#222',1.4),line(26,70,24,86,'#222',1.4)),
-  '2y':sum(ell(30,40,9,6,'#7f9c2a',-10),circ(37,35,4.5,'#9bbb33'),path('M41 35 L46 36 L41 37 Z','#3a2a10'),circ(38.5,34,1,'#111'),path('M21 41 L10 46 L22 45 Z','#55701b')),
-  '3g':sum(path('M4 46 L56 46 L56 78 L4 78 Z','#f4ede0','#5a1a1a',1),...[0,1,2,3,4,5].map(i=>path(`M${4+i*9} 46 L${12+i*9} 46 L${12+i*9} 78 L${4+i*9} 78 Z`,i%2?'#c8202f':'#f4ede0')),path('M4 46 C20 52 40 52 56 46','none','#5a1a1a',2),circ(50,16,9,'#d8262f')),
-  '4y':sum(path('M14 60 C22 52 30 50 40 54 L48 50 L44 58 C36 64 24 66 14 60 Z','#3a3a3a'),path('M28 54 C30 44 38 40 46 42 C40 46 36 50 34 56 Z','#555'),circ(42,56,1.2,'#fff'),path('M40 22 A10 10 0 1 0 50 34 A8 8 0 1 1 40 22 Z','#f5d061')),
-  '5y':sum(path('M2 58 L58 46 L58 54 L2 66 Z','#8a5a2b','#4a2f12',1),path('M2 72 L58 60 L58 68 L2 80 Z','#9c6a35','#4a2f12',1),line(12,64,12,90,'#4a2f12',2),line(48,52,48,90,'#4a2f12',2)),
-  '6y':sum(ell(22,18,7,4.5,'#f5d061',-30),ell(22,24,5,3.5,'#f0a33a',30),line(22,18,24,26,'#222',1),ell(44,36,6,4,'#8ecae6',-25),ell(44,41,4.5,3,'#4d8fc4',25),line(44,35,46,43,'#222',1)),
-  '7y':sum(path('M8 70 C10 58 20 52 34 54 C44 54 52 60 54 70 L52 76 L46 72 L40 78 L34 74 L22 78 L16 72 L10 78 Z','#7a4a24','#3a2010',1),circ(48,62,1.4,'#111'),path('M52 66 L58 68 L52 70 Z','#e9d8c0')),
-  '8g':sum('<rect x="0" y="0" width="60" height="64" fill="#d83a2a"/>',circ(30,30,17,'#f7f1e1'),circ(30,30,17,'none','#c9b98f',1.2)),
-  '8y':sum(...[[14,18],[30,12],[44,22]].map(([x,y])=>path(`M${x-8} ${y+3} L${x} ${y} L${x+8} ${y+3} L${x} ${y+1.4} Z`,'#222'))),
-  '9y':sum(path('M14 50 L46 50 C46 66 40 74 30 74 C20 74 14 66 14 50 Z','#c8202f','#7a1010',1.2),ell(30,50,16,4,'#e8514f'),'<text x="30" y="66" font-size="11" text-anchor="middle" fill="#f5d061" font-weight="700" font-family="serif">壽</text>',path('M24 74 L36 74 L38 80 L22 80 Z','#7a1010')),
-  '10y':sum(path('M16 76 L18 58 C14 52 18 46 26 46 L40 46 C46 44 50 48 48 54 L46 58 L46 76 L42 76 L42 62 L24 62 L22 76 Z','#a8692e','#5a3414',1),path('M44 46 L46 36 M48 46 L52 38','none','#5a3414',1.6),circ(46,50,1.2,'#111'),...[24,30,36].map(x=>circ(x,52,1.4,'#f3e6cf'))),
-  '11g':sum(path('M30 30 C40 24 50 30 48 40 C46 50 34 54 28 50 C20 46 22 34 30 30 Z','#2f7ab5'),path('M30 30 C28 20 34 14 40 16 C38 20 36 24 36 28 Z','#d8262f'),circ(36,22,1.4,'#111'),
-    ...[0,1,2,3,4].map(i=>path(`M30 50 C${20+i*4} 62 ${14+i*7} 74 ${10+i*9} 86`,'none',['#f5d061','#d8262f','#2f9d55','#2f7ab5','#f0a33a'][i],2.4))),
-  '12g':sum(path('M10 40 C20 26 40 26 50 40 Z','#d8262f','#5a1010',1),line(30,40,30,58,'#3a2a10',1.6),path('M24 44 C20 50 22 60 28 64 L34 64 C38 60 40 50 36 44 Z','#e9e2d0','#222',1),circ(30,44,4,'#f1d3b8','#222',0.8),path('M40 70 C44 66 50 66 52 70 C50 74 44 74 40 70 Z','#5aa83a'),
-    ...[[8,16],[18,10],[44,12],[52,22]].map(([x,y])=>line(x,y,x-3,y+8,'#7aa7d8',1))),
-  '12y':sum(path('M8 40 L26 36 L36 30 L30 38 L48 40 L30 44 L36 52 L26 44 Z','#1a2a4a'),circ(30,38,2.2,'#d8262f')),
-  '12p':sum('<rect x="0" y="40" width="60" height="22" fill="#151515"/>',path('M10 44 L22 44 L16 52 L26 52 L12 62 L16 54 L8 54 Z','#d8262f'),...[34,42,50].map(x=>circ(x,51,4,'#d8262f','#f5d061',1)))
+  '1g':p=>sum(circ(42,20,13,`url(#${p}red)`,1.2),path('M10 72 C14 58 22 50 30 52 C33 44 40 43 45 48 L39 55 C34 61 28 67 21 73 Z','#fbf8f1',1.1),
+    path('M21 60 C25 58 30 58 33 61','none',0.8),path('M30 52 C32 40 30 32 34 25 L36 26 C33 33 35 41 33 52 Z','#fbf8f1',1),circ(35,24,2.6,`url(#${p}red)`,0.6),path('M37 24 L44 22 L37 26 Z','#d9b25b',0.6),
+    line(21,73,17,87,K,1.4),line(25,71,23,87,K,1.4)),
+  '2y':p=>sum(ell(30,40,9.5,6.4,'#86a62e',-10,1),path('M22 40 C26 36 32 35 37 38','none',0.7),circ(37,34.5,4.8,'#a6c63a',1),path('M41.5 34 L47 35.5 L41.5 37 Z','#3a2a10',0.6),circ(38.6,33.6,1,'#111'),path('M21 41 L9 47 L22 45 Z','#55701b',0.9)),
+  '3g':p=>sum(path('M2 44 L58 44 L58 80 L2 80 Z','#f7efe0',1.1),...[0,1,2,3,4,5].map(i=>path(`M${2+i*9.4} 44 L${11.4+i*9.4} 44 L${11.4+i*9.4} 80 L${2+i*9.4} 80 Z`,i%2?`url(#${p}red)`:'#f7efe0',0.5)),
+    path('M2 44 C20 52 40 52 58 44','none',1.6),...[12,30,48].map(x=>circ(x,49,2.2,'#d9b25b',0.6)),circ(48,16,9,`url(#${p}red)`,1)),
+  '4y':p=>sum(path('M40 18 A11 11 0 1 0 51 32 A9 9 0 1 1 40 18 Z',`url(#${p}yel)`,0.8),path('M12 60 C20 52 30 50 40 54 L49 50 L45 58 C36 64 24 66 12 60 Z',`url(#${p}blk)`,1),path('M28 54 C30 44 38 40 47 42 C41 46 37 50 35 56 Z','#5a5a5a',0.8),circ(43,56,1.1,'#fff')),
+  '5y':p=>sum(path('M0 58 L60 45 L60 54 L0 67 Z',`url(#${p}brn)`,1),path('M0 72 L60 59 L60 68 L0 81 Z',`url(#${p}brn)`,1),...[10,24,38,52].map(x=>line(x,64-x*0.21,x,92,'#3a2210',1.6))),
+  '6y':p=>sum(ell(21,18,7.5,4.8,`url(#${p}yel)`,-30,0.8),ell(21,24.5,5.2,3.6,'#f0a33a',30,0.8),line(22,16,24,27,K,1),line(23,15,20,11,K,0.6),
+    ell(44,36,6.5,4.2,`url(#${p}blu)`,-25,0.8),ell(44,41.5,4.6,3.1,'#4d8fc4',25,0.8),line(45,34,47,44,K,1)),
+  '7y':p=>sum(path('M6 72 C8 58 20 51 34 53 C45 53 53 60 55 70 L53 77 L47 73 L41 79 L34 75 L22 79 L16 73 L9 79 Z',`url(#${p}brn)`,1.1),
+    path('M18 58 C24 55 30 56 36 58','none',0.7),circ(48,62,1.5,'#111'),path('M53 66 L59 68 L53 71 Z','#efe2c8',0.7)),
+  '8g':p=>sum(`<rect x="0" y="0" width="60" height="62" fill="url(#${p}sky)"/>`,circ(30,30,18,`url(#${p}moon)`,1.2)),
+  '8y':p=>sum(...[[14,18],[30,11],[45,21]].map(([x,y])=>path(`M${x-9} ${y+3} Q${x-4} ${y-1} ${x} ${y} Q${x+4} ${y-1} ${x+9} ${y+3} Q${x+4} ${y+1.5} ${x} ${y+1.6} Q${x-4} ${y+1.5} ${x-9} ${y+3} Z`,'#1a1a1a',0.5))),
+  '9y':p=>sum(path('M13 50 L47 50 C47 67 40 75 30 75 C20 75 13 67 13 50 Z',`url(#${p}red)`,1.2),ell(30,50,17,4.2,'#f06a5c',0,1),
+    '<text x="30" y="67" font-size="11" text-anchor="middle" fill="#ffe08a" font-weight="900" font-family="serif" stroke="#7a1010" stroke-width=".4">壽</text>',path('M23 75 L37 75 L39 81 L21 81 Z','#7a1010',0.9)),
+  '10y':p=>sum(path('M15 77 L17 58 C13 52 17 45 26 45 L40 45 C46 43 51 47 49 54 L47 58 L47 77 L43 77 L43 63 L24 63 L22 77 Z',`url(#${p}brn)`,1.1),
+    path('M44 45 L46 34 M47 37 L51 33 M48 45 L53 37','none',1.4,'#5a3414'),circ(46,50,1.2,'#111'),...[24,30,36,28].map((x,i)=>circ(x,51+(i===3?5:0),1.5,'#f6ead3'))),
+  '11g':p=>sum(path('M30 30 C41 24 51 30 49 41 C47 51 34 55 28 51 C20 47 22 34 30 30 Z',`url(#${p}blu)`,1.1),path('M30 30 C28 19 34 13 41 15 C39 20 37 24 37 29 Z',`url(#${p}red)`,1),circ(36.5,21.5,1.4,'#111'),
+    ...[0,1,2,3,4].map(i=>path(`M30 51 C${20+i*4} 63 ${14+i*7} 75 ${10+i*9} 88`,'none',2.6,['#f5c518','#d8262f','#2f9d55','#2f7ab5','#f0a33a'][i]))),
+  '12g':p=>sum(path('M8 40 C20 24 40 24 52 40 Z',`url(#${p}red)`,1.1),...[16,30,44].map(x=>line(30,30,x,40,'#7a1010',0.6)),line(30,40,30,60,'#3a2a10',1.6),
+    path('M23 45 C19 51 21 62 27 66 L35 66 C39 62 41 51 37 45 Z','#efe8d6',1),circ(30,44,4.2,'#f1d3b8',0.9),path('M26 41 C28 38 32 38 34 41','none',1.2,'#222'),
+    path('M40 72 C44 67 51 67 53 72 C51 76 44 76 40 72 Z','#5aa83a',0.9),circ(49,70,0.8,'#111'),...[[8,16],[18,9],[44,10],[53,22],[6,34]].map(([x,y])=>line(x,y,x-3,y+9,'#7aa7d8',1.1))),
+  '12y':p=>sum(path('M7 40 L26 35 L37 28 L31 38 L50 40 L31 45 L37 54 L26 45 Z','#1b2c50',1),circ(30,38.5,2.3,`url(#${p}red)`,0.5)),
+  '12p':p=>sum(`<rect x="0" y="40" width="60" height="24" fill="url(#${p}blk)"/>`,path('M9 44 L22 44 L16 52 L26 52 L11 63 L16 54 L8 54 Z','#ffd34d',0.8),...[35,44,53].map(x=>circ(x,52,4.2,`url(#${p}red)`,0.8)))
 };
-// 띠
-function ribbon(kind){
-  const col=kind==='cheong'?'#2c5fb3':'#d1262f',txt=kind==='hong'?'홍단':kind==='cheong'?'청단':'';
-  return sum(path('M20 30 L40 30 L41 76 L30 70 L19 76 Z',col,'#5a1010',0.8),
-    txt?`<text x="30" y="46" font-size="7.5" text-anchor="middle" fill="#fff" font-weight="800" font-family="sans-serif">${txt[0]}</text><text x="30" y="56" font-size="7.5" text-anchor="middle" fill="#fff" font-weight="800" font-family="sans-serif">${txt[1]}</text>`:'');
+function ribbon(kind,p){
+  const col=kind==='cheong'?`url(#${p}blu)`:`url(#${p}red)`,txt=kind==='hong'?'홍단':kind==='cheong'?'청단':'';
+  return sum(path('M19 29 L41 29 L42 78 L30 71 L18 78 Z',col,1.1),line(21,33,39,33,'rgba(255,255,255,.35)',1),
+    txt?`<text x="30" y="46" font-size="8" text-anchor="middle" fill="#fff" font-weight="900" font-family="sans-serif">${txt[0]}</text><text x="30" y="57" font-size="8" text-anchor="middle" fill="#fff" font-weight="900" font-family="sans-serif">${txt[1]}</text>`:'');
 }
 const KIND_TAG={gwang:['광','#d8262f'],yeol:['열','#2f7ab5'],tti:['띠','#7b3fa0'],pi:['피','#6b6b6b']};
 function face(id,o={}){
-  const c=GS.CARDS[id],m=c.m;
-  let art='';
-  if(c.t==='pi'&&c.x==='ssang'&&m===12)art=PLANT[12]()+SPECIAL['12p'];
-  else if(c.t==='pi'&&c.x==='ssang'&&m===11)art=PLANT[11]('y');
-  else art=PLANT[m]();
-  if(c.t==='gwang')art+=SPECIAL[m+'g']||'';
-  if(c.t==='yeol')art+=SPECIAL[m+'y']||'';
-  if(c.t==='tti')art+=ribbon(c.x);
-  const bg=m===8&&c.t!=='gwang'?'#d83a2a':'#f6efe2';
+  const c=GS.CARDS[id],m=c.m,p='h'+id+'_';
+  let art=c.t==='pi'&&c.x==='ssang'&&m===11?PLANT[11](p,'y'):PLANT[m](p);
+  if(c.t==='pi'&&c.x==='ssang'&&m===12)art+=SPECIAL['12p'](p);
+  if(c.t==='gwang')art+=SPECIAL[m+'g'](p);
+  if(c.t==='yeol')art+=SPECIAL[m+'y'](p);
+  if(c.t==='tti')art+=ribbon(c.x,p);
+  const bg=m===8&&c.t!=='gwang'?`url(#${p}sky)`:`url(#${p}paper)`;
   let marks='';
-  if(c.t==='gwang')marks+=circ(50,82,7,'#fff','#d8262f',1.6)+'<text x="50" y="85.5" font-size="9" text-anchor="middle" fill="#d8262f" font-weight="900" font-family="serif">光</text>';
+  if(c.t==='gwang')marks+=circ(50,82,7.2,'#fff',1)+`<circle cx="50" cy="82" r="5.6" fill="none" stroke="#d8262f" stroke-width="1"/><text x="50" y="85.5" font-size="8.5" text-anchor="middle" fill="#d8262f" font-weight="900" font-family="serif">光</text>`;
   if(o.labels!==false){
-    marks+=`<rect x="2" y="2" width="12" height="11" rx="2.5" fill="rgba(255,255,255,.85)"/><text x="8" y="10.6" font-size="8.5" text-anchor="middle" fill="#222" font-weight="800" font-family="sans-serif">${m}</text>`;
-    const [t,col]=KIND_TAG[c.t];const lab=c.pi===2?'쌍피':c.x==='gukjin'?'열/피':t;
-    marks+=`<rect x="${W-2-(lab.length>1?20:12)}" y="2" width="${lab.length>1?20:12}" height="11" rx="2.5" fill="${col}"/><text x="${W-2-(lab.length>1?10:6)}" y="10.6" font-size="7.5" text-anchor="middle" fill="#fff" font-weight="800" font-family="sans-serif">${lab}</text>`;
+    marks+=`<rect x="2.5" y="2.5" width="12" height="11" rx="3" fill="rgba(255,255,255,.92)" stroke="rgba(0,0,0,.25)" stroke-width=".5"/><text x="8.5" y="11" font-size="8.5" text-anchor="middle" fill="#1b1b1b" font-weight="900" font-family="sans-serif">${m}</text>`;
+    const [t,col]=KIND_TAG[c.t];const lab=c.pi===2?'쌍피':c.x==='gukjin'?'열/피':t,w=lab.length>1?20:12;
+    marks+=`<rect x="${W-2.5-w}" y="2.5" width="${w}" height="11" rx="3" fill="${col}"/><text x="${W-2.5-w/2}" y="11" font-size="7.5" text-anchor="middle" fill="#fff" font-weight="900" font-family="sans-serif">${lab}</text>`;
   }
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="hc${id}"><rect x="3" y="3" width="54" height="86" rx="4"/></clipPath></defs>
-    <rect x="0.5" y="0.5" width="59" height="91" rx="6" fill="#1b1b1b"/><rect x="3" y="3" width="54" height="86" rx="4" fill="${bg}"/>
-    <g clip-path="url(#hc${id})">${art}</g>${marks}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs>${defs(p)}<clipPath id="${p}c"><rect x="3" y="3" width="54" height="86" rx="4.5"/></clipPath></defs>
+    <rect x="0.4" y="0.4" width="59.2" height="91.2" rx="6.5" fill="#101010"/><rect x="3" y="3" width="54" height="86" rx="4.5" fill="${bg}"/>
+    <g clip-path="url(#${p}c)">${art}<rect x="3" y="3" width="54" height="86" fill="url(#${p}gloss)" opacity=".55"/></g>
+    <rect x="3" y="3" width="54" height="86" rx="4.5" fill="none" stroke="rgba(0,0,0,.35)" stroke-width=".6"/>${marks}</svg>`;
 }
-function back(){return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="59" height="91" rx="6" fill="#7a0f16"/><rect x="4" y="4" width="52" height="84" rx="4" fill="#c4161f"/><rect x="8" y="8" width="44" height="76" rx="3" fill="none" stroke="#e8505a" stroke-width="1"/><circle cx="30" cy="46" r="9" fill="none" stroke="#e8505a" stroke-width="1.2"/></svg>`;}
+function back(){return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="bk" cx="40%" cy="30%" r="80%"><stop offset="0" stop-color="#e3333b"/><stop offset="1" stop-color="#8e0c13"/></radialGradient>
+  <pattern id="bkp" width="6" height="6" patternUnits="userSpaceOnUse"><path d="M0 3 L3 0 L6 3 L3 6 Z" fill="rgba(255,255,255,.07)"/></pattern></defs>
+  <rect x="0.4" y="0.4" width="59.2" height="91.2" rx="6.5" fill="#5e070c"/><rect x="3" y="3" width="54" height="86" rx="4.5" fill="url(#bk)"/><rect x="3" y="3" width="54" height="86" rx="4.5" fill="url(#bkp)"/>
+  <rect x="7" y="7" width="46" height="78" rx="3" fill="none" stroke="rgba(255,220,180,.45)" stroke-width="1"/><circle cx="30" cy="46" r="10" fill="none" stroke="rgba(255,220,180,.5)" stroke-width="1.2"/><circle cx="30" cy="46" r="5" fill="rgba(255,220,180,.25)"/></svg>`;}
 const cache={};
 return{face:(id,o)=>{const k=id+(o&&o.labels===false?'n':'');return cache[k]||(cache[k]=face(id,o));},back:()=>cache.b||(cache.b=back()),W,H};
 })();
@@ -560,10 +589,13 @@ const SND={ctx:null,on:store.get('sound',true),
   ding(){if(!this.on||!this.ctx)return;const c=this.ctx,now=c.currentTime;for(const [f,v] of [[660,0.15],[990,0.08]]){const o=c.createOscillator(),g=c.createGain();o.frequency.value=f;g.gain.setValueAtTime(v,now);g.gain.exponentialRampToValueAtTime(0.0001,now+0.6);o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+0.65);}}};
 
 /* ---------- 판(테이블) 그리기 ---------- */
+let tableSeq=0;
+const faceFor=(id,labels,tp)=>HW.face(id,{labels}).split(`h${id}_`).join(`${tp}h${id}_`);
 function makeTable(el){
+  const TP='t'+(++tableSeq)+'_';
   const cards={},labels={};let slotOf={},W=0,H=0,portrait=true,showLabels=store.get('labels',true);
   for(let id=0;id<48;id++){const d=document.createElement('div');d.className='gcard down';d.dataset.id=id;
-    d.innerHTML=`<div class="gin"><div class="gf">${HW.face(id,{labels:showLabels})}</div><div class="gb">${HW.back()}</div></div>`;el.appendChild(d);cards[id]=d;}
+    d.innerHTML=`<div class="gin"><div class="gf">${faceFor(id,showLabels,TP)}</div><div class="gb">${HW.back()}</div></div>`;el.appendChild(d);cards[id]=d;}
   const deckN=document.createElement('div');deckN.className='gdeckn';el.appendChild(deckN);
   const bang=document.createElement('div');bang.className='gbang';el.appendChild(bang);
   function label(key){if(!labels[key]){const d=document.createElement('div');d.className='glabel';el.appendChild(d);labels[key]=d;}return labels[key];}
@@ -580,7 +612,7 @@ function makeTable(el){
   function render(s,o={}){
     size();const me=o.viewer||0,n=s.n,others=[...Array(n).keys()].filter(q=>q!==me);
     const fw=portrait?W/8.4:H/6.4,hw=portrait?W/5.9:H/4.9,ow=portrait?W/13:H/10,cw=portrait?W/12.5:H/9,ch=x=>x*HW.H/HW.W;
-    Object.values(cards).forEach(d=>{d.style.display='none';d.classList.remove('can','hl','sel','dim');});
+    Object.values(cards).forEach(d=>{d.style.display='none';d.classList.remove('can','hl','sel','dim','eat');});
     Object.values(labels).forEach(l=>l.style.display=o.gallery?'none':'');deckN.style.display=o.gallery?'none':'';
     if(o.gallery){   // 48장 한눈에: 달마다 4장을 나란히
       const cols=portrait?2:3,rows=12/cols,gw=(W-16)/cols,gh=(H-16)/rows,w=Math.min(gw/4.4,(gh-18)*HW.W/HW.H);
@@ -613,12 +645,13 @@ function makeTable(el){
     const hand=s.hands[me],per=portrait?5:10,hy=myCapY+ch(cw)+12;
     hand.forEach((id,k)=>{const row=Math.floor(k/per),col=k%per,cnt=Math.min(per,hand.length-row*per),gap=portrait?6:8;
       const tw=cnt*hw+(cnt-1)*gap,x=(W-tw)/2+col*(hw+gap),y=hy+row*(ch(hw)+8);
-      put(id,x,y-(o.sel===id?10:0),hw,300+k,true);
-      if(o.canPlay)cards[id].classList.add('can');if(o.sel===id)cards[id].classList.add('sel');});
+      const eat=o.canPlay&&s.floor.some(f=>monthOf(f)===monthOf(id));   // 바닥 패를 먹을 수 있는 패
+      put(id,x,y-(o.sel===id?14:eat?9:0),hw,300+k,true);
+      if(o.canPlay)cards[id].classList.add('can');if(eat)cards[id].classList.add('eat');if(o.sel===id)cards[id].classList.add('sel');});
     (o.hl||[]).forEach(id=>cards[id].classList.add('hl'));
     (o.dim||[]).forEach(id=>cards[id].classList.add('dim'));
   }
-  function setLabels(on){showLabels=on;store.set('labels',on);for(let id=0;id<48;id++)cards[id].querySelector('.gf').innerHTML=HW.face(id,{labels:on});}
+  function setLabels(on){showLabels=on;store.set('labels',on);for(let id=0;id<48;id++)cards[id].querySelector('.gf').innerHTML=faceFor(id,on,TP);}
   let bt=null;function shout(t){bang.textContent=t;bang.classList.add('show');clearTimeout(bt);bt=setTimeout(()=>bang.classList.remove('show'),900);}
   function overlay(html){let o=el.querySelector('.gover');if(!o){o=document.createElement('div');o.className='gover';el.appendChild(o);}o.innerHTML=`<div class="gbox">${html}</div>`;o.hidden=false;return o;}
   function closeOverlay(){const o=el.querySelector('.gover');if(o)o.hidden=true;}
@@ -644,7 +677,7 @@ function ask(T,title,text,buttons){
     o.onclick=e=>{const b=e.target.closest('[data-i]');if(!b)return;T.closeOverlay();o.onclick=null;res(+b.dataset.i);};});
 }
 function askCard(T,title,text,ids){
-  return new Promise(res=>{const o=T.overlay(`<h3>${title}</h3><div>${text}</div><div class="gpick">${ids.map(id=>`<button data-id="${id}" aria-label="${GS.cardName(id)}">${HW.face(id,{labels:T.labels})}</button>`).join('')}</div>`);
+  return new Promise(res=>{const o=T.overlay(`<h3>${title}</h3><div>${text}</div><div class="gpick">${ids.map(id=>`<button data-id="${id}" aria-label="${GS.cardName(id)}">${faceFor(id,T.labels,'pk_')}</button>`).join('')}</div>`);
     o.onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;T.closeOverlay();o.onclick=null;res(+b.dataset.id);};});
 }
 const BANG={jjok:'쪽!',ppeok:'뻑!',ttadak:'따닥!',sseul:'쓸!',bomb:'폭탄!',shake:'흔들기!',ppeokEat:'뻑 먹기!',four:'싹 먹기!'};
