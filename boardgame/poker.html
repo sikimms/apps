@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="보드게임">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>포커 · 하이로우 · 바둑이</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: 왼쪽 판, 오른쪽 수업 노트/대국 패널 — 좁은 화면에선 위아래로 쌓임 */
+:root{
+  --bg:#eceeea; --surface:#f9faf8; --ink:#1d2320; --muted:#5b6661; --rule:#d3d9d4;
+  --accent:#2d6a4f; --accent-ink:#ffffff; --accent-soft:#dcebe2;
+  --danger:#b3362c; --danger-soft:#f6e1de; --ok:#2b7a47; --ok-soft:#dff0e4;
+  --f-display:"Gowun Batang","Nanum Myeongjo",serif;
+  --f-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131715; --surface:#1b211e; --ink:#e4eae6; --muted:#98a59e; --rule:#2c3631;
+  --accent:#74c49b; --accent-ink:#0e1411; --accent-soft:#22342a;
+  --danger:#ff8074; --danger-soft:#3a201d; --ok:#83d6a1; --ok-soft:#1d3326; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131715; --surface:#1b211e; --ink:#e4eae6; --muted:#98a59e; --rule:#2c3631;
+  --accent:#74c49b; --accent-ink:#0e1411; --accent-soft:#22342a;
+  --danger:#ff8074; --danger-soft:#3a201d; --ok:#83d6a1; --ok-soft:#1d3326; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+h1{font-family:var(--f-display);font-size:30px;margin:0;line-height:1.2;text-wrap:balance}
+h1 small{display:block;font-family:var(--f-body);font-size:13px;color:var(--muted);font-weight:400;margin-top:4px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--rule);border-radius:999px;padding:4px}
+.tabs button{border:0;background:transparent;color:var(--muted);font:500 14px var(--f-body);padding:7px 16px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+.grid{display:grid;grid-template-columns:minmax(0,560px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:minmax(0,1fr)}}
+.boardbox{background:var(--frame);padding:6px;border-radius:10px;box-shadow:0 10px 30px -18px rgba(0,0,0,.55);max-width:560px;width:100%;margin:0 auto}
+svg.board{display:block;width:100%;height:auto;cursor:pointer;touch-action:manipulation;user-select:none}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:20px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.chip{border:1px solid var(--rule);background:transparent;color:var(--muted);border-radius:8px;padding:4px 10px;font:500 13px var(--f-body);cursor:pointer;font-variant-numeric:tabular-nums}
+.chip.done{color:var(--ok);border-color:var(--ok)}
+.chip.done::after{content:" ✓"}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+h2{font-family:var(--f-display);font-size:24px;margin:2px 0 10px;text-wrap:balance}
+.text{max-width:62ch}
+.text b{color:var(--accent)}
+.turn{display:inline-flex;align-items:center;gap:8px;font-weight:500;font-size:14px;margin:12px 0 4px}
+.fb{margin-top:12px;padding:10px 14px;border-radius:8px;font-size:14.5px}
+.fb.ok{background:var(--ok-soft);border-left:4px solid var(--ok)}
+.fb.no{background:var(--danger-soft);border-left:4px solid var(--danger)}
+.fb.info{background:var(--accent-soft);border-left:4px solid var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.btn{border:1px solid var(--rule);background:var(--surface);color:var(--ink);font:500 14px var(--f-body);padding:8px 14px;border-radius:8px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.quiz{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat{border:1px solid var(--rule);border-radius:10px;padding:10px 12px;min-width:0}
+.stat.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.stat .n{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.opts{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:14px;font-size:14px}
+.opts label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px solid var(--rule);background:var(--surface);color:var(--ink)}
+.tips{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px;font-size:13.5px;color:var(--muted)}
+.tips ul{margin:6px 0 0;padding-left:18px}
+.result{font-variant-numeric:tabular-nums}
+.rankcard{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--rule)}
+.rank{font-family:var(--f-display);font-size:34px;font-weight:700;line-height:1.1;color:var(--accent);font-variant-numeric:tabular-nums}
+.rank small{font-size:15px;color:var(--muted);font-weight:400;margin-left:6px;font-family:var(--f-body)}
+.sub{font-size:13px;color:var(--muted)}
+.linkbtn{border:0;background:none;color:var(--muted);font:13px var(--f-body);text-decoration:underline;cursor:pointer;padding:2px}
+.levels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:12px}
+.lv{border:1px solid var(--rule);background:transparent;color:var(--ink);border-radius:10px;padding:8px 4px;cursor:pointer;font:500 15px var(--f-body);display:flex;flex-direction:column;align-items:center;gap:1px}
+.lv span{font-size:11.5px;color:var(--muted);font-weight:400;font-variant-numeric:tabular-nums}
+.lv[aria-checked="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
+.lv:disabled{opacity:.4;cursor:not-allowed}
+.wbar{height:10px;border-radius:5px;background:var(--bar-b);box-shadow:inset 0 0 0 1px var(--rule);overflow:hidden;margin-top:4px}
+.wbar span{display:block;height:100%;background:var(--bar-a);transition:width .4s}
+.wrow{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:12px}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;margin-right:6px}
+.tag.g{background:var(--ok-soft);color:var(--ok)} .tag.m{background:var(--accent-soft);color:var(--accent)}
+.tag.s{background:var(--danger-soft);color:var(--danger)} .tag.b{background:var(--danger);color:var(--surface)}
+.hist{margin:8px 0 0;padding:0;list-style:none;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hist li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-top:1px dashed var(--rule)}
+.thinking::after{content:"";display:inline-block;width:10px;height:10px;margin-left:8px;border-radius:50%;border:2px solid var(--accent);border-right-color:transparent;animation:spin .8s linear infinite;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.thinking::after{animation:none}}
+.rv{border:0;cursor:pointer;font-family:inherit;line-height:1.6}
+.rv:hover{text-decoration:underline}
+.rvlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.modal{position:fixed;inset:0;background:rgba(8,12,10,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.sheet{background:var(--surface);color:var(--ink);border-radius:14px;width:100%;max-width:460px;max-height:100%;overflow:auto;padding:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
+.rvhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rvhead h2{font-size:20px;margin:2px 0 10px}
+.seg{display:flex;gap:4px;background:var(--bg);border-radius:999px;padding:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:transparent;color:var(--muted);font:500 14px var(--f-body);padding:6px 10px;border-radius:999px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.sheet .boardbox{max-width:min(420px,52vh)}
+.sheet svg.board{cursor:default}
+.legend{font-size:13px;color:var(--muted);margin:8px 0 2px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.lg{display:inline-block;width:18px;height:4px;border-radius:2px;background:var(--c)}
+.lg.dash{background:repeating-linear-gradient(90deg,var(--c) 0 5px,transparent 5px 8px)}
+.boardcol{min-width:0;max-width:560px;width:100%;margin:0 auto}
+.b3d{width:100%;aspect-ratio:var(--b3d-ratio,1);border-radius:6px;background:radial-gradient(ellipse at 50% 35%,var(--surface),var(--bg));overflow:hidden}
+.viewbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.btn.sm{padding:5px 11px;font-size:13px}
+.pk{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.pk button{font:500 16px var(--f-body);padding:10px 16px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);cursor:pointer}
+.pk button:hover{border-color:var(--accent)}
+#rvEyebrow{text-transform:none;letter-spacing:0}
+
+/* 고스톱 전용 */
+:root{--frame:#3b2414;--accent:#b3261e;--accent-soft:#f6dedb}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--accent:#f28b82;--accent-soft:#3a201d;--accent-ink:#1a0d0b}}
+:root[data-theme="dark"]{--accent:#f28b82;--accent-soft:#3a201d;--accent-ink:#1a0d0b}
+.gtable{position:relative;width:100%;border-radius:18px;overflow:hidden;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.10),rgba(0,0,0,0) 55%),radial-gradient(ellipse at 50% 50%,#2c8053 0%,#1d5e3b 55%,#123a25 100%);
+  box-shadow:inset 0 0 0 7px #6b3d1c,inset 0 0 0 9px #a8723f,inset 0 0 0 12px #4a2810,inset 0 0 60px rgba(0,0,0,.55),0 16px 36px -18px rgba(0,0,0,.75)}
+.gtable::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.04) 1px,transparent 1.4px),radial-gradient(rgba(0,0,0,.08) 1px,transparent 1.4px);background-size:4px 4px,7px 7px;background-position:0 0,2px 3px;pointer-events:none}
+.gcard{position:absolute;left:0;top:0;transition:transform .42s cubic-bezier(.2,.75,.25,1),width .3s,height .3s,filter .2s;will-change:transform;perspective:600px}
+.gcard .gin{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .45s ease}
+.gcard.down .gin{transform:rotateY(180deg)}
+.gcard .gf,.gcard .gb{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:7%;box-shadow:0 2px 4px rgba(0,0,0,.45)}
+.gcard .gb{transform:rotateY(180deg)}
+.gcard svg{display:block;width:100%;height:100%}
+.gcard.can{cursor:pointer}
+.gcard.can:hover{filter:brightness(1.08)}
+.gcard.can:hover .gf{box-shadow:0 0 0 2px #ffd34d,0 6px 12px rgba(0,0,0,.5)}
+.gcard.hl .gf{box-shadow:0 0 0 3px #ffd34d,0 0 14px 3px rgba(255,211,77,.8)}
+.gcard.sel .gf{box-shadow:0 0 0 3px #4fc3f7,0 0 14px 3px rgba(79,195,247,.8)}
+.gcard.dim{filter:brightness(.55)}
+.glabel{position:absolute;font:700 11px var(--f-body);color:#e9f5ec;text-shadow:0 1px 2px rgba(0,0,0,.6);pointer-events:none;white-space:nowrap}
+.glabel b{color:#ffd34d}
+.glabel.turn{color:#ffd34d}
+.gdeckn{position:absolute;font:800 12px var(--f-body);color:#fff;background:rgba(0,0,0,.55);border-radius:999px;padding:1px 7px;pointer-events:none}
+
+.gover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,15,10,.55);z-index:600;padding:12px}
+.gbox{background:var(--surface);color:var(--ink);border-radius:14px;padding:16px 18px;max-width:380px;width:100%;box-shadow:0 20px 50px -20px rgba(0,0,0,.8);max-height:100%;overflow:auto}
+.gbox h3{margin:0 0 6px;font:700 20px var(--f-display)}
+.gbox .gbtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.gbox .gbtns .btn{flex:1;font-size:16px;padding:10px}
+.gpick{display:flex;gap:10px;justify-content:center;margin-top:8px}
+.gpick button{border:0;background:none;padding:0;cursor:pointer;width:76px;border-radius:8px}
+.gpick button:hover{outline:3px solid #ffd34d}
+.gpick svg{display:block;width:100%;height:auto}
+.gscore{display:grid;gap:8px;margin-bottom:12px}
+.gsc{border:1px solid var(--rule);border-radius:10px;padding:8px 10px;font-size:13px}
+.gsc.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.gsc .gn{font-weight:700;font-size:14px}.gsc .gp{float:right;font:700 16px var(--f-display);color:var(--accent)}
+.gsc .gd{color:var(--muted);font-size:12px;margin-top:2px}
+.gmoney{font:700 13px var(--f-body);color:var(--muted)}
+.gres td{padding:2px 6px;font-size:13.5px}.gres td:last-child{text-align:right;font-weight:700}
+.gflip{margin-top:6px}
+
+.gcard .gf,.gcard .gb{box-shadow:0 1px 1px rgba(0,0,0,.35),0 4px 8px -2px rgba(0,0,0,.45)}
+.gcard.eat .gf{box-shadow:0 0 0 2.5px #ffcc33,0 0 12px 2px rgba(255,204,51,.75),0 6px 10px -2px rgba(0,0,0,.5)}
+.gcard.eat::after{content:"";position:absolute;left:50%;bottom:-7px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#ffcc33;box-shadow:0 0 6px #ffcc33}
+.glabel{background:rgba(0,0,0,.35);padding:2px 8px;border-radius:999px;backdrop-filter:blur(2px)}
+.gdeckn{box-shadow:0 1px 3px rgba(0,0,0,.5)}
+
+.gmat{position:absolute;border-radius:50%/40%;background:radial-gradient(ellipse at center,rgba(255,255,255,.07),rgba(255,255,255,0) 70%);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.08);pointer-events:none;z-index:1}
+.gplate{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.35));border:1px solid rgba(255,255,255,.15);z-index:450;box-shadow:0 3px 8px rgba(0,0,0,.35)}
+.gplate.turn{border-color:#ffcc33;box-shadow:0 0 0 2px rgba(255,204,51,.5),0 0 16px rgba(255,204,51,.6)}
+.gplate .gav{width:24px;height:24px;flex:none}
+.gplate .gpn{display:flex;flex-direction:column;line-height:1.1}.gplate .gpn b{color:#fff;font-size:12px}.gplate .gpn small{color:#cfe8d6;font-size:10px;font-weight:500}
+.gplate .gpt{font:900 18px var(--f-display);color:#ffd34d;margin-left:4px;text-shadow:0 1px 2px rgba(0,0,0,.6)}.gplate .gpt small{font-size:10px;margin-left:1px}
+.gtag{font:800 10px var(--f-body);padding:1px 6px;border-radius:999px;margin-left:2px}.gtag.go{background:#e53935;color:#fff}.gtag.mul{background:#ffcc33;color:#3a2a00}
+.gcnt{position:absolute;font:800 10px var(--f-body);color:#fff;padding:0 6px;border-radius:999px;background:rgba(0,0,0,.45);pointer-events:none;z-index:420;white-space:nowrap;line-height:14px}
+.gcnt-gwang{background:#c62828}.gcnt-yeol{background:#1565c0}.gcnt-tti{background:#6a1b9a}.gcnt-pi{background:#455a64}
+.gbang{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) scale(.3);opacity:0;pointer-events:none;z-index:500;transition:opacity .2s,transform .45s cubic-bezier(.18,1.8,.4,1)}
+.gbang.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.gbtxt{position:relative;display:block;font:900 52px var(--f-display);white-space:nowrap;letter-spacing:2px;
+  background:linear-gradient(180deg,#fff7c2 0%,#ffd34d 45%,#ff8f00 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-text-stroke:2px #6d1010;filter:drop-shadow(0 4px 0 #6d1010) drop-shadow(0 0 16px rgba(255,150,40,.8))}
+.gburst{position:absolute;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;
+  background:repeating-conic-gradient(from 0deg,rgba(255,220,90,.55) 0 10deg,rgba(255,220,90,0) 10deg 20deg);
+  -webkit-mask:radial-gradient(circle,#000 20%,transparent 70%);mask:radial-gradient(circle,#000 20%,transparent 70%);animation:gspin 1.2s linear}
+@keyframes gspin{from{transform:rotate(0) scale(.6)}to{transform:rotate(60deg) scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.gburst{animation:none}}
+
+.gpass{position:absolute;left:0;top:0;z-index:330;border-radius:7%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:repeating-linear-gradient(45deg,#3b2a12 0 6px,#4a3517 6px 12px);border:2px dashed #ffcc33;color:#ffe08a;font:800 12px var(--f-body);
+  box-shadow:0 4px 8px rgba(0,0,0,.45);transition:transform .35s cubic-bezier(.2,.75,.25,1)}
+.gpass b{font:900 15px var(--f-display);color:#ff7043}
+.gpass.can{cursor:pointer;box-shadow:0 0 0 2px #ffcc33,0 0 14px rgba(255,204,51,.7)}
+.gpass[hidden]{display:none!important}
+
+.gcard.capc{cursor:zoom-in}
+.gbox.wide{max-width:560px}
+.cvr{margin-top:8px}.cvh{font-size:13px;color:var(--muted);margin-bottom:3px}.cvh b{color:var(--ink)}
+.cvc{display:flex;flex-wrap:wrap;gap:4px}.cvc span{width:44px;display:block}.cvc svg{display:block;width:100%;height:auto;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.3)}
+.cvs{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule);font-size:14px}
+
+/* 섯다 · 도리짓고땡 */
+.stable{position:relative;width:100%;aspect-ratio:1/1.05;border-radius:50%/42%;overflow:hidden;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.10),rgba(0,0,0,0) 55%),radial-gradient(ellipse at 50% 50%,#2c8053 0%,#1d5e3b 58%,#123a25 100%);
+  box-shadow:inset 0 0 0 9px #6b3d1c,inset 0 0 0 11px #a8723f,inset 0 0 0 15px #4a2810,inset 0 0 70px rgba(0,0,0,.55),0 16px 36px -18px rgba(0,0,0,.75)}
+@media (min-width:700px){.stable{aspect-ratio:1.35/1}}
+.seat{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;width:34%;z-index:5}
+.seat .scards{display:flex;gap:4px;justify-content:center;min-height:10px}
+.seat .card{width:42px;aspect-ratio:60/92;position:relative;perspective:500px}
+.seat.me .card{width:62px}
+.seat.dori .card{width:31px}.seat.dori.me .card{width:54px}
+.card .ci{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .5s ease}
+.card.down .ci{transform:rotateY(180deg)}
+.card .cf,.card .cb{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:7%;box-shadow:0 1px 1px rgba(0,0,0,.35),0 4px 8px -2px rgba(0,0,0,.5)}
+.card .cb{transform:rotateY(180deg)}
+.card svg{display:block;width:100%;height:100%}
+.card.deal{animation:sdeal .45s cubic-bezier(.2,.8,.3,1) both}
+@keyframes sdeal{from{transform:translate(var(--dx,0),var(--dy,-120px)) rotate(-25deg) scale(.6);opacity:0}to{transform:none;opacity:1}}
+.card.pick{cursor:pointer}.card.pick:hover .cf{box-shadow:0 0 0 2px #ffd34d}
+.card.chosen{transform:translateY(-10px)}.card.chosen .cf{box-shadow:0 0 0 3px #4fc3f7,0 0 14px rgba(79,195,247,.8)}
+.card{transition:transform .2s}
+.splate{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,.38));border:1px solid rgba(255,255,255,.15);box-shadow:0 3px 8px rgba(0,0,0,.35);max-width:100%}
+.splate.turn{border-color:#ffcc33;box-shadow:0 0 0 2px rgba(255,204,51,.5),0 0 16px rgba(255,204,51,.6)}
+.splate.out{opacity:.45}
+.splate svg{width:26px;height:26px;flex:none}
+.splate .sn{display:flex;flex-direction:column;line-height:1.1;min-width:0}.splate .sn b{color:#fff;font-size:12px;white-space:nowrap}.splate .sn small{color:#ffe08a;font-size:10.5px;font-weight:700;white-space:nowrap}
+.sact{font:800 11px var(--f-body);color:#fff;background:rgba(0,0,0,.55);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.sact.die{background:#616161}.sact.raise{background:#e53935}.sact.call{background:#1e88e5}
+.shand{font:900 13px var(--f-display);color:#ffd34d;text-shadow:0 1px 2px #000;white-space:nowrap}
+.shand.win{color:#fff;background:linear-gradient(180deg,#ffb300,#e65100);padding:1px 10px;border-radius:999px;text-shadow:none}
+.spot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:4;pointer-events:none}
+.spot .chips{display:flex;align-items:flex-end;gap:2px;height:34px}
+.chipstack{display:flex;flex-direction:column-reverse}
+.chipstack i{display:block;width:26px;height:6px;margin-top:-2px;border-radius:50%;background:var(--c);box-shadow:0 1px 0 rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,255,255,.55)}
+.spot b{font:900 18px var(--f-display);color:#ffd34d;text-shadow:0 2px 3px #000}
+.spot small{color:#cfe8d6;font-size:11px}
+.sbar{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.sbar .btn{flex:1 1 70px;font-size:15px;padding:10px 6px;font-weight:700}
+.sbar .btn.die{background:#757575;border-color:#757575;color:#fff}
+.sbar .btn.raise{background:#e53935;border-color:#e53935;color:#fff}
+.sbar .btn.call{background:#1e88e5;border-color:#1e88e5;color:#fff}
+.sbar .btn small{display:block;font-size:11px;font-weight:500;opacity:.9}
+.jokbo{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:13px;align-items:center}
+.jokbo b{color:var(--accent)}
+.jokbo .jc{display:flex;gap:2px}.jokbo .jc svg{width:20px;height:auto}
+.sover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,15,10,.5);z-index:50;padding:12px}
+.sbig{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%) scale(.3);opacity:0;pointer-events:none;z-index:40;transition:opacity .2s,transform .45s cubic-bezier(.18,1.8,.4,1)}
+.sbig.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.sbig span{display:block;font:900 40px var(--f-display);white-space:nowrap;background:linear-gradient(180deg,#fff7c2,#ffd34d 45%,#ff8f00);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:1.5px #6d1010;filter:drop-shadow(0 3px 0 #6d1010)}
+.dsum{font:800 13px var(--f-body);color:#fff;background:rgba(0,0,0,.5);border-radius:999px;padding:2px 10px}
+.dsum.ok{background:#2e7d32}
+.betchips{display:flex;gap:6px;flex-wrap:wrap}
+.betchips button{border:0;border-radius:50%;width:56px;height:56px;font:800 12px var(--f-body);color:#fff;cursor:pointer;box-shadow:inset 0 0 0 4px rgba(255,255,255,.6),0 3px 6px rgba(0,0,0,.4)}
+.betchips button[aria-pressed="true"]{outline:3px solid #ffd34d;outline-offset:2px}
+
+:root{--accent:#1e4fa3;--accent-soft:#dfe8f7}
+.card.reveal .ci{animation:sflip .55s ease both}@keyframes sflip{from{transform:rotateY(180deg)}to{transform:none}}
+.pkseat .scards{gap:0}.pkseat .card.pk{width:34px;aspect-ratio:60/84;margin-left:-12px}.pkseat .card.pk:first-child{margin-left:0}
+.pkseat.me .card.pk{width:52px;margin-left:-8px}
+.card.pk .cf,.card.pk .cb{border-radius:9%}
+.card.hid .cf::after{content:"히든";position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);font:800 9px var(--f-body);color:#fff;background:rgba(30,79,163,.85);border-radius:4px;padding:0 4px}
+.sbar .btn{flex:1 1 60px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>포커 · 하이로우 · 바둑이<small>트럼프 카드 52장으로 컴퓨터와 겨뤄요. 가짜 돈으로만 해요. <span id="pmoney" style="font-weight:700"></span></small></h1>
+    <div class="tabs" role="tablist"><button id="tab_seven" role="tab">세븐포커</button><button id="tab_hilo" role="tab">하이로우</button><button id="tab_badugi" role="tab">바둑이</button><button id="tab_rules" role="tab">족보</button></div>
+  </header>
+  <section id="play" class="grid">
+    <div class="boardcol"><div class="stable" id="ptable"><div class="spot" id="ppot"></div><div class="sbig" id="pbig"></div></div>
+      <div class="sbar" id="pbar"></div></div>
+    <div class="panel">
+      <h2 id="ptitle" style="margin-top:0"></h2>
+      <div id="pmsg" class="fb info"></div>
+      <div class="row"><button class="btn primary" id="pnext" hidden>다음 판</button></div>
+      <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
+      <div class="levels" id="plevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
+      <div class="opts">
+        <label>인원 <select id="pPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
+        <label>판돈 <select id="pAnte"><option value="500">500원</option><option value="1000">1,000원</option><option value="5000">5,000원</option></select></label>
+        <label><input type="checkbox" id="pSound"> 소리</label>
+      </div>
+      <div class="tips"><strong>하는 법</strong><ul id="phow"></ul>
+        <ul><li><b>다이</b> 포기 · <b>체크</b> 그냥 넘김 · <b>삥</b> 판돈만큼 걸기 · <b>콜</b> 따라가기 · <b>쿼터</b> 판의 1/4 더 · <b>하프</b> 판의 1/2 더 · <b>따당</b> 앞사람이 올린 만큼의 2배</li></ul>
+        <div class="sub" id="prec"></div><button class="linkbtn" id="pReset">돈·기록 처음으로</button></div>
+    </div>
+  </section>
+  <section id="rules" hidden>
+    <div class="panel">
+      <h2>세븐포커·하이 족보 (높은 순)</h2><div class="jokbo" id="jokbo"></div>
+      <p class="sub">같은 족보면 숫자가 높은 쪽, 숫자도 같으면 무늬 ♠ > ♦ > ♥ > ♣ 순으로 정해요. 로우(하이로우)는 숫자가 다른 5장 중 가장 높은 숫자가 낮을수록 좋아요 (A·2·3·4·5 휠이 최고).</p>
+      <h2>바둑이 족보</h2><div class="jokbo" id="jokbo2"></div>
+      <p class="sub">무늬와 숫자가 모두 다른 카드가 많을수록, 그중 가장 큰 숫자가 낮을수록 좋아요.</p>
+    </div>
+  </section>
+</div>
+<script>
+/* ===== 포커 규칙: 세븐포커 · 하이로우 · 바둑이 =====
+   카드 id 0~51: 숫자 r = id%13+2 (2~14, 14=A), 무늬 s = floor(id/13): 0♣ 1♥ 2♦ 3♠ (같은 족보면 ♠>♦>♥>♣) */
+const PK=(()=>{
+const R=id=>id%13+2,S=id=>Math.floor(id/13);
+const RN=r=>({11:'J',12:'Q',13:'K',14:'A'})[r]||String(r),SN=['♣','♥','♦','♠'],SKO=['클로버','하트','다이아','스페이드'];
+const cardName=id=>SN[S(id)]+RN(R(id));
+function shuffle(a,rnd=Math.random){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const DECK=[...Array(52).keys()];
+const cmp=(a,b)=>{for(let i=0;i<Math.max(a.length,b.length);i++){const x=a[i]??-1,y=b[i]??-1;if(x!==y)return x-y;}return 0;};
+
+/* ---------- 하이 족보 (5장) ---------- */
+const CAT=['탑','원페어','투페어','트리플','스트레이트','백스트레이트','마운틴','플러시','풀하우스','포카드','스트레이트 플러시','백스트레이트 플러시','로열 스트레이트 플러시'];
+function eval5(c){
+  const rs=c.map(R).sort((a,b)=>b-a),ss=c.map(S),flush=ss.every(x=>x===ss[0]);
+  const cnt={};rs.forEach(r=>cnt[r]=(cnt[r]||0)+1);
+  const groups=Object.entries(cnt).map(([r,n])=>[n,+r]).sort((a,b)=>b[0]-a[0]||b[1]-a[1]);
+  const uniq=[...new Set(rs)];let st=0;   // 스트레이트 꼭대기
+  if(uniq.length===5){if(uniq[0]-uniq[4]===4)st=uniq[0];else if(uniq.join()==='14,5,4,3,2')st=5;}
+  const suitOf=r=>Math.max(...c.filter(x=>R(x)===r).map(S));
+  let cat,tie;
+  if(st&&flush){cat=st===14?12:st===5?11:10;tie=[st];}
+  else if(groups[0][0]===4){cat=9;tie=[groups[0][1],groups[1][1]];}
+  else if(groups[0][0]===3&&groups[1][0]===2){cat=8;tie=[groups[0][1],groups[1][1]];}
+  else if(flush){cat=7;tie=rs;}
+  else if(st){cat=st===14?6:st===5?5:4;tie=[st];}
+  else if(groups[0][0]===3){cat=3;tie=groups.map(g=>g[1]);}
+  else if(groups[0][0]===2&&groups[1][0]===2){cat=2;tie=groups.map(g=>g[1]);}
+  else if(groups[0][0]===2){cat=1;tie=groups.map(g=>g[1]);}
+  else{cat=0;tie=rs;}
+  const top=cat===5||cat===11?5:tie[0];
+  return{score:[cat,...tie,suitOf(top===5&&!c.some(x=>R(x)===5)?14:top)],cat,cards:c};
+}
+function bestHigh(cards){
+  if(cards.length<5){const e=eval5pad(cards);return e;}
+  let best=null;const n=cards.length;
+  for(let a=0;a<n;a++)for(let b=a+1;b<n;b++)for(let c=b+1;c<n;c++)for(let d=c+1;d<n;d++)for(let e=d+1;e<n;e++){
+    const h=eval5([cards[a],cards[b],cards[c],cards[d],cards[e]]);if(!best||cmp(h.score,best.score)>0)best=h;}
+  return best;
+}
+// 5장이 안 될 때(보이는 카드만): 페어·트리플 정도만 셈
+function eval5pad(c){const rs=c.map(R).sort((a,b)=>b-a),cnt={};rs.forEach(r=>cnt[r]=(cnt[r]||0)+1);
+  const g=Object.entries(cnt).map(([r,n])=>[n,+r]).sort((a,b)=>b[0]-a[0]||b[1]-a[1]);
+  const cat=g[0][0]===4?9:g[0][0]===3?3:g[0][0]===2&&g[1]&&g[1][0]===2?2:g[0][0]===2?1:0;
+  return{score:[cat,...g.map(x=>x[1]),Math.max(...c.filter(x=>R(x)===g[0][1]).map(S))],cat,cards:c};}
+function highName(h){const t=h.score[1];
+  if(h.cat===1)return `${RN(t)} 원페어`;if(h.cat===2)return `${RN(t)}·${RN(h.score[2])} 투페어`;if(h.cat===3)return `${RN(t)} 트리플`;
+  if(h.cat===9)return `${RN(t)} 포카드`;if(h.cat===8)return `${RN(t)} 풀하우스`;if(h.cat===0)return `${RN(t)} 탑`;if(h.cat===4)return `${RN(t)} 스트레이트`;
+  if(h.cat===7)return `${RN(t)} 플러시`;return CAT[h.cat];}
+
+/* ---------- 로우 족보 (하이로우): 서로 다른 숫자 5장, A는 1, 낮을수록 좋음 ---------- */
+function bestLow(cards){
+  const ranks=[...new Set(cards.map(c=>R(c)===14?1:R(c)))].sort((a,b)=>a-b);
+  if(ranks.length<5)return null;
+  const five=ranks.slice(0,5).sort((a,b)=>b-a);return{score:five,name:`${five[0]===1?'A':RN(five[0])} 로우`+(five.join()==='5,4,3,2,1'?' (휠)':'')};
+}
+const lowBetter=(a,b)=>cmp(b.score,a.score)>0;   // a가 더 낮으면 true
+
+/* ---------- 바둑이: 무늬·숫자 모두 다른 카드끼리, 장수가 많을수록·숫자가 낮을수록 좋음 ---------- */
+function badugi(cards){
+  let best=null;
+  for(let m=1;m<16;m++){const sub=cards.filter((_,i)=>m&(1<<i));
+    if(new Set(sub.map(S)).size!==sub.length)continue;const rr=sub.map(c=>R(c)===14?1:R(c));if(new Set(rr).size!==rr.length)continue;
+    const desc=rr.sort((a,b)=>b-a),score=[sub.length,...desc.map(x=>-x)];
+    if(!best||cmp(score,best.score)>0)best={score,keep:sub,size:sub.length,desc};}
+  const d=best.desc,top=d[0]===1?'A':RN(d[0]);
+  best.name=best.size===4?(d.join()==='4,3,2,1'?'골프':d.join()==='5,3,2,1'?'세컨드':d.join()==='5,4,2,1'?'서드':`${top} 메이드`):best.size===3?`${top} 베이스`:best.size===2?'투베이스':'쓰리베이스';
+  return best;
+}
+
+/* ---------- 판 공통: 판돈과 베팅 ---------- */
+function newGame(o){
+  const n=o.players;
+  return{kind:o.kind,n,ante:o.ante,deck:shuffle(DECK),hidden:Array.from({length:n},()=>[]),open:Array.from({length:n},()=>[]),
+    folded:Array(n).fill(false),bet:Array(n).fill(0),paid:Array(n).fill(o.ante),pot:o.ante*n,toCall:0,lastRaise:0,acted:Array(n).fill(false),raises:0,
+    turn:0,street:0,phase:'deal',dealer:o.dealer||0,over:false,discards:[],declare:Array(n).fill(null),log:[]};
+}
+const alive=s=>s.folded.map((f,i)=>f?-1:i).filter(i=>i>=0);
+function draw1(s){if(!s.deck.length){s.deck=shuffle(s.discards);s.discards=[];}return s.deck.shift();}
+function startBetting(s,first){s.bet=Array(s.n).fill(0);s.toCall=0;s.lastRaise=0;s.acted=Array(s.n).fill(false);s.raises=0;s.turn=first;s.phase='bet';}
+function nextAlive(s,from){for(let k=1;k<=s.n;k++){const q=(from+k)%s.n;if(!s.folded[q])return q;}return -1;}
+function actions(s){
+  const p=s.turn,need=s.toCall-s.bet[p],out=[{k:'die',amt:0,name:'다이'}];
+  if(need<=0)out.push({k:'check',amt:0,name:'체크'});else out.push({k:'call',amt:need,name:'콜'});
+  if(s.raises<3){
+    if(s.toCall===0)out.push({k:'bbing',amt:s.ante,raise:s.ante,name:'삥'});
+    const base=s.pot+need,q=Math.max(s.ante,Math.round(base/4/100)*100),h=Math.max(s.ante,Math.round(base/2/100)*100);
+    out.push({k:'quarter',amt:need+q,raise:q,name:'쿼터'});out.push({k:'half',amt:need+h,raise:h,name:'하프'});
+    if(s.lastRaise>0)out.push({k:'ddadang',amt:need+s.lastRaise*2,raise:s.lastRaise*2,name:'따당'});
+  }
+  return out;
+}
+function act(s,a){
+  const p=s.turn;s.acted[p]=true;
+  if(a.k==='die')s.folded[p]=true;
+  else{s.bet[p]+=a.amt;s.paid[p]+=a.amt;s.pot+=a.amt;if(a.raise){s.toCall=s.bet[p];s.lastRaise=a.raise;s.raises++;s.acted=s.acted.map((x,i)=>i===p);}}
+  s.log.push({p,k:a.k,amt:a.amt,street:s.street});
+  const al=alive(s);
+  if(al.length===1){s.over=true;s.result={winners:[{p:al[0],share:s.pot,why:'다른 사람이 모두 다이했어요'}]};return'end';}
+  if(al.every(q=>s.acted[q]&&s.bet[q]===s.toCall))return'done';
+  s.turn=nextAlive(s,p);return'next';
+}
+
+/* ---------- 세븐포커 · 하이로우 진행 ---------- */
+const all=(s,p)=>s.hidden[p].concat(s.open[p]);
+function studDeal4(s){for(let k=0;k<4;k++)for(let p=0;p<s.n;p++)s.hidden[p].push(draw1(s));s.street=3;s.phase='discard';}   // 버리고 보여 주면 3장(3구). 다음부터 4·5·6구 오픈, 7구 히든
+function studDiscard(s,p,id){s.hidden[p]=s.hidden[p].filter(x=>x!==id);s.discards.push(id);}
+function studOpen(s,p,id){s.hidden[p]=s.hidden[p].filter(x=>x!==id);s.open[p].push(id);}
+// 보이는 카드가 가장 좋은 사람이 먼저 (보스)
+function boss(s){let b=-1,bs=null;for(const p of alive(s)){const h=bestHigh(s.open[p]);if(!bs||cmp(h.score,bs)>0){bs=h.score;b=p;}}return b;}
+function studNextCard(s){   // 4·5·6구: 오픈, 7구: 히든
+  s.street++;for(const p of alive(s)){const c=draw1(s);if(s.street<=6)s.open[p].push(c);else s.hidden[p].push(c);}
+  startBetting(s,boss(s));
+}
+function studShowdown(s){
+  const al=alive(s);s.over=true;
+  if(s.kind==='seven'){
+    let best=null,ws=[];for(const p of al){const h=bestHigh(all(s,p));const c=best?cmp(h.score,best.score):1;if(c>0){best=h;ws=[p];}else if(c===0)ws.push(p);}
+    s.result={winners:ws.map(p=>({p,share:Math.floor(s.pot/ws.length),why:highName(bestHigh(all(s,p)))})),hands:al.map(p=>({p,name:highName(bestHigh(all(s,p)))}))};
+    return s.result;}
+  // 하이로우: 선언대로 나눔. 스윙은 하이와 로우를 모두 이겨야 함
+  let players=al.slice();
+  const hi=p=>bestHigh(all(s,p)),lo=p=>bestLow(all(s,p));
+  const bestOf=(cands,side)=>{let w=[],b=null;for(const p of cands){const h=side==='hi'?hi(p):lo(p);if(!h)continue;
+    const c=!b?1:side==='hi'?cmp(h.score,b.score):cmp(b.score,h.score);if(c>0){b=h;w=[p];}else if(c===0)w.push(p);}return w;};
+  for(let guard=0;guard<4;guard++){
+    const hc=players.filter(p=>s.declare[p]==='hi'||s.declare[p]==='swing'),lc=players.filter(p=>s.declare[p]==='lo'||s.declare[p]==='swing');
+    const hw=bestOf(hc,'hi'),lw=bestOf(lc,'lo');
+    const failed=players.filter(p=>s.declare[p]==='swing'&&!(hw.includes(p)&&lw.includes(p)));
+    if(failed.length&&failed.length<players.length){players=players.filter(p=>!failed.includes(p));continue;}
+    const winners=[];const half=Math.floor(s.pot/2);
+    const give=(ws,amt,why)=>ws.forEach(p=>{const ex=winners.find(x=>x.p===p);const sh=Math.floor(amt/ws.length);if(ex){ex.share+=sh;ex.why+=' + '+why;}else winners.push({p,share:sh,why});});
+    if(hw.length&&lw.length){give(hw,half,'하이');give(lw,s.pot-half,'로우');}
+    else if(hw.length)give(hw,s.pot,'하이');else if(lw.length)give(lw,s.pot,'로우');else give(players,s.pot,'나눔');
+    s.result={winners,hands:al.map(p=>({p,name:highName(hi(p))+(lo(p)?' / '+lo(p).name:''),declare:s.declare[p]})),failed:al.filter(p=>!players.includes(p))};
+    return s.result;}
+}
+
+/* ---------- 바둑이 진행 ---------- */
+function badugiDeal(s){for(let k=0;k<4;k++)for(let p=0;p<s.n;p++)s.hidden[p].push(draw1(s));s.street=0;startBetting(s,(s.dealer+1)%s.n);}
+function badugiDraw(s,p,ids){for(const id of ids){s.hidden[p]=s.hidden[p].filter(x=>x!==id);s.discards.push(id);}for(let k=0;k<ids.length;k++)s.hidden[p].push(draw1(s));}
+function badugiShowdown(s){
+  const al=alive(s);s.over=true;let best=null,ws=[];
+  for(const p of al){const b=badugi(s.hidden[p]);const c=best?cmp(b.score,best.score):1;if(c>0){best=b;ws=[p];}else if(c===0)ws.push(p);}
+  s.result={winners:ws.map(p=>({p,share:Math.floor(s.pot/ws.length),why:badugi(s.hidden[p]).name})),hands:al.map(p=>({p,name:badugi(s.hidden[p]).name}))};return s.result;
+}
+
+/* ---------- 컴퓨터: 이길 확률을 여러 번 굴려 보고 결정 ---------- */
+function equity(s,p,N=160){
+  const al=alive(s),known=new Set();al.forEach(q=>s.open[q].forEach(c=>known.add(c)));s.hidden[p].forEach(c=>known.add(c));
+  const pool=DECK.filter(c=>!known.has(c));let win=0,winHi=0,winLo=0;
+  for(let k=0;k<N;k++){const d=shuffle(pool);let i=0;const hands={};
+    for(const q of al){if(s.kind==='badugi'){hands[q]=q===p?s.hidden[q].slice():d.slice(i,i+4);if(q!==p)i+=4;continue;}
+      const need=7-s.open[q].length-(q===p?s.hidden[q].length:0);const mine=q===p?s.hidden[q].concat(s.open[q]):s.open[q].slice();
+      const extraOpen=Math.max(0,Math.min(6,s.street)-s.open[q].length);
+      hands[q]=mine.concat(d.slice(i,i+Math.max(0,7-mine.length)));i+=Math.max(0,7-mine.length);}
+    if(s.kind==='badugi'){
+      // 남은 교환 횟수만큼 안 맞는 카드를 바꿔 봄
+      const draws=Math.max(0,3-s.street);
+      for(const q of al){for(let t=0;t<draws;t++){const b=badugi(hands[q]);if(b.size===4&&(b.desc[0]<=10||t>0))break;const out=hands[q].filter(c=>!b.keep.includes(c));hands[q]=b.keep.concat(d.slice(i,i+out.length));i+=out.length;if(i>d.length-6)break;}}
+      const mine=badugi(hands[p]);if(al.every(q=>q===p||cmp(mine.score,badugi(hands[q]).score)>=0))win++;continue;}
+    const mh=bestHigh(hands[p]);if(al.every(q=>q===p||cmp(mh.score,bestHigh(hands[q]).score)>=0)){win++;winHi++;}
+    if(s.kind==='hilo'){const ml=bestLow(hands[p]);if(ml&&al.every(q=>{if(q===p)return true;const ol=bestLow(hands[q]);return!ol||cmp(ml.score,ol.score)<=0;}))winLo++;}}
+  return{win:win/N,hi:winHi/N,lo:winLo/N};
+}
+const LV=[{name:'신입',bluff:0.18,rnd:0.3,loose:0.12,samples:50},{name:'초보',bluff:0.08,rnd:0.15,loose:0.05,samples:70},{name:'중수',bluff:0.05,rnd:0.07,loose:0.02,samples:140},{name:'고수',bluff:0.06,rnd:0.03,loose:0.02,samples:220}];
+// 베팅: 인원수에 따른 '내 몫'(1/살아 있는 사람 수)보다 얼마나 유리한지로 판단
+function aiBet(s,lv){
+  const p=s.turn,L=LV[lv],eq=equity(s,p,L.samples),nA=alive(s).length,fair=1/nA;
+  let e=s.kind==='hilo'?Math.min(1,Math.max(eq.hi,eq.lo)+Math.min(eq.hi,eq.lo)*0.6):eq.win;
+  e+=(Math.random()-0.5)*L.rnd;const edge=e-fair;
+  const acts=actions(s),get=k=>acts.find(a=>a.k===k),need=s.toCall-s.bet[p],odds=need/(s.pot+need||1);
+  const late=s.kind==='badugi'?s.street>=3:s.street>=7;
+  if(Math.random()<L.bluff&&!late&&get('quarter')&&need<=s.ante)return get('quarter');
+  if(edge>0.42&&get('ddadang'))return get('ddadang');
+  if(edge>0.3&&get('half'))return get('half');
+  if(edge>0.18&&get('quarter'))return get('quarter');
+  if(edge>0.08&&get('bbing'))return get('bbing');
+  if(need<=0)return get('check');
+  if(e+L.loose>odds*1.05)return get('call');
+  return get('die');
+}
+// 세븐포커 처음: 버릴 카드와 보여 줄 카드 고르기
+function aiDiscardOpen(s,p){
+  const h=s.hidden[p];let best=null;
+  for(const d of h){const rest=h.filter(x=>x!==d),v=bestHigh(rest).score.concat([-R(d)]);if(!best||cmp(v,best.v)>0)best={d,v,rest};}
+  // 보여 줄 카드: 짝이 아닌 낮은 카드 (내 패를 덜 드러냄)
+  const rest=best.rest,cnt={};rest.forEach(c=>cnt[R(c)]=(cnt[R(c)]||0)+1);
+  const show=rest.slice().sort((a,b)=>(cnt[R(a)]-cnt[R(b)])||R(a)-R(b))[0];
+  return{discard:best.d,open:show};
+}
+function aiDeclare(s,p){const eq=equity(s,p,200);if(eq.hi>0.7&&eq.lo>0.7)return'swing';return eq.lo>eq.hi?'lo':'hi';}
+function aiDraw(s,p){const b=badugi(s.hidden[p]);if(b.size===4&&!(b.desc[0]>=11&&s.street<2))return[];return s.hidden[p].filter(c=>!b.keep.includes(c)).concat(b.size===4?[b.keep.find(c=>(R(c)===14?1:R(c))===b.desc[0])]:[]);}
+return{R,S,RN,SN,SKO,cardName,DECK,shuffle,cmp,CAT,eval5,bestHigh,highName,bestLow,lowBetter,badugi,newGame,alive,actions,act,startBetting,nextAlive,
+  studDeal4,studDiscard,studOpen,studNextCard,studShowdown,boss,all,badugiDeal,badugiDraw,badugiShowdown,equity,aiBet,aiDiscardOpen,aiDeclare,aiDraw,LV,draw1};
+})();
+
+/* ===== 트럼프 카드 그림 (SVG로 직접 그림) ===== viewBox 0 0 60 84 */
+const PC=(()=>{
+const W=60,H=84;
+// 무늬 모양 (가운데 0,0 · 크기 1 기준)
+const SUIT={
+  3:'M0 -1 C0.5 -0.45 1 -0.1 1 0.3 C1 0.65 0.6 0.85 0.25 0.65 C0.3 0.85 0.4 1 0.55 1 L-0.55 1 C-0.4 1 -0.3 0.85 -0.25 0.65 C-0.6 0.85 -1 0.65 -1 0.3 C-1 -0.1 -0.5 -0.45 0 -1 Z',
+  1:'M0 1 C-0.55 0.5 -1 0.1 -1 -0.35 C-1 -0.75 -0.65 -0.95 -0.35 -0.95 C-0.15 -0.95 -0.02 -0.8 0 -0.65 C0.02 -0.8 0.15 -0.95 0.35 -0.95 C0.65 -0.95 1 -0.75 1 -0.35 C1 0.1 0.55 0.5 0 1 Z',
+  2:'M0 -1 L0.72 0 L0 1 L-0.72 0 Z',
+  0:'M0 -0.95 C0.36 -0.95 0.55 -0.65 0.45 -0.35 C0.75 -0.5 1.05 -0.25 1 0.08 C0.95 0.4 0.6 0.55 0.3 0.35 C0.35 0.65 0.45 0.85 0.6 1 L-0.6 1 C-0.45 0.85 -0.35 0.65 -0.3 0.35 C-0.6 0.55 -0.95 0.4 -1 0.08 C-1.05 -0.25 -0.75 -0.5 -0.45 -0.35 C-0.55 -0.65 -0.36 -0.95 0 -0.95 Z'};
+const COL=s=>s===1||s===2?'#d32f2f':'#1a1a1a';
+const pip=(s,x,y,k,flip)=>`<path d="${SUIT[s]}" fill="${COL(s)}" transform="translate(${x} ${y}) scale(${k}) ${flip?'rotate(180)':''}"/>`;
+// 숫자 카드 무늬 배치 (가운데 영역 x 16~44, y 14~70)
+const L=16,Rr=44,C=30,T=15,B=69,M=42;
+const LAY={2:[[C,T],[C,B,1]],3:[[C,T],[C,M],[C,B,1]],4:[[L,T],[Rr,T],[L,B,1],[Rr,B,1]],5:[[L,T],[Rr,T],[C,M],[L,B,1],[Rr,B,1]],
+  6:[[L,T],[Rr,T],[L,M],[Rr,M],[L,B,1],[Rr,B,1]],7:[[L,T],[Rr,T],[C,28],[L,M],[Rr,M],[L,B,1],[Rr,B,1]],
+  8:[[L,T],[Rr,T],[C,28],[L,M],[Rr,M],[C,56,1],[L,B,1],[Rr,B,1]],9:[[L,T],[Rr,T],[L,33],[Rr,33],[C,M],[L,51,1],[Rr,51,1],[L,B,1],[Rr,B,1]],
+  10:[[L,T],[Rr,T],[C,24],[L,33],[Rr,33],[L,51,1],[Rr,51,1],[C,60,1],[L,B,1],[Rr,B,1]]};
+// 그림 카드 (J·Q·K): 위아래가 대칭인 반신 그림
+function court(r,s,p){
+  const robe=s===1||s===2?'#c62828':'#1e3a8a',robe2=s===1||s===2?'#1e3a8a':'#c62828',gold='#f2b705';
+  const half=`<g>
+    <path d="M14 42 L14 30 C14 22 22 18 30 18 C38 18 46 22 46 30 L46 42 Z" fill="url(#${p}rb)" stroke="#111" stroke-width=".8"/>
+    <path d="M24 42 L24 31 L36 31 L36 42 Z" fill="${robe2}" stroke="#111" stroke-width=".6"/>
+    <path d="M26 31 L30 37 L34 31" fill="none" stroke="${gold}" stroke-width="1.2"/>
+    <circle cx="30" cy="22" r="6.5" fill="#f7d7b5" stroke="#111" stroke-width=".8"/>
+    ${r===13?`<path d="M24 22 C24 28 36 28 36 22 C36 30 30 32 30 32 C30 32 24 30 24 22 Z" fill="#8d6e63" stroke="#111" stroke-width=".5"/>`:''}
+    ${r===12?`<path d="M23.5 22 C22 16 38 16 36.5 22 C38 26 36 30 34 31 L34 24 C34 20 26 20 26 24 L26 31 C24 30 22 26 23.5 22 Z" fill="#f2c94c" stroke="#111" stroke-width=".5"/>`:''}
+    ${r===11?`<path d="M23.5 21 C24 16 36 16 36.5 21 L36.5 23 L23.5 23 Z" fill="#6d4c41" stroke="#111" stroke-width=".5"/>`:''}
+    <circle cx="27.8" cy="22.5" r=".7" fill="#111"/><circle cx="32.2" cy="22.5" r=".7" fill="#111"/>
+    ${r===11?`<path d="M22 16 L38 16 L36 12 L24 12 Z" fill="${robe2}" stroke="#111" stroke-width=".6"/><circle cx="30" cy="11.5" r="1.6" fill="${gold}" stroke="#111" stroke-width=".4"/>`
+      :`<path d="M22.5 16.5 L23.5 10 L26.5 13.5 L30 8.5 L33.5 13.5 L36.5 10 L37.5 16.5 Z" fill="${gold}" stroke="#111" stroke-width=".7"/>${[24,30,36].map(x=>`<circle cx="${x}" cy="15" r=".9" fill="#c62828"/>`).join('')}`}
+    ${pip(s,40,37,3.2)}
+  </g>`;
+  return `<defs><linearGradient id="${p}rb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${robe}"/><stop offset="1" stop-color="#0d0d0d" stop-opacity=".25"/></linearGradient>
+    <clipPath id="${p}cc"><rect x="11" y="9" width="38" height="66" rx="2"/></clipPath></defs>
+    <rect x="11" y="9" width="38" height="66" rx="2" fill="#fff8e1" stroke="${gold}" stroke-width="1.2"/>
+    <g clip-path="url(#${p}cc)">${half}<g transform="rotate(180 30 42)">${half}</g></g>
+    <line x1="11" y1="42" x2="49" y2="42" stroke="${gold}" stroke-width=".8"/>`;
+}
+function face(id){
+  const r=PK.R(id),s=PK.S(id),p='pc'+id+'_',col=COL(s),rn=PK.RN(r);
+  let mid='';
+  if(r===14)mid=pip(s,30,42,s===3?14:11)+(s===3?`<path d="${SUIT[3]}" fill="none" stroke="#f2b705" stroke-width=".06" transform="translate(30 42) scale(14)"/>`:'');
+  else if(r>=11)mid=court(r,s,p);
+  else mid=LAY[r].map(([x,y,f])=>pip(s,x,y,r>=9?4.6:5.4,f)).join('');
+  const idx=`<text x="6.5" y="12.5" font-size="${rn.length>1?9:10}" text-anchor="middle" fill="${col}" font-weight="800" font-family="Georgia,serif" letter-spacing="-.5">${rn}</text>${pip(s,6.5,18.5,2.7)}`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="${p}bg" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f1efe8"/></linearGradient>
+    <linearGradient id="${p}gl" x1="0" y1="0" x2=".7" y2=".8"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+    <rect x=".5" y=".5" width="59" height="83" rx="5" fill="url(#${p}bg)" stroke="#9e9e9e" stroke-width=".6"/>
+    ${idx}<g transform="rotate(180 30 42)">${idx}</g>${mid}
+    <rect x=".5" y=".5" width="59" height="83" rx="5" fill="url(#${p}gl)" opacity=".35"/></svg>`;
+}
+function back(){return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="pcbk" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#1e4fa3"/><rect width="3" height="3" fill="#2a63c4"/></pattern></defs>
+  <rect x=".5" y=".5" width="59" height="83" rx="5" fill="#fff" stroke="#9e9e9e" stroke-width=".6"/><rect x="3.5" y="3.5" width="53" height="77" rx="3.5" fill="url(#pcbk)"/>
+  <rect x="6.5" y="6.5" width="47" height="71" rx="2.5" fill="none" stroke="rgba(255,255,255,.6)" stroke-width=".8"/><circle cx="30" cy="42" r="9" fill="#1e4fa3" stroke="#fff" stroke-width="1"/><path d="${SUIT[3]}" fill="#fff" transform="translate(30 42) scale(5)"/></svg>`;}
+const cache={};
+return{face:id=>cache[id]||(cache[id]=face(id)),back:()=>cache.b||(cache.b=back()),W,H};
+})();
+
+/* ===== 포커 화면: 세븐포커 · 하이로우 · 바둑이 ===== */
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const store={get(k,d){try{const v=localStorage.getItem('poker-'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem('poker-'+k,JSON.stringify(v));}catch(e){}}};
+const won=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
+let seq=0;const face=id=>{const t='q'+(++seq)+'_';return PC.face(id).split(`pc${id}_`).join(`${t}pc${id}_`);};
+const SND={ctx:null,on:store.get('sound',true),
+  tick(f=900,v=.2,d=.06){if(!this.on)return;try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
+    const c=this.ctx,now=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(v,now);g.gain.exponentialRampToValueAtTime(0.0001,now+d);o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+d+0.02);},
+  card(){this.tick(1500,.13,.05);},chip(){this.tick(2200,.12,.04);setTimeout(()=>this.tick(2600,.08,.04),40);},win(){[660,880,1320].forEach((f,i)=>setTimeout(()=>this.tick(f,.18,.25),i*110));}};
+const AVC=['#ffb74d','#64b5f6','#81c784','#ba68c8','#4db6ac'];
+const avatar=q=>`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="${AVC[q%5]}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
+const NAMES=['나','김 사장','이 여사','박 부장','최 선생'];
+const SEATS={2:[[50,75],[50,18]],3:[[50,75],[17,33],[83,33]],4:[[50,76],[13,47],[50,16],[87,47]],5:[[50,76],[12,52],[27,16],[73,16],[88,52]]};
+const chipsHtml=amt=>{const cols=[['#c62828',100000],['#1565c0',10000],['#2e7d32',1000],['#f9a825',100]];let left=amt,h='';
+  for(const [c,v] of cols){const n=Math.min(8,Math.floor(left/v));left-=n*v;if(n)h+=`<span class="chipstack" style="--c:${c}">${'<i></i>'.repeat(n)}</span>`;}return h||'<span class="chipstack" style="--c:#f9a825"><i></i></span>';};
+function bigText(t){const b=$('pbig');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),1200);}
+const KIND={seven:'세븐포커',hilo:'하이로우',badugi:'바둑이'};
+const opt={kind:store.get('kind','seven'),players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',1000)};
+let money=store.get('money',1000000),rec=store.get('rec',{}),G=null;
+function saveMoney(){store.set('money',money);$('pmoney').textContent=won(money);}
+const cardHtml=(id,o={})=>`<div class="card pk${o.down?' down':''}${o.deal?' deal':''}${o.pick?' pick':''}${o.chosen?' chosen':''}${o.reveal?' reveal':''}${o.hid?' hid':''}" data-id="${id}" style="${o.delay!=null?`animation-delay:${o.delay}ms;`:''}"><div class="ci"><div class="cf">${face(id)}</div><div class="cb">${PC.back()}</div></div></div>`;
+
+/* ---------- 그리기 ---------- */
+function myHandName(){const s=G.s;if(s.kind==='badugi')return PK.badugi(s.hidden[0]).name;const all=PK.all(s,0);if(all.length<2)return'';
+  let t=PK.highName(PK.bestHigh(all));if(s.kind==='hilo'){const l=PK.bestLow(all);if(l)t+=' / '+l.name;}return t;}
+function render(){
+  const s=G.s,pos=SEATS[s.n],show=G.reveal;
+  $('ptable').querySelectorAll('.seat').forEach(e=>e.remove());
+  for(let p=0;p<s.n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat pkseat'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
+    const known=G.known[p]||0,list=s.hidden[p].map(id=>({id,h:1})).concat(s.open[p].map(id=>({id,h:0})));
+    const pickable=p===0&&['discard','open','draw'].includes(G.phase);
+    const cards=list.map((c,i)=>{const isNew=i>=known;return cardHtml(c.id,{down:p!==0&&c.h&&!(show&&!s.folded[p]),deal:isNew,delay:isNew?((i-known)*180+p*70):null,
+      pick:pickable&&c.h,chosen:pickable&&G.sel.includes(c.id),reveal:show&&p!==0&&c.h&&!s.folded[p],hid:p===0&&c.h&&s.kind!=='badugi'});}).join('');
+    const isWin=G.result&&G.result.winners.some(w=>w.p===p),hn=G.result&&G.result.hands?G.result.hands.find(x=>x.p===p):null;
+    const label=p===0?myHandName():(show&&hn?hn.name:'');
+    const la=G.last[p],dec=s.declare[p]&&show?` · ${({hi:'하이',lo:'로우',swing:'스윙'})[s.declare[p]]}`:'';
+    const plate=`<div class="splate${s.turn===p&&!s.over&&G.phase==='bet'?' turn':''}${s.folded[p]?' out':''}">${avatar(p)}<span class="sn"><b>${NAMES[p]}</b><small>${won(p===0?money:G.ai[p])}</small></span></div>`;
+    el.innerHTML=(p===0?'':plate)+`<div class="scards">${cards}</div>`+(label&&!s.folded[p]?`<span class="shand${isWin?' win':''}">${label}${dec}</span>`:'')+
+      (s.folded[p]?'<span class="sact die">다이</span>':la?`<span class="sact ${la.k==='call'||la.k==='check'?'call':'raise'}">${la.name}${la.amt?' '+won(la.amt):''}</span>`:'')+(p===0?plate:'');
+    $('ptable').appendChild(el);G.known[p]=list.length;}
+  const stage=s.kind==='badugi'?['처음','아침','점심','저녁'][s.street]||'':s.street?`${s.street}구`:'';
+  $('ppot').innerHTML=`<div class="chips">${chipsHtml(s.pot)}</div><b>${won(s.pot)}</b><small>${KIND[s.kind]} · ${stage}</small>`;
+  renderBar();
+}
+function renderBar(){
+  const s=G.s,bar=$('pbar');
+  if(G.phase==='bet'&&s.turn===0&&!s.over&&!G.busy){const acts=PK.actions(s);
+    bar.innerHTML=['die','check','call','bbing','quarter','half','ddadang'].map(k=>{const a=acts.find(x=>x.k===k);const name={die:'다이',check:'체크',call:'콜',bbing:'삥',quarter:'쿼터',half:'하프',ddadang:'따당'}[k];
+      const cls=k==='die'?'die':k==='check'||k==='call'?'call':'raise';
+      return `<button class="btn ${cls}" data-k="${k}"${a?'':' disabled'}>${name}<small>${a&&a.amt?won(a.amt):'&nbsp;'}</small></button>`;}).join('');}
+  else if(G.phase==='draw'&&!G.busy)bar.innerHTML=`<button class="btn call" data-draw="go">${G.sel.length?`${G.sel.length}장 바꾸기`:'그대로 (안 바꿈)'}</button>`;
+  else if(G.phase==='declare'&&!G.busy)bar.innerHTML=['hi','lo','swing'].map(k=>`<button class="btn ${k==='swing'?'raise':'call'}" data-dec="${k}">${({hi:'하이',lo:'로우',swing:'스윙'})[k]}<small>${({hi:'높은 패로 반',lo:'낮은 패로 반',swing:'둘 다 이겨야 전부'})[k]}</small></button>`).join('');
+  else bar.innerHTML='<div class="sub" style="padding:10px">'+(G.phase==='discard'?'버릴 카드 1장을 누르세요':G.phase==='open'?'다른 사람에게 보여 줄 카드 1장을 누르세요':G.phase==='end'?'':'기다리는 중…')+'</div>';
+}
+function msg(h){$('pmsg').innerHTML=h;}
+let waiter=null;const waitInput=()=>new Promise(r=>waiter=r);
+$('pbar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled||!waiter)return;const w=waiter;waiter=null;
+  if(b.dataset.k){w({k:'bet',a:PK.actions(G.s).find(x=>x.k===b.dataset.k)});}else if(b.dataset.draw){w({k:'draw'});}else if(b.dataset.dec){w({k:'dec',v:b.dataset.dec});}});
+$('ptable').addEventListener('click',e=>{const c=e.target.closest('.card.pick');if(!c||!G)return;const id=+c.dataset.id;
+  if(G.phase==='discard'||G.phase==='open'){if(waiter){const w=waiter;waiter=null;w({k:'pick',id});}return;}
+  if(G.phase==='draw'){const i=G.sel.indexOf(id);if(i>=0)G.sel.splice(i,1);else G.sel.push(id);SND.card();render();}});
+
+/* ---------- 진행 ---------- */
+async function newHand(){
+  const n=opt.players;if(money<opt.ante*10){money=1000000;bigText('돈 충전!');}
+  const ai=G&&G.ai&&G.ai.length===n?G.ai:Array(n).fill(1000000);
+  G={kind:opt.kind,s:PK.newGame({kind:opt.kind,players:n,ante:opt.ante,dealer:G?(G.s.dealer+1)%n:0}),ai,known:Array(n).fill(0),last:{},sel:[],phase:'deal',busy:true,reveal:false,result:null,gen:(G?G.gen:0)+1};
+  for(let p=0;p<n;p++){if(p===0)money-=opt.ante;else{if(G.ai[p]<opt.ante*10)G.ai[p]=1000000;G.ai[p]-=opt.ante;}}
+  saveMoney();$('pnext').hidden=true;const gen=G.gen,s=G.s;
+  msg(`판돈 ${won(opt.ante)}씩 내고 <b>${KIND[s.kind]}</b>를 시작해요.`);
+  if(s.kind==='badugi'){PK.badugiDeal(s);G.phase='deal';render();SND.card();await sleep(1100);if(gen!==G.gen)return;
+    for(let round=0;round<4;round++){
+      if(round>0){await drawPhase(round);if(gen!==G.gen)return;s.street=round;PK.startBetting(s,(s.dealer+1+round)%s.n);if(s.folded[s.turn])s.turn=PK.nextAlive(s,s.turn);}
+      const r=await bettingRound();if(gen!==G.gen)return;if(r==='end')return settle();}
+    PK.badugiShowdown(s);return reveal();}
+  // 세븐포커·하이로우
+  PK.studDeal4(s);render();SND.card();await sleep(1100);if(gen!==G.gen)return;
+  G.phase='discard';msg('<b>4장</b>을 받았어요. 쓸모없는 카드 <b>1장을 눌러 버리세요</b>.');render();
+  const d=await waitInput();if(gen!==G.gen)return;PK.studDiscard(s,0,d.id);
+  G.phase='open';G.known[0]=0;msg('이제 다른 사람에게 <b>보여 줄 카드 1장</b>을 누르세요. 나머지 2장은 나만 봐요.');render();
+  const o=await waitInput();if(gen!==G.gen)return;PK.studOpen(s,0,o.id);
+  for(let p=1;p<s.n;p++){const x=PK.aiDiscardOpen(s,p);PK.studDiscard(s,p,x.discard);PK.studOpen(s,p,x.open);}
+  G.known=G.known.map(()=>0);G.phase='deal';render();await sleep(500);
+  for(let st=4;st<=7;st++){PK.studNextCard(s);G.last={};G.phase='deal';render();SND.card();await sleep(800);if(gen!==G.gen)return;
+    msg(st===7?'마지막 <b>히든 카드</b>(7구)예요. 나만 볼 수 있어요.':`${st}구 카드를 받았어요. 보이는 카드가 가장 좋은 <b>${NAMES[s.turn]}</b>부터 베팅해요.`);
+    const r=await bettingRound();if(gen!==G.gen)return;if(r==='end')return settle();}
+  if(s.kind==='hilo'){G.phase='declare';G.busy=false;msg('<b>하이·로우·스윙</b> 중에 선언하세요. 하이는 가장 높은 패, 로우는 가장 낮은 패끼리 판돈을 반씩 나눠요. 스윙은 둘 다 이겨야 전부 가져가요.');render();
+    const dv=await waitInput();if(gen!==G.gen)return;s.declare[0]=dv.v;for(const p of PK.alive(s))if(p)s.declare[p]=PK.aiDeclare(s,p);}
+  PK.studShowdown(s);reveal();
+}
+async function bettingRound(){
+  const s=G.s,gen=G.gen;G.phase='bet';
+  for(let guard=0;guard<80;guard++){
+    if(s.folded[s.turn]){s.turn=PK.nextAlive(s,s.turn);continue;}
+    let a;
+    if(s.turn===0){G.busy=false;render();const need=s.toCall-s.bet[0];msg(`<b>내 차례</b>예요.${need>0?` 따라가려면 ${won(need)}이 필요해요.`:''} 지금 패: <b>${myHandName()}</b>`);
+      const r=await waitInput();if(gen!==G.gen)return;a=r.a;}
+    else{G.busy=true;render();await sleep(650+Math.random()*450);if(gen!==G.gen)return;a=PK.aiBet(s,opt.level);}
+    const p=s.turn;if(a.amt){if(p===0)money-=a.amt;else G.ai[p]-=a.amt;SND.chip();}else SND.tick(500,.12,.05);
+    G.last[p]=a;if(a.k==='half'||a.k==='ddadang')bigText(a.name+'!');
+    const r=PK.act(s,a);saveMoney();render();
+    if(r==='end')return'end';if(r==='done'){G.busy=true;return'done';}
+  }
+  return'done';
+}
+async function drawPhase(round){
+  const s=G.s,gen=G.gen;
+  if(!s.folded[0]){G.phase='draw';G.sel=[];G.busy=false;msg(`<b>${['','아침','점심','저녁'][round]}</b>: 바꿀 카드를 누르고 바꾸기를 누르세요. 무늬와 숫자가 겹치는 카드를 바꾸면 좋아요. 지금 패: <b>${myHandName()}</b>`);render();
+    await waitInput();if(gen!==G.gen)return;const n=G.sel.length;PK.badugiDraw(s,0,G.sel.slice());G.last[0]={k:'check',name:n?`${n}장 바꿈`:'그대로',amt:0};G.known[0]=4-n;G.sel=[];}
+  for(const p of PK.alive(s)){if(!p)continue;const out=PK.aiDraw(s,p);PK.badugiDraw(s,p,out);G.last[p]={k:'check',name:out.length?`${out.length}장 바꿈`:'그대로',amt:0};G.known[p]=4-out.length;}
+  G.phase='deal';render();SND.card();await sleep(900);
+}
+async function reveal(){G.reveal=true;G.result=G.s.result;G.phase='end';render();SND.card();await sleep(700);settle();}
+function settle(){
+  const s=G.s,res=s.result;G.result=res;G.phase='end';G.busy=true;
+  res.winners.forEach(w=>{if(w.p===0)money+=w.share;else G.ai[w.p]+=w.share;});saveMoney();
+  const me=res.winners.find(w=>w.p===0),k=KIND[s.kind],r=rec[k]||{w:0,l:0};if(me){r.w++;SND.win();bigText('승리!');}else r.l++;rec[k]=r;store.set('rec',rec);
+  const lines=res.winners.map(w=>`<b>${NAMES[w.p]}</b> ${w.why} · ${won(w.share)}`).join('<br>');
+  msg(`${me?'🎉 <b>내가 이겼어요!</b><br>':''}${lines}${res.failed&&res.failed.length?`<br>스윙 실패: ${res.failed.map(p=>NAMES[p]).join(', ')}`:''}`);
+  render();$('pnext').hidden=false;renderRec();
+}
+$('pnext').onclick=()=>newHand();
+
+/* ---------- 설정 ---------- */
+function renderRec(){$('prec').textContent=Object.entries(rec).map(([k,r])=>`${k} ${r.w}승 ${r.l}패`).join(' · ')||'아직 기록이 없어요';}
+function renderLevels(){$('plevels').innerHTML=PK.LV.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===opt.level}" data-k="${k}">${l.name}<span>${['막 걸기','조심','계산','노련함'][k]}</span></button>`).join('');}
+$('plevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b)return;opt.level=+b.dataset.k;store.set('level',opt.level);renderLevels();});
+$('pPlayers').value=String(opt.players);$('pPlayers').onchange=e=>{opt.players=+e.target.value;store.set('players',opt.players);G=null;waiter=null;newHand();};
+$('pAnte').value=String(opt.ante);$('pAnte').onchange=e=>{opt.ante=+e.target.value;store.set('ante',opt.ante);};
+$('pSound').checked=SND.on;$('pSound').onchange=e=>{SND.on=e.target.checked;store.set('sound',SND.on);};
+$('pReset').onclick=()=>{money=1000000;rec={};store.set('rec',rec);saveMoney();renderRec();};
+function setKind(k){opt.kind=k;store.set('kind',k);for(const x of ['seven','hilo','badugi','rules'])$('tab_'+x).setAttribute('aria-selected',x===k);
+  $('play').hidden=k==='rules';$('rules').hidden=k!=='rules';
+  if(k!=='rules'){$('ptitle').textContent=KIND[k];$('phow').innerHTML=HOW[k];waiter=null;G=null;newHand();}}
+const HOW={
+  seven:'<li>4장을 받아 <b>1장 버리고</b>, <b>1장을 보여 줘요</b>. 그다음 4·5·6구는 모두가 보는 카드, 7구는 나만 보는 히든 카드예요.</li><li>카드를 받을 때마다 베팅해요. 보이는 카드가 가장 좋은 사람(보스)부터 시작해요.</li><li>7장 중 가장 좋은 5장으로 겨뤄요. 같은 족보면 숫자, 그다음 무늬(♠>♦>♥>♣)로 정해요.</li>',
+  hilo:'<li>세븐포커와 똑같이 진행하고, 마지막에 <b>하이·로우·스윙</b>을 선언해요.</li><li><b>하이</b>는 가장 높은 패, <b>로우</b>는 숫자가 다른 5장으로 가장 낮은 패(A·2·3·4·5가 최고)끼리 판돈을 반씩 나눠요.</li><li><b>스윙</b>은 하이와 로우를 모두 이겨야 전부 가져가고, 하나라도 지면 아무것도 못 받아요.</li>',
+  badugi:'<li>4장을 받아 <b>무늬도 숫자도 모두 다른</b> 카드로 가장 <b>낮은</b> 패를 만들어요. A는 1이에요.</li><li><b>아침·점심·저녁</b> 세 번 원하는 카드를 바꿀 수 있고, 바꿀 때마다 베팅해요.</li><li>4장이 다 맞으면 <b>메이드</b>(A·2·3·4 골프가 최고), 3장만 맞으면 <b>베이스</b>, 2장은 투베이스예요.</li>'};
+$('tab_seven').onclick=()=>setKind('seven');$('tab_hilo').onclick=()=>setKind('hilo');$('tab_badugi').onclick=()=>setKind('badugi');
+$('tab_rules').onclick=()=>{for(const x of ['seven','hilo','badugi','rules'])$('tab_'+x).setAttribute('aria-selected',x==='rules');$('play').hidden=true;$('rules').hidden=false;};
+// 족보 표
+(()=>{const c=(r,s)=>s*13+(r-2);const rows=[['로열 스트레이트 플러시',[c(14,3),c(13,3),c(12,3),c(11,3),c(10,3)]],['백스트레이트 플러시',[c(14,2),c(2,2),c(3,2),c(4,2),c(5,2)]],['스트레이트 플러시',[c(9,1),c(8,1),c(7,1),c(6,1),c(5,1)]],
+  ['포카드',[c(9,3),c(9,2),c(9,1),c(9,0),c(4,1)]],['풀하우스',[c(8,3),c(8,2),c(8,0),c(3,1),c(3,2)]],['플러시',[c(13,0),c(10,0),c(7,0),c(4,0),c(2,0)]],['마운틴',[c(14,0),c(13,1),c(12,2),c(11,3),c(10,0)]],
+  ['백스트레이트',[c(14,1),c(2,0),c(3,3),c(4,2),c(5,1)]],['스트레이트',[c(9,0),c(8,2),c(7,1),c(6,3),c(5,0)]],['트리플',[c(7,3),c(7,2),c(7,0),c(13,1),c(2,2)]],['투페어',[c(11,3),c(11,1),c(4,2),c(4,0),c(9,1)]],['원페어',[c(10,2),c(10,0),c(13,3),c(6,1),c(3,0)]],['탑',[c(14,3),c(11,2),c(8,1),c(5,0),c(3,1)]]];
+  $('jokbo').innerHTML=rows.map(([n,cs])=>`<span class="jc">${cs.map(x=>face(x)).join('')}</span><span><b>${n}</b></span>`).join('');
+  $('jokbo2').innerHTML=[['골프 (가장 셈)',[c(14,0),c(2,1),c(3,2),c(4,3)]],['8 메이드',[c(8,3),c(5,1),c(3,2),c(14,0)]],['베이스 (3장만 맞음)',[c(6,0),c(4,1),c(2,2),c(9,2)]]].map(([n,cs])=>`<span class="jc">${cs.map(x=>face(x)).join('')}</span><span><b>${n}</b></span>`).join('');})();
+saveMoney();renderRec();renderLevels();setKind(location.hash==='#hilo'?'hilo':location.hash==='#badugi'?'badugi':opt.kind==='rules'?'seven':opt.kind);
+
+</script>
+
+<a href="index.html" class="pwa-home" aria-label="처음 화면으로">← 처음</a>
+<style>.pwa-home{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:80;padding:7px 13px;border-radius:999px;
+background:rgba(20,24,22,.78);color:#fff;font:600 13px "Noto Sans KR","Malgun Gothic",sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.pwa-home:focus-visible{outline:2px solid #fff;outline-offset:2px}</style>
+<div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
+<style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
+padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);
+max-width:calc(100vw - 24px);white-space:nowrap}.sw-upd[hidden]{display:none!important}
+.sw-upd button{border:0;border-radius:999px;padding:6px 12px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+#swNow{background:#4cc38a;color:#0b1a12}#swLater{background:transparent;color:#cfd8d3}</style>
+<script>(function(){if(!('serviceWorker' in navigator))return;
+let reloading=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(reloading)return;reloading=true;location.reload();});
+function show(w){var b=document.getElementById('swUpd');b.hidden=false;
+  document.getElementById('swNow').onclick=function(){document.getElementById('swMsg').textContent='바꾸는 중…';w.postMessage('SKIP');};
+  document.getElementById('swLater').onclick=function(){b.hidden=true;};}
+addEventListener('load',function(){navigator.serviceWorker.register('sw.js').then(function(reg){
+  if(reg.waiting&&navigator.serviceWorker.controller)show(reg.waiting);
+  reg.addEventListener('updatefound',function(){var w=reg.installing;if(w)w.addEventListener('statechange',function(){if(w.state==='installed'&&navigator.serviceWorker.controller)show(w);});});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reg.update().catch(function(){});});
+}).catch(function(){});});})();</script>
+</body>
+</html>
