@@ -306,7 +306,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
       <div class="levels" id="slevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="opts">
-        <label><input type="checkbox" id="sTtaeng"> 땡값 (땡 2배·장땡 3배·광땡 5배)</label>
+        <label><input type="checkbox" id="sTtaeng"> 땡값 (낸 돈의 땡 2배·장땡 3배·광땡 5배)</label>
         <label>방식 <select id="sCards"><option value="2">2장 섯다</option><option value="3">3장 섯다</option></select></label>
         <label>인원 <select id="sPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
         <label>판돈 <select id="sAnte"><option value="100">100원</option><option value="500">500원</option><option value="1000">1,000원</option></select></label>
@@ -341,7 +341,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <h2>섯다 족보 (높은 순)</h2>
       <div class="jokbo" id="jokbo"></div>
       <p class="sub" style="margin-top:10px"><b>3장 섯다</b>: 처음에 2장을 받고 베팅, 3번째 장을 받고 한 번 더 베팅한 뒤, 3장 중 가장 좋은 2장을 골라 겨뤄요. 설정의 <b>방식</b>에서 2장·3장을 고를 수 있어요.</p>
-      <p class="sub"><b>땡값</b>: 혼자 이긴 패가 땡이면 끝까지 남은 사람(다이한 사람은 빼고)이 판돈의 2배, 장땡은 3배, 광땡(13·18·38광땡)은 5배를 판돈과 따로 내요. 설정에서 끌 수 있어요.</p>
+      <p class="sub"><b>땡값</b>: 혼자 이긴 패가 땡이면 끝까지 남은 사람(다이한 사람은 빼고)이 각자 이번 판에 낸 돈의 2배, 장땡은 3배, 광땡(13·18·38광땡)은 5배를 판돈과 따로 내요. 설정에서 끌 수 있어요.</p>
       <p class="sub" style="margin-top:12px">같은 족보끼리면 판돈을 나눠요. 멍텅구리구사(4·9월 열끗)는 가장 높은 패가 9땡 이하면 재경기예요.</p>
       <div class="opts"><label><input type="checkbox" id="sLabels"> 카드에 달·종류 표시</label><label><input type="checkbox" id="sSound"> 소리</label><label><input type="checkbox" id="sSq"> 히든 카드 쪼아 보기</label></div>
       <div class="sub" id="srec" style="margin-top:8px"></div>
@@ -787,7 +787,7 @@ function strength1(a){let s=0,n=0;for(const b of DECK){if(b===a)continue;s+=stre
 // 베팅: 기본 판돈(ante)을 모두 내고 시작. 한 바퀴마다 다이·체크·삥·콜·하프·따당
 function newSeotda(o){
   const n=o.players,deck=shuffle(DECK);
-  return{n,deck,three:!!o.three,pick:Array(n).fill(null),stack:(o.stacks||Array(n).fill(1e12)).slice(),hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),pot:o.ante*n,ante:o.ante,
+  return{n,deck,three:!!o.three,pick:Array(n).fill(null),stack:(o.stacks||Array(n).fill(1e12)).slice(),hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),paid:Array(n).fill(o.ante),pot:o.ante*n,ante:o.ante,
     round:0,cur:0,toCall:0,lastRaise:0,acted:Array(n).fill(false),raises:0,dealer:o.dealer||0,turn:(o.dealer||0)%n,over:false,log:[]};
 }
 function dealRound(s){const times=s.three&&s.round===0?2:1;for(let t=0;t<times;t++)for(let k=0;k<s.n;k++){const p=(s.dealer+k)%s.n;if(!s.folded[p])s.hands[p].push(s.deck.shift());}
@@ -811,7 +811,7 @@ function actions(s){
 function act(s,a){
   const p=s.turn;s.acted[p]=true;
   if(a.k==='die'){s.folded[p]=true;}
-  else{s.bet[p]+=a.amt;s.pot+=a.amt;s.stack[p]-=a.amt;
+  else{s.bet[p]+=a.amt;s.pot+=a.amt;s.stack[p]-=a.amt;if(s.paid)s.paid[p]+=a.amt;
     if(a.k==='bbing'){s.toCall=s.bet[p];s.lastRaise=a.amt;s.raises++;s.acted=s.acted.map((x,i)=>i===p);}
     if(a.raise){s.toCall=s.bet[p];s.lastRaise=a.raise;s.raises++;s.acted=s.acted.map((x,i)=>i===p);}}
   s.log.push({p,k:a.k,amt:a.amt});
@@ -1023,7 +1023,7 @@ function sViewFor(v,dealing){
   const s=S.s,n=s.n,R=a=>a.map((_,i)=>a[(i+v)%n]),rp=p=>(p-v+n)%n;
   const t={...s,deck:[],log:[],pick:[],hands:R(s.hands.map((h,q)=>q===v||(S.reveal&&!s.folded[q])?h.slice():h.map(()=>-1))),
     folded:R(s.folded),bet:R(s.bet),stack:R(s.stack),acted:R(s.acted),turn:rp(s.turn),dealer:rp(s.dealer),
-    result:s.result?{...s.result,winners:s.result.winners.map(rp),hands:s.result.hands&&s.result.hands.map(x=>({...x,p:rp(x.p)})),ttaengPay:s.result.ttaengPay?{...s.result.ttaengPay,p:rp(s.result.ttaengPay.p)}:null}:null};
+    result:s.result?{...s.result,winners:s.result.winners.map(rp),hands:s.result.hands&&s.result.hands.map(x=>({...x,p:rp(x.p)})),ttaengPay:s.result.ttaengPay?{...s.result.ttaengPay,p:rp(s.result.ttaengPay.p),per:s.result.ttaengPay.per.map(x=>({...x,q:rp(x.q)}))}:null}:null};
   const last={};for(const p in S.last)last[rp(+p)]=S.last[p];
   const names=[...Array(n)].map((_,i)=>{const q=(i+v)%n;return i===0?'나':q===0?'방장':NET.names[q];});
   return{t:'sview',s:t,last,reveal:S.reveal,result:S.result?t.result:null,chips:R([money].concat(S.aiMoney.slice(1))),names,dealt:R(S.dealt),dealing:!!dealing,hand:S.hid,end:!!S.ended};
@@ -1031,7 +1031,8 @@ function sViewFor(v,dealing){
 function sNetView(dealing){if(!NET||NET.guest||NET.game!=='seotda')return;const x=S.netx||{};S.netx=null;roomEach(gi=>({...sViewFor(NET.seats.indexOf(gi),dealing),...x}));}
 
 const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500),cards:store.get('cards',2),ttaeng:store.get('ttaeng',true)};
-// 땡값 배수: 광땡 5배, 장땡 3배, 1~9땡 2배 (판돈 기준, 끝까지 남은 사람이 각자 냄 · 다이한 사람은 안 냄)
+// 땡값 배수: 광땡 5배, 장땡 3배, 1~9땡 2배 — 끝까지 남은 사람이 각자 이번 판에 낸 돈 × 배수를 냄 (다이한 사람은 안 냄)
+const paidOf=(s,q)=>Math.max(s.paid?s.paid[q]:0,s.ante||sopt.ante);
 const ttaengMult=h=>!h?0:h.v>=900?5:h.ttaeng===10?3:h.ttaeng?2:0;
 let S=null;
 function seotdaNew(carry){
@@ -1123,9 +1124,9 @@ function seotdaSettle(){
   res.winners.forEach(p=>{if(p===0)money+=share;else S.aiMoney[p]+=share;});
   // 땡값: 혼자 이겼고 그 패가 땡·광땡이면 나머지 모두에게서 따로 받음
   if(sopt.ttaeng&&res.winners.length===1){const w=res.winners[0],wh=(res.hands||[]).find(x=>x.p===w),mult=ttaengMult(wh&&wh.h);
-    if(mult){const each=sopt.ante*mult;let total=0;for(let q=0;q<s.n;q++){if(q===w||s.folded[q])continue;   // 다이한 사람은 안 냄
-        if(q===0)money-=each;else S.aiMoney[q]-=each;total+=each;}
-      if(w===0)money+=total;else S.aiMoney[w]+=total;res.ttaengPay={p:w,name:wh.h.name,mult,each,total};}}
+    if(mult){let total=0;const per=[];for(let q=0;q<s.n;q++){if(q===w||s.folded[q])continue;   // 다이한 사람은 안 냄
+        const each=paidOf(s,q)*mult;if(q===0)money-=each;else S.aiMoney[q]-=each;total+=each;per.push({q,amt:each});}
+      if(w===0)money+=total;else S.aiMoney[w]+=total;res.ttaengPay={p:w,name:wh.h.name,mult,total,per};}}
   saveMoney();
   const iWon=res.winners.includes(0);if(!NET){if(iWon)rec.sw++;else rec.sl++;store.set('rec',rec);}
   S.ended=true;sSettleMsg(s,res);
@@ -1133,7 +1134,7 @@ function seotdaSettle(){
 }
 function sSettleMsg(s,res){const iWon=res.winners.includes(0);if(iWon){SND.win();bigText('승리!');}
   const hands=(res.hands||[]).map(x=>`${snm(x.p)}: <b>${x.h.name}</b>`).join(' · ');
-  const tp=res.ttaengPay,tl=tp?`<br>💰 <b>땡값</b> (${tp.name}, 판돈 ×${tp.mult}): ${tp.p===0?`다른 사람들에게서 각 ${won(tp.each)}씩, 모두 <b>+${won(tp.total)}</b>`:`${snm(tp.p)}에게 각 ${won(tp.each)}씩 냈어요 (나 <b>-${won(tp.each)}</b>)`}`:'';
+  const tp=res.ttaengPay,tl=tp?`<br>💰 <b>땡값</b> (${tp.name}, 낸 돈 ×${tp.mult}): ${tp.p===0?`${tp.per.map(x=>snm(x.q)+' '+won(x.amt)).join(' · ')} → 모두 <b>+${won(tp.total)}</b>`:tp.per.some(x=>x.q===0)?`${snm(tp.p)}에게 <b>-${won(tp.per.find(x=>x.q===0).amt)}</b> 냈어요`:`${snm(tp.p)}이(가) 모두 ${won(tp.total)}을 받았어요 (나는 다이해서 안 냄)`}`:'';
   if(tp)setTimeout(()=>bigText('땡값!'),900);
   smsg(`${iWon?'🎉 <b>내가 이겼어요!</b>':`<b>${res.winners.map(p=>snm(p)).join(', ')}</b> 승리.`} ${res.reason||''} 판돈 ${won(s.pot)}${res.winners.length>1?' 나눔':''}.${tl}${hands?'<br>'+hands:''}${NGUEST()?'<br><small>다음 판은 방장이 시작해요.</small>':''}`);}
 // 재경기: 판돈을 남기고 같은 사람끼리 다시 (판돈은 다시 안 냄)
