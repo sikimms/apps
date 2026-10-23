@@ -906,6 +906,7 @@ function startOnline(){
 function stopOnline(){NETG=null;ME=0;if(pendAsk){pendAsk.res(pendAsk.def);pendAsk=null;}$('gNew').disabled=false;$('gPlayers').disabled=false;G=null;if(!$('play').hidden)newGame();}
 function newGame(keepFirst){
   if(GUEST())return;
+  if(money<=0){money=100000;store.set('money',money);setTimeout(()=>PT.shout('돈 충전!'),300);}   // 돈이 다 떨어지면 다시 채워 줌 (가짜 돈)
   const first=G&&keepFirst&&G.nextFirst!=null?G.nextFirst:0,nag=G&&G.nagariNext||1;
   PT.reset();PT.closeOverlay();
   G={s:GS.newRound({players:opt.players,first,nagari:nag}),busy:false,sel:null,hl:[],gen:(G?G.gen:0)+1,nagariNext:1,nextFirst:null};

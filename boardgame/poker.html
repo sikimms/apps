@@ -527,6 +527,7 @@ function aiBet(s,lv){
   let e=s.kind==='hilo'?Math.min(1,Math.max(eq.hi,eq.lo)+Math.min(eq.hi,eq.lo)*0.6):eq.win;
   e+=(Math.random()-0.5)*L.rnd;const edge=e-fair;
   const acts=actions(s),get=k=>acts.find(a=>a.k===k),need=s.toCall-s.bet[p],odds=need/(s.pot+need||1);
+  if(acts.length===1)return acts[0];   // 올인해서 더 걸 돈이 없으면 그대로 넘어감
   const late=s.kind==='badugi'?s.street>=3:s.street>=7;
   if(Math.random()<L.bluff&&!late&&get('quarter')&&need<=s.ante)return get('quarter');
   if(edge>0.42&&get('ddadang'))return get('ddadang');
@@ -534,8 +535,8 @@ function aiBet(s,lv){
   if(edge>0.18&&get('quarter'))return get('quarter');
   if(edge>0.08&&get('bbing'))return get('bbing');
   if(need<=0)return get('check');
-  if(e+L.loose>odds*1.05)return get('call');
-  return get('die');
+  if(e+L.loose>odds*1.05&&get('call'))return get('call');
+  return get('die')||get('check')||acts[0];
 }
 // 세븐포커 처음: 버릴 카드와 보여 줄 카드 고르기
 function aiDiscardOpen(s,p){

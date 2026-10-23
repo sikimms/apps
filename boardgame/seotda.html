@@ -831,6 +831,7 @@ function aiAct(s,lv){
   if(h.length>=2){const x=seotdaHand(h[0],h[1]);if(x.ttaengjabi||x.amhaeng)st=Math.max(st,0.55);if(x.gusa||x.mungGusa)st=Math.max(st,0.5);}
   st+= (Math.random()-0.5)*L.rnd;
   const acts=actions(s),get=k=>acts.find(a=>a.k===k);
+  if(acts.length===1)return acts[0];   // 올인해서 더 걸 돈이 없으면 그대로 넘어감
   const need=s.toCall-s.bet[p],potOdds=need/(s.pot+need||1),nAlive=alive(s).length;
   const thr=0.35+L.tight+(nAlive-2)*0.05;   // 사람이 많을수록 더 센 패가 필요
   if(Math.random()<L.bluff&&get('half'))return get('half');
@@ -838,8 +839,8 @@ function aiAct(s,lv){
   if(st>0.72&&get('half'))return get('half');
   if(st>0.6&&get('bbing'))return get('bbing');
   if(need<=0)return get('check');
-  if(st>thr+potOdds*0.6)return get('call');
-  return get('die');
+  if(st>thr+potOdds*0.6&&get('call'))return get('call');
+  return get('die')||get('check')||acts[0];
 }
 
 /* ---------- 도리짓고땡 ----------
