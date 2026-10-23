@@ -11,157 +11,111 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
 <title>황금별 슬롯</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
 <style>
-:root{--bg:#0b1020;--panel:#121a33;--ink:#f3f4ff;--muted:#a9b0d6;--frame:#2fd3b5;--frame2:#118a76;--glass:#e9e6ff;--accent:#ffd54f;--cell:96px;
-  --f:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;--fd:"Arial Black",Impact,"Noto Sans KR",sans-serif;color-scheme:dark}
-:root[data-theme="light"]{--bg:#0b1020}
+:root{--bg:#07060d;--ink:#f3f4ff;--muted:#a9b0d6;--gold:#ffd54f;
+  --f:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;--px:"Press Start 2P","Courier New",monospace;color-scheme:dark}
+:root[data-theme="light"]{--bg:#07060d}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(ellipse at top,#1b2550,var(--bg) 70%);background-color:var(--bg);color:var(--ink);font-family:var(--f);line-height:1.5;min-height:100vh}
-.wrap{max-width:800px;padding-right:44px!important;margin:0 auto;padding:14px 16px 40px}
-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-h1{margin:0;font:900 26px var(--fd);letter-spacing:1px;background:linear-gradient(#fff59d,#f9a825 60%,#c77800);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #5d3a00)}
-h1 small{display:block;font:500 12px var(--f);color:var(--muted);-webkit-text-fill-color:var(--muted);filter:none}
-header .sp{flex:1}
-.ibtn{white-space:nowrap;background:#1f2a52;border:1px solid #3a4a85;color:var(--ink);border-radius:10px;padding:7px 12px;font:600 14px var(--f);cursor:pointer}
-.machine{display:grid;grid-template-columns:118px 1fr;gap:10px;padding:10px;border-radius:16px;background:linear-gradient(160deg,#16224a,#0d1430);border:3px solid var(--frame);box-shadow:0 0 0 3px #062a24,0 10px 30px #0008,inset 0 0 30px #0006}
-.side{display:flex;flex-direction:column;gap:8px}
-.bn{border-radius:8px;padding:5px 6px;background:#0a0f22;border:2px solid #e05;font:800 11px var(--fd);text-align:center}
-.bn.b1{border-color:#fbc02d}.bn.b2{border-color:#2979ff}
-.bnh{display:flex;align-items:center;justify-content:center;gap:3px;color:#fff;background:linear-gradient(#ff4081,#c51162);border-radius:4px;padding:1px 0}
-.b1 .bnh{background:linear-gradient(#ffe082,#f9a825);color:#4a3000}.b2 .bnh{background:linear-gradient(#82b1ff,#2962ff)}
-.bnh svg{width:22px;height:18px}
-.bnc{margin:3px 0;color:#fff;letter-spacing:.5px}.bnc span{display:inline-block;min-width:22px;padding:0 3px;background:#d50000;color:#fff;border-radius:3px}
-.bns{display:flex;justify-content:center}.bns svg{width:30px;height:24px}
-.bnp{color:var(--accent);font:700 11px var(--f)}
-.minbet{font:800 12px var(--fd);color:#fff;text-align:center;line-height:1.2}.minbet small{font-size:10px;color:var(--muted)}.minbet .ok{color:#69f0ae;font:800 12px var(--f)}
-.stage{position:relative;padding:26px 30px}
-.lbl{position:absolute;display:flex;align-items:center;gap:2px;font:900 13px var(--fd);color:#fff;cursor:pointer;user-select:none;z-index:3;transform:translate(-50%,-50%)}
-.lbl i{font-style:normal;min-width:16px;text-align:center;background:#d50000;border-radius:3px;padding:0 3px;font-size:12px}
-.lbl.off{opacity:.45}.lbl.off i{background:#555}
-.lbl.won{animation:lw .5s steps(2) infinite}.lbl.won i{background:#ffd600;color:#000}
-@keyframes lw{50%{filter:brightness(1.8)}}
-#reelarea{position:relative}
-#reels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.reel{height:calc(var(--cell)*3);overflow:hidden;border-radius:8px;background:var(--glass);position:relative;box-shadow:inset 0 0 0 3px #8be9d6,inset 0 8px 14px #0005,inset 0 -8px 14px #0005}
-.reel{perspective:calc(var(--cell)*9);background:#fbf8ef}
-.cyl{position:absolute;left:0;right:0;top:var(--cell);height:var(--cell);transform-style:preserve-3d;will-change:transform}
-.face{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:6% 10%;backface-visibility:hidden;background:linear-gradient(#fffdf6,#f3eedf);border-top:1px solid #e2dac4}
-.face svg{width:100%;height:100%;filter:drop-shadow(0 2px 1.5px #0004)}
-.reel.blur .cyl{filter:blur(1.8px) brightness(1.05)}
-.shade{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(#000d 0%,#0007 12%,#0000 30%,#0000 70%,#0007 88%,#000d 100%)}
-.shade::after{content:"";position:absolute;left:0;right:0;top:44%;height:12%;background:linear-gradient(#fff0,#ffffff14,#fff0)}
-.glass{position:absolute;inset:-6px;pointer-events:none;z-index:4;border-radius:10px;background:linear-gradient(115deg,#fff0 40%,#ffffff1c 46%,#fff0 52%),linear-gradient(115deg,#fff0 58%,#ffffff12 61%,#fff0 64%)}
-.cabinet{position:relative;padding:12px 12px 16px;border-radius:26px 26px 18px 18px;background:linear-gradient(90deg,#5a3a08,#c79a2c 8%,#fff1b0 14%,#b8861f 22%,#6e4a0c 50%,#b8861f 78%,#fff1b0 86%,#c79a2c 92%,#5a3a08);box-shadow:0 18px 40px #000a,inset 0 2px 0 #fff8,inset 0 -3px 0 #0008}
-.cabinet::before{content:"";position:absolute;inset:8px;border-radius:20px 20px 12px 12px;background:linear-gradient(#24124a,#120a2a 40%,#0b0718);box-shadow:inset 0 0 0 2px #00000080,inset 0 0 30px #000}
-.cabinet>*{position:relative}
-.marquee{height:74px;margin:0 0 10px;border-radius:16px;background:radial-gradient(ellipse at 50% 30%,#d21f3c,#7a0a1f 70%);box-shadow:inset 0 0 0 3px #ffcf4d,inset 0 0 18px #000a;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.mq{text-align:center;z-index:1}.mq span{display:block;font:900 30px var(--fd);letter-spacing:2px;background:linear-gradient(#fffde7,#ffd600 45%,#ff8f00);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #5d1a00) drop-shadow(0 0 10px #ffb300)}
-.mq small{font:800 10px var(--fd);letter-spacing:3px;color:#ffe0a0}
-.bulbs{position:absolute;inset:4px;border-radius:13px}
-.bulbs i{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#7a5a10;box-shadow:inset 0 0 2px #000}
+body{margin:0;background-color:var(--bg);color:var(--ink);font-family:var(--f);min-height:100vh;
+  background-image:radial-gradient(ellipse at 50% 0%,#2a1d4d,#07060d 65%),repeating-linear-gradient(90deg,#ffffff05 0 2px,#0000 2px 60px)}
+.wrap{max-width:720px;margin:0 auto;padding:12px 16px 40px}
+.top{display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px}
+.ibtn{white-space:nowrap;background:#1d1736;border:1px solid #4a3d85;color:var(--ink);border-radius:10px;padding:7px 12px;font:600 13px var(--f);cursor:pointer}
+/* ---------- 기계 몸체 ---------- */
+.cab{position:relative;padding:12px 14px 18px;border-radius:30px 30px 14px 14px;
+  background:linear-gradient(90deg,#3a2306,#b88a2a 6%,#ffeaa0 11%,#a8781c 18%,#5d3d0a 50%,#a8781c 82%,#ffeaa0 89%,#b88a2a 94%,#3a2306);box-shadow:0 22px 50px #000c,inset 0 2px 0 #fff8}
+.cab::before{content:"";position:absolute;inset:9px;border-radius:24px 24px 8px 8px;background:linear-gradient(#2b0f3f,#140827 50%,#0b0516);box-shadow:inset 0 0 0 2px #000,inset 0 0 40px #000}
+.cab>*{position:relative}
+.marquee{height:70px;border-radius:18px;background:radial-gradient(ellipse at 50% 35%,#e3263f,#6d0718 75%);box-shadow:inset 0 0 0 3px #ffcf4d,inset 0 0 20px #000b;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mq{text-align:center;z-index:1}.mq b{display:block;font:900 30px "Arial Black",Impact,var(--f);letter-spacing:3px;background:linear-gradient(#fffde7,#ffd600 45%,#ff8f00);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #5d1a00) drop-shadow(0 0 10px #ffb300)}
+.mq small{font:8px var(--px);letter-spacing:2px;color:#ffe0a0}
+.bulbs{position:absolute;inset:4px;border-radius:15px}
+.bulbs i{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#6d4d0c;box-shadow:inset 0 0 2px #000}
 .bulbs i.on{background:radial-gradient(circle at 40% 35%,#fffbe0,#ffd54f 55%,#ff8f00);box-shadow:0 0 8px #ffcc33,0 0 2px #fff}
-.machine{background:linear-gradient(160deg,#1a1240,#0b0820)!important;border-color:#c9a23a!important;box-shadow:0 0 0 3px #3b2a05,inset 0 0 30px #000!important}
-.lever{position:absolute;right:-30px;top:120px;width:40px;height:230px;z-index:6;cursor:grab;touch-action:none}
-.lslot{position:absolute;left:12px;top:40px;width:16px;height:150px;border-radius:8px;background:linear-gradient(90deg,#222,#555,#222);box-shadow:inset 0 0 4px #000}
-.larm{position:absolute;left:16px;top:0;width:8px;height:120px;transform-origin:50% 115px;background:linear-gradient(90deg,#9e9e9e,#fafafa 45%,#757575);border-radius:4px;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
-.lknob{position:absolute;left:-14px;top:-30px;width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8a80,#d50000 55%,#7f0000);box-shadow:0 4px 8px #0008}
-.lhub{position:absolute;left:4px;top:104px;width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff1b0,#c79a2c 55%,#5a3a08);box-shadow:0 2px 6px #0009}
-.lever.pull .larm{transform:scaleY(-.62);transition:transform .22s ease-in}
-.tray{margin-top:12px;height:56px;border-radius:0 0 22px 22px;background:linear-gradient(#0a0710,#2a2140);box-shadow:inset 0 10px 14px #000,inset 0 0 0 2px #c9a23a;overflow:hidden;position:relative}
-.tlip{position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(#fff1b0,#8a6514)}
+/* ---------- 브라운관 모니터 ---------- */
+.bezel{margin:12px 0;padding:16px;border-radius:22px;background:linear-gradient(145deg,#2c2c34,#0d0d12 60%,#1d1d24);box-shadow:inset 0 0 0 2px #000,inset 0 3px 0 #ffffff1a,0 4px 10px #000a}
+.crt{position:relative;aspect-ratio:4/3;border-radius:18px/22px;overflow:hidden;background:#000;box-shadow:0 0 0 3px #050505,0 0 30px #3b5bff22}
+#scr{position:absolute;inset:0;width:100%;height:100%;filter:saturate(1.15) contrast(1.04);cursor:pointer}
+.crt::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;background:repeating-linear-gradient(#0000 0 3px,#0000001f 3px 4px)}
+.crt::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:3;border-radius:inherit;
+  background:radial-gradient(ellipse at 50% 50%,#0000 60%,#000a 100%),linear-gradient(120deg,#ffffff14 0%,#fff0 28%);box-shadow:inset 0 0 40px #000c}
+.crt.flick #scr{animation:fl .12s steps(2) 3}@keyframes fl{50%{filter:brightness(1.6) saturate(1.4)}}
+/* ---------- 조작판 ---------- */
+.panel{margin-top:4px;padding:14px 12px 12px;border-radius:12px;background:linear-gradient(#1b1b22,#0c0c11);box-shadow:inset 0 2px 0 #ffffff14,inset 0 0 0 2px #000,0 3px 0 #000}
+.btns{display:grid;grid-template-columns:repeat(5,1fr);gap:12px 6px;justify-items:center}
+.ab{appearance:none;border:0;background:none;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;color:#ddd;font:8px var(--px);text-align:center}
+.ab i{display:block;width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 50% 35%,var(--d),#111 85%);
+  box-shadow:0 5px 0 #000,0 0 0 4px #2a2a33,0 0 0 6px #000,inset 0 -5px 8px #0008;transition:transform .05s,box-shadow .05s,filter .2s}
+.ab.lit i{background:radial-gradient(circle at 45% 30%,#fff,var(--c) 38%,var(--d) 85%);box-shadow:0 5px 0 #000,0 0 0 4px #2a2a33,0 0 0 6px #000,0 0 18px var(--c),inset 0 -5px 8px #0006}
+.ab.lit.blink i{animation:bk .5s steps(2) infinite}@keyframes bk{50%{filter:brightness(.55)}}
+.ab:active i{transform:translateY(4px);box-shadow:0 1px 0 #000,0 0 0 4px #2a2a33,0 0 0 6px #000}
+.ab small{font:600 11px var(--f);color:#9aa}
+.ab.big i{width:66px;height:66px}
+.coinrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
+.slotbox{display:flex;align-items:center;gap:10px;cursor:pointer;background:linear-gradient(#2b2b33,#15151b);border-radius:10px;padding:8px 12px;box-shadow:inset 0 0 0 2px #000,inset 0 2px 0 #ffffff12}
+.cslot{width:12px;height:44px;border-radius:6px;background:linear-gradient(90deg,#000,#333,#000);box-shadow:0 0 0 3px #c9a23a,0 0 10px #ff3d00aa}
+.slotbox b{font:9px/1.6 var(--px);color:#ff7043;animation:bk 1s steps(2) infinite}
+.slotbox small{display:block;font:600 11px var(--f);color:#aaa}
+.keys{font-size:12px;color:var(--muted);text-align:right;line-height:1.6}.keys b{color:#ddd}
+.tray{margin-top:12px;height:54px;border-radius:0 0 20px 20px;background:linear-gradient(#08060c,#241c38);box-shadow:inset 0 10px 14px #000,inset 0 0 0 2px #c9a23a;overflow:hidden;position:relative}
+.tray::before{content:"";position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(#ffeaa0,#7d5a10)}
 .tcoins{position:absolute;inset:8px 10px 4px}
 .tcoins i{position:absolute;bottom:0;width:20px;height:9px;border-radius:50%;background:radial-gradient(ellipse at 40% 35%,#fff59d,#f9a825 55%,#9a6400);box-shadow:0 1px 0 #5a3a00;animation:tc .5s ease-in both}
 @keyframes tc{from{transform:translateY(-60px)}70%{transform:translateY(2px)}to{transform:none}}
-.tlabel{position:absolute;right:14px;bottom:4px;font:800 9px var(--fd);letter-spacing:2px;color:#c9a23a88}
-.cabinet.party .marquee{animation:mqp .25s steps(2) 8}@keyframes mqp{50%{filter:brightness(1.6) saturate(1.3)}}
-@media (max-width:600px){.lever{right:-14px;top:150px;transform:scale(.8);transform-origin:top right}.mq span{font-size:24px}.marquee{height:62px}}
-#lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
-.wl{animation:wl .45s steps(2) infinite}@keyframes wl{50%{opacity:.25}}
-.hitcell{position:absolute;pointer-events:none;border:3px solid #ffd600;border-radius:8px;box-shadow:0 0 14px #ffd600,inset 0 0 14px #ffd60088;z-index:1;animation:wl .45s steps(2) infinite}
-.meters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
-.meter{background:#05070f;border:2px solid #333b66;border-radius:10px;padding:4px 10px;text-align:right}
-.meter small{display:block;text-align:left;font:800 11px var(--fd);color:#ffeb3b;letter-spacing:1px}
-.meter b{font:900 28px "Courier New",monospace;color:#ff5252;text-shadow:0 0 8px #ff1744}
-.meter.w b{color:#69f0ae;text-shadow:0 0 8px #00e676}.meter.c b{color:#ffd740;text-shadow:0 0 8px #ffab00}
-.buttons{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-.ab{border:0;border-radius:12px;padding:12px 4px;font:900 14px var(--fd);color:#fff;cursor:pointer;box-shadow:0 5px 0 #0008,inset 0 2px 0 #fff5;transition:transform .05s}
-.ab:active{transform:translateY(3px);box-shadow:0 2px 0 #0008}
-.ab:disabled{filter:grayscale(1) brightness(.55);cursor:default}
-.ab.y{background:linear-gradient(#ffe082,#f9a825);color:#3e2700}.ab.b{background:linear-gradient(#64b5f6,#1565c0)}.ab.g{background:linear-gradient(#69f0ae,#00a152);color:#00331a}
-.ab.r{background:linear-gradient(#ff8a80,#d50000);grid-column:span 2;font-size:20px}.ab.p{background:linear-gradient(#ea80fc,#8e24aa)}.ab.k{background:linear-gradient(#90a4ae,#455a64)}
-.ab.k.on{background:linear-gradient(#ffd180,#ff6d00)}
-.msg{margin:12px 0 6px;padding:10px 12px;border-radius:10px;background:#141c3a;border:1px solid #2a3770;min-height:46px;font-size:14.5px}
-.msg.ok{border-color:#00c853;background:#0d2a1c}.msg.bad{border-color:#ff5252;background:#2a1010}
-.wtag{display:inline-block;width:18px;text-align:center;border-radius:4px;background:var(--c);color:#000;font:900 12px var(--fd);margin-right:3px}
-.foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
-.foot .sub{font-size:12.5px;color:var(--muted)}
+.help{margin-top:14px;font-size:13px;color:var(--muted);line-height:1.7}.help b{color:#ddd}
 #stat{font-size:12.5px;color:var(--muted);margin-top:6px}
-.note{font-size:12px;color:var(--muted);margin-top:10px}
-#big{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:20;opacity:0}
-#big span{font:900 clamp(40px,11vw,90px) var(--fd);background:linear-gradient(#fffde7,#ffd600 50%,#ff6f00);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 #7a3c00) drop-shadow(0 0 20px #ffab00)}
-#big.show{animation:bw 1.8s ease both}@keyframes bw{0%{opacity:0;transform:scale(.3)}15%{opacity:1;transform:scale(1.15)}25%{transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(1.1)}}
-#coins{position:fixed;left:0;right:0;top:0;height:0;pointer-events:none;z-index:19}
-#coins i{position:absolute;top:-30px;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff59d,#f9a825 60%,#a86b00);box-shadow:0 0 0 2px #7a4b00;animation:cf 1.6s ease-in forwards}
-@keyframes cf{to{transform:translate(var(--x),105vh) rotate(720deg)}}
-.ov{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
+.ov{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
 .ov[hidden]{display:none}
-.box{background:var(--panel);border:2px solid var(--frame);border-radius:16px;padding:18px;max-width:560px;width:100%;max-height:90vh;overflow:auto}
-.box h2{margin:0 0 10px;font:900 22px var(--fd);color:var(--accent)}.box h3{margin:14px 0 6px;color:var(--accent)}
+.box{background:#140f26;border:2px solid #c9a23a;border-radius:16px;padding:18px;max-width:560px;width:100%;max-height:90vh;overflow:auto}
+.box h2{margin:0 0 10px;font:14px var(--px);color:var(--gold)}.box h3{margin:14px 0 6px;color:var(--gold);font-size:15px}
 .box p{font-size:14px;color:#d6dbff}
 .paygrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.pr{display:flex;align-items:center;justify-content:space-between;background:#0a0f22;border-radius:8px;padding:4px 10px}
-.ps{display:flex;align-items:center}.ps svg{width:34px;height:27px}.ps em{width:34px;text-align:center;font:900 18px var(--fd);color:var(--muted);font-style:normal}
-.pr b{font:900 18px var(--fd);color:#ffd740}
-.linesmap{display:flex;flex-wrap:wrap;gap:8px}.linesmap span{display:flex;flex-direction:column;align-items:center;font:900 12px var(--fd)}.linesmap svg{width:42px;height:42px;background:#e9e6ff;border-radius:6px}
-.dcard{width:110px;height:150px;margin:10px auto;border-radius:12px;background:#fff;color:#111;display:flex;align-items:center;justify-content:center;font:900 54px Georgia,serif;box-shadow:0 6px 16px #0008}
-.dcard.red{color:#d50000}.dcard.back{background:repeating-linear-gradient(45deg,#1565c0 0 8px,#1e88e5 8px 16px);color:#fff}
-.dbtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.dbtns .ab{min-width:96px}
+.pr{display:flex;align-items:center;justify-content:space-between;background:#0a0716;border-radius:8px;padding:4px 10px}
+.ps{display:flex;align-items:center}.ps svg{width:34px;height:27px}.ps em{width:34px;text-align:center;font:900 18px var(--f);color:var(--muted);font-style:normal}
+.pr b{font:12px var(--px);color:#ffd740}
+.linesmap{display:flex;flex-wrap:wrap;gap:8px}.linesmap span{display:flex;flex-direction:column;align-items:center;font:9px var(--px)}.linesmap svg{width:42px;height:42px;background:#e9e6ff;border-radius:6px}
 @media (max-width:600px){
-  .wrap{padding-right:24px!important}
-  .machine{grid-template-columns:1fr;padding:8px}
-  .side{flex-direction:row;flex-wrap:wrap;gap:6px}.bn{flex:1 1 30%;padding:3px}.bns svg{width:20px;height:16px}.bnh svg{width:16px;height:13px}.bn{font-size:9.5px}
-  .minbet{flex-basis:100%}
-  .stage{padding:24px 34px}
-  .buttons{grid-template-columns:repeat(2,1fr)}.ab.r{grid-column:span 2}
-  .paygrid{grid-template-columns:1fr}
-  .meter b{font-size:22px}
+  .wrap{padding:10px 10px 30px}.cab{padding:10px 10px 14px}.bezel{padding:10px}.marquee{height:56px}.mq b{font-size:22px}
+  .btns{grid-template-columns:repeat(4,1fr)}.ab i{width:44px;height:44px}.ab.big i{width:54px;height:54px}.paygrid{grid-template-columns:1fr}
 }
 </style>
 </head>
 <body>
 
 <div class="wrap">
-  <header><h1>황금별 슬롯<small>3릴 · 8줄 고전 슬롯머신 · 가짜 크레딧으로만 해요</small></h1><span class="sp"></span>
-    <button class="ibtn" id="bPay">배당표</button><button class="ibtn" id="bSound" aria-label="소리">🔊</button></header>
-  <div class="cabinet" id="cabinet">
-  <div class="marquee"><div class="bulbs" id="bulbs"></div><div class="mq"><span>★ 황금별 ★</span><small>GOLDEN STAR · 8 LINES</small></div></div>
-  <div class="machine">
-    <div class="side" id="bonus"></div>
-    <div class="stage" id="stage">
-      <div id="reelarea"><div id="reels"></div><svg id="lines"></svg><div class="glass"></div></div>
+  <div class="top"><button class="ibtn" id="bPay">배당표</button><button class="ibtn" id="bSound" aria-label="소리">🔊</button><button class="ibtn" id="bReset">처음으로</button></div>
+  <div class="cab" id="cab">
+    <div class="marquee"><div class="bulbs" id="bulbs"></div><div class="mq"><b>★ 황금별 ★</b><small>GOLDEN STAR</small></div></div>
+    <div class="bezel"><div class="crt" id="crt"><canvas id="scr" width="960" height="720" aria-label="슬롯머신 화면"></canvas></div></div>
+    <div class="panel">
+      <div class="btns">
+        <button class="ab" id="bBet" style="--c:#ffd600;--d:#5a4a00"><i></i>BET<small>1씩 걸기</small></button>
+        <button class="ab" id="bMax" style="--c:#2979ff;--d:#0a2a66"><i></i>MAX<small>최대로</small></button>
+        <button class="ab big" id="bStart" style="--c:#ff1744;--d:#5c0010"><i></i><span id="startLbl">START</span><small id="startSub">돌리기</small></button>
+        <button class="ab" id="bTake" style="--c:#00e676;--d:#00401f"><i></i>TAKE<small>받기</small></button>
+        <button class="ab" id="bDouble" style="--c:#d500f9;--d:#4a0057"><i></i>DOUBLE<small>더블업</small></button>
+        <button class="ab" id="bSmall" style="--c:#00b0ff;--d:#003a55"><i></i>SMALL<small>A~6</small></button>
+        <button class="ab" id="bBig" style="--c:#ff6d00;--d:#552400"><i></i>BIG<small>8~K</small></button>
+        <button class="ab" id="bHalf" style="--c:#c6ff00;--d:#3d4d00"><i></i>HALF<small>절반만</small></button>
+        <button class="ab" id="bAuto" style="--c:#b0bec5;--d:#263238"><i></i>AUTO<small>자동</small></button>
+      </div>
+      <div class="coinrow">
+        <div class="slotbox" id="bCoin" role="button" tabindex="0"><div class="cslot"></div><div><b>INSERT COIN</b><small>눌러서 동전 넣기 (+100)</small></div></div>
+        <div class="keys"><b>스페이스</b> START/STOP<br><b>B</b> 베팅 · <b>T</b> 받기 · <b>D</b> 더블</div>
+      </div>
+      <div class="tray"><div class="tcoins" id="tray"></div></div>
     </div>
   </div>
-  <div class="lever" id="lever" aria-label="레버 당기기" role="button" tabindex="0"><div class="lslot"></div><div class="larm" id="larm"><div class="lknob"></div></div><div class="lhub"></div></div>
-  <div class="meters"><div class="meter c"><small>CREDIT</small><b id="mCredit">0</b></div><div class="meter"><small>BET</small><b id="mBet">0</b></div><div class="meter w"><small>WIN</small><b id="mWin">0</b></div></div>
-  <div class="buttons">
-    <button class="ab y" id="bBet">BET +1</button><button class="ab b" id="bMax">MAX BET</button>
-    <button class="ab r" id="bStart">START</button>
-    <button class="ab g" id="bTake">TAKE</button><button class="ab p" id="bDouble">DOUBLE</button>
+  <div class="help">
+    · 화면의 줄 글자(A~H)를 누르면 그 줄에 거는 크레딧이 바뀌어요. <b>BET</b>은 8줄 모두에 1씩 더해요. 돌아가는 동안 <b>STOP</b>을 누르면 릴이 하나씩 멈춰요.<br>
+    · 당첨되면 <b>TAKE</b>로 받거나 <b>DOUBLE</b>로 카드 게임에 도전해요. 다음 카드가 <b>BIG</b>(8~K)일지 <b>SMALL</b>(A~6)일지 맞히면 두 배, 7이면 무승부예요. <b>HALF</b>는 절반은 받고 절반만 걸어요.<br>
+    · 가짜 크레딧으로만 하는 놀이예요. 실제 돈을 걸거나 바꿀 수 없어요. 슬롯머신은 오래 할수록 조금씩 잃게 만들어져 있어요.
   </div>
-  <div class="tray"><div class="tlip"></div><div class="tcoins" id="tray"></div><span class="tlabel">COIN TRAY</span></div>
-  </div>
-  <div class="msg" id="msg"></div>
-  <div class="foot"><button class="ab k" id="bAuto" style="padding:8px 14px;font-size:13px">AUTO</button><button class="ibtn" id="bCoin">🪙 동전 넣기 (+100)</button><button class="ibtn" id="bReset">처음으로</button>
-    <span class="sub">스페이스 START/STOP · B 베팅 · M 최대 · T 받기 · D 더블</span></div>
   <div id="stat"></div>
-  <p class="note">가짜 크레딧으로만 하는 놀이예요. 실제 돈을 걸 수 없고 돈으로 바꿀 수도 없어요. 슬롯머신은 오래 할수록 조금씩 잃도록 만들어져 있어요 (배당표에서 확률을 볼 수 있어요).</p>
 </div>
-<div id="big"></div><div id="coins"></div>
-<div class="ov" id="dbl" hidden><div class="box" style="text-align:center"><h2>DOUBLE UP</h2><div>걸린 크레딧 <b id="dblWin" style="font-size:22px;color:#69f0ae">0</b></div>
-  <div class="dcard back" id="dblCard">?</div><p id="dblMsg"></p>
-  <div class="dbtns" id="dblBtns"><button class="ab b" id="dSmall">SMALL<br><small>A~6</small></button><button class="ab r" id="dBig" style="grid-column:auto;font-size:14px">BIG<br><small>8~K</small></button><button class="ab g" id="dTake">TAKE</button></div></div></div>
-<div class="ov" id="pay" hidden><div class="box"><h2>배당표</h2><div id="payBody"></div><div style="text-align:right;margin-top:10px"><button class="ibtn" id="payClose">닫기</button></div></div></div>
+<div class="ov" id="pay" hidden><div class="box"><h2>PAY TABLE · 배당표</h2><div id="payBody"></div><div style="text-align:right;margin-top:10px"><button class="ibtn" id="payClose">닫기</button></div></div></div>
 <script>
 /* ===== 슬롯머신 규칙 (3릴 × 3칸, 8줄) =====
    그림: 0 체리 · 1 오렌지 · 2 자두 · 3 종 · 4 수박 · 5 BAR · 6 세븐 · 7 별
@@ -257,186 +211,236 @@ return{sym:(i)=>S[i]('a'+(++seq)+'_'),count:S.length};
 })();
 
 
-/* ===== 황금별 슬롯 화면 ===== */
+/* ===== 황금별 슬롯: 오락실 기계 (브라운관 화면은 320×240 도트 캔버스) ===== */
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem('slot-'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
   set(k,v){try{localStorage.setItem('slot-'+k,JSON.stringify(v));}catch(e){}}};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-/* ---------- 소리 ---------- */
+/* ---------- 8비트 소리 ---------- */
 const SND={ctx:null,on:store.get('sound',true),
   c(){if(!this.on)return null;try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume();}catch(e){return null;}return this.ctx;},
-  tone(f,d=.08,v=.15,type='square',when=0){const c=this.c();if(!c)return;const t=c.currentTime+when,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=f;
-    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.02);},
-  noise(d,f,q,v,when=0,type='bandpass'){const c=this.c();if(!c)return;const t=c.currentTime+when,n=Math.floor(c.sampleRate*d),b=c.createBuffer(1,n,c.sampleRate),x=b.getChannelData(0);
-    for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);const s=c.createBufferSource();s.buffer=b;const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=f;fl.Q.value=q;
-    const g=c.createGain();g.gain.value=v;s.connect(fl);fl.connect(g);g.connect(c.destination);s.start(t);},
-  // 릴 도는 소리: 걸쇠가 '드르르' 걸리는 소리를 빠르게 반복
-  spinStart(){const c=this.c();if(!c||this.sp)return;this.sp=setInterval(()=>{this.noise(.025,2400+Math.random()*600,6,.10);},55);
-    const o=c.createOscillator(),gg=c.createGain();o.type='sawtooth';o.frequency.value=48;gg.gain.value=.03;const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=220;o.connect(lp);lp.connect(gg);gg.connect(c.destination);o.start();this.hum={o,gg};},
-  spinEnd(){clearInterval(this.sp);this.sp=null;if(this.hum){const c=this.ctx;try{this.hum.gg.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+.15);this.hum.o.stop(c.currentTime+.2);}catch(e){}this.hum=null;}},
-  lever(){this.noise(.18,900,1.2,.35);this.tone(110,.18,.25,'triangle');this.noise(.08,3000,4,.15,.2);},
-  bet(){this.tone(1320,.04,.08);this.noise(.03,4000,5,.08);},
-  stop(){this.noise(.09,380,1.5,.5);this.tone(95,.12,.28,'sine');this.noise(.04,2600,6,.12,.02);},
-  bell(when=0){const c=this.c();if(!c)return;for(const [f,v] of [[1760,.12],[2637,.07],[3520,.05],[4400,.03]]){const t=c.currentTime+when,o=c.createOscillator(),gg=c.createGain();o.frequency.value=f;gg.gain.setValueAtTime(v,t);gg.gain.exponentialRampToValueAtTime(0.0001,t+1.1);o.connect(gg);gg.connect(c.destination);o.start(t);o.stop(t+1.2);}},
-  tick(){},coin(){const c=this.c();if(!c)return;const f=3100+Math.random()*900;for(const [m,v] of [[1,.08],[1.51,.05],[2.3,.03]]){const t=c.currentTime,o=c.createOscillator(),gg=c.createGain();o.frequency.value=f*m;gg.gain.setValueAtTime(v,t);gg.gain.exponentialRampToValueAtTime(0.0001,t+.18);o.connect(gg);gg.connect(c.destination);o.start(t);o.stop(t+.2);}this.noise(.02,6000,3,.05);},
-  win(big){const n=big?[523,659,784,1047,784,1047,1319]:[659,784,1047];n.forEach((f,i)=>this.tone(f,.14,.1,'square',i*.09));for(let k=0;k<(big?6:2);k++)this.bell(.15+k*.32);},
-  lose(){this.tone(220,.18,.12,'sawtooth');this.tone(165,.25,.1,'sawtooth',.15);}};
+  tone(f,d=.08,v=.08,type='square',when=0,f2){const c=this.c();if(!c)return;const t=c.currentTime+when,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);
+    g.gain.setValueAtTime(v,t);g.gain.setValueAtTime(v,t+d*.7);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.02);},
+  seq(notes,step=.09,v=.07,type='square'){notes.forEach((f,i)=>f&&this.tone(f,step*.9,v,type,i*step));},
+  bet(){this.tone(1046,.05,.07);this.tone(1568,.05,.06,'square',.05);},
+  spinTick(k){this.tone([523,659,784,659][k%4]*(1+(k%16<8?0:0.5)),.035,.035);},
+  stop(){this.tone(392,.07,.09,'square',0,196);},
+  coin(){this.tone(1975,.06,.07);this.tone(2637,.12,.06,'square',.06);},
+  win(big){this.seq(big?[523,659,784,1046,0,784,1046,1318,1568]:[784,988,1175,1568],.085,.07);},
+  jackpot(){for(let k=0;k<10;k++){this.tone(880,.12,.06,'square',k*.24);this.tone(1320,.12,.06,'square',k*.24+.12);}},
+  lose(){this.tone(392,.35,.08,'square',0,98);},
+  flip(){this.tone(1568,.03,.05);this.tone(1175,.03,.05,'square',.04);},
+  tension(k){this.tone(220+k*30,.05,.05,'triangle');}};
 
 /* ---------- 상태 ---------- */
 const LN=SL.LN;
 let credit=store.get('credit',100),bets=store.get('bets',null)||Object.fromEntries(LN.map(k=>[k,1]));
 let counters=store.get('counters',SL.BONUS.map(b=>b.count)),stat=store.get('stat',{bet:0,won:0,spins:0,best:0,coins:0});
-let win=0,busy=false,auto=false,stops=[0,0,0],lastWins=[];
+let win=0,busy=false,auto=false,stops=store.get('stops',[3,7,11]),lastWins=[],mode='game',idleAt=Date.now(),note='PUSH BET',noteT=0;
+const DBL={hist:store.get('dhist',[]),card:null,flip:0,state:'wait',msg:'',pick:null,half:0};
 const totalBet=()=>LN.reduce((a,k)=>a+(bets[k]||0),0);
-function save(){store.set('credit',credit);store.set('bets',bets);store.set('counters',counters);store.set('stat',stat);}
+function save(){store.set('credit',credit);store.set('bets',bets);store.set('counters',counters);store.set('stat',stat);store.set('stops',stops);store.set('dhist',DBL.hist.slice(-8));}
 
-/* ---------- 릴 ---------- */
-const REEL=SL.REELS.map((R,c)=>({el:null,strip:null,p:R.length*2-1,n:R.length,spinning:false,stopAt:null,anim:null}));
-function buildReels(){
-  const box=$('reels');box.innerHTML='';
-  // 릴마다 그림을 원통 둘레에 붙임 (돌면 진짜 릴처럼 위아래가 휘어 보임)
-  REEL.forEach((r,c)=>{const w=document.createElement('div');w.className='reel';const s=document.createElement('div');s.className='cyl';
-    const R=SL.REELS[c];s.innerHTML=R.map(sym=>`<div class="face">${ART.sym(sym)}</div>`).join('');
-    w.appendChild(s);const sh=document.createElement('div');sh.className='shade';w.appendChild(sh);box.appendChild(w);r.el=w;r.strip=s;r.p=((stops[c]-1)%r.n+r.n)%r.n+r.n;});
-  layout();
+/* ---------- 도트 그림: SVG를 작게 굽고 확대해서 픽셀이 보이게 ---------- */
+const SPR=[],MINI=[];
+function bake(svg,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const img=new Image();img.onload=()=>{c.getContext('2d').drawImage(img,0,0,w,h);};img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);return c;}
+const Q=3;   // 선명하게: 화면을 3배 해상도로 그림
+for(let i=0;i<8;i++){SPR[i]=bake(ART.sym(i),46*Q,37*Q);MINI[i]=bake(ART.sym(i),16*Q,13*Q);}
+
+/* ---------- 화면 배치 ---------- */
+const scr=$('scr'),X=scr.getContext('2d');X.setTransform(Q,0,0,Q,0,0);X.imageSmoothingEnabled=true;X.imageSmoothingQuality='high';
+const RX=[88,158,228],RW=64,RY=22,CH=54,RH=CH*3;
+const LBL={};   // 줄 글자 위치 (누르기용)
+const LPOS=[['D',80,13],['F',RX[0]+RW/2,13],['G',RX[1]+RW/2,13],['H',RX[2]+RW/2,13],['E',301,13],['B',80,RY+CH*.5],['A',80,RY+CH*1.5],['C',80,RY+CH*2.5],
+  ['B',301,RY+CH*.5],['A',301,RY+CH*1.5],['C',301,RY+CH*2.5],['E',80,193],['F',RX[0]+RW/2,193],['G',RX[1]+RW/2,193],['H',RX[2]+RW/2,193],['D',301,193]];
+const LCOL={A:'#ff1744',B:'#2979ff',C:'#00e676',D:'#ff9100',E:'#e040fb',F:'#00e5ff',G:'#ffea00',H:'#b2ff59'};
+function txt(s,x,y,col='#fff',size=8,align='left'){X.font=`${size}px "Press Start 2P", monospace`;X.textAlign=align;X.textBaseline='middle';X.fillStyle='#000';X.fillText(s,x+1,y+1);X.fillStyle=col;X.fillText(s,x,y);}
+const pad=(n,k)=>String(Math.max(0,Math.floor(n))).padStart(k,'0');
+const REEL=SL.REELS.map(R=>({n:R.length,p:0,spinning:false,anim:null,stopAt:null,onStop:null}));
+REEL.forEach((r,c)=>r.p=((stops[c]-1)%r.n+r.n)%r.n);
+
+/* ---------- 그리기 ---------- */
+let frame=0;
+function draw(){
+  frame++;X.fillStyle='#000';X.fillRect(0,0,320,240);
+  if(mode==='double')drawDouble();else if(mode==='demo')drawDemo();else drawGame();
 }
-let cellH=80;
-function layout(){const w=REEL[0].el?REEL[0].el.clientWidth:120;cellH=Math.round(w*0.8);document.documentElement.style.setProperty('--cell',cellH+'px');REEL.forEach(drawReel);placeLabels();drawLines();}
-// 테두리의 줄 글자 (누르면 그 줄 베팅 바꾸기)
-function placeLabels(){
-  const st=$('stage'),sb=st.getBoundingClientRect(),ra=$('reelarea').getBoundingClientRect();if(!ra.width)return;
-  const L=ra.left-sb.left,T=ra.top-sb.top,R=L+ra.width,B=T+ra.height,col=c=>{const e=REEL[c].el.getBoundingClientRect();return e.left-sb.left+e.width/2;},row=r=>T+cellH*(r+.5);
-  const spots=[['B',L-15,row(0)],['B',R+15,row(0)],['A',L-15,row(1)],['A',R+15,row(1)],['C',L-15,row(2)],['C',R+15,row(2)],
-    ['F',col(0),T-13],['F',col(0),B+13],['G',col(1),T-13],['G',col(1),B+13],['H',col(2),T-13],['H',col(2),B+13],
-    ['D',L-12,T-11],['D',R+12,B+11],['E',L-12,B+11],['E',R+12,T-11]];
-  if(!st.querySelector('.lbl'))spots.forEach(([k])=>{const d=document.createElement('div');d.className='lbl';d.dataset.line=k;d.innerHTML=`${k}<i>0</i>`;d.onclick=()=>lineClick(k);st.appendChild(d);});
-  [...st.querySelectorAll('.lbl')].forEach((d,i)=>{d.style.left=spots[i][1]+'px';d.style.top=spots[i][2]+'px';});
-  renderBets();
+function drawGame(){
+  // 왼쪽 보너스판
+  SL.BONUS.forEach((B,i)=>{const y=8+i*60,cols=['#ff2d7a','#ffc400','#2f6bff'];
+    X.fillStyle='#000';X.fillRect(4,y,70,54);X.strokeStyle=cols[i];X.lineWidth=2;X.strokeRect(5,y+1,68,52);
+    X.fillStyle=cols[i];X.fillRect(7,y+3,64,11);X.drawImage(MINI[B.sym],8,y+2,16,13);txt('BONUS',27,y+9,i===1?'#3a2400':'#fff',8);
+    txt('LAST',8,y+22,'#fff');X.fillStyle='#d50000';X.fillRect(42,y+16,20,12);txt(String(counters[i]),52,y+22,'#fff',8,'center');txt('TIMES',8,y+33,'#fff');
+    for(let k=0;k<3;k++)X.drawImage(MINI[B.sym],10+k*21,y+39,16,13);});
+  txt(totalBet()>=SL.MIN_BONUS_BET?'BONUS':'MIN BET',6,192,totalBet()>=SL.MIN_BONUS_BET?'#69f0ae':'#fff');txt(totalBet()>=SL.MIN_BONUS_BET?'  ON':'8 FOR',6,203,totalBet()>=SL.MIN_BONUS_BET?'#69f0ae':'#fff');
+  // 릴 틀
+  X.fillStyle='#0d6b5e';X.fillRect(RX[0]-6,RY-6,RX[2]+RW-RX[0]+12,RH+12);X.fillStyle='#2fd3b5';X.fillRect(RX[0]-4,RY-4,RX[2]+RW-RX[0]+8,RH+8);
+  for(let c=0;c<3;c++)drawReel(c);
+  // 칸 가로줄
+  X.fillStyle='#2fd3b5';for(let c=0;c<3;c++)for(let r=1;r<3;r++)X.fillRect(RX[c],RY+CH*r-1,RW,2);
+  // 당첨 줄
+  if(lastWins.length&&!busy&&(frame>>3)%2===0){X.lineWidth=3;
+    lastWins.forEach(w=>{const pts=SL.LINES[w.line].map(([r,c])=>[RX[c]+RW/2,RY+CH*r+CH/2]);X.strokeStyle=LCOL[w.line];X.beginPath();pts.forEach((p,i)=>i?X.lineTo(p[0],p[1]):X.moveTo(p[0],p[1]));X.stroke();
+      SL.LINES[w.line].slice(0,w.three?3:2).forEach(([r,c])=>{X.strokeStyle='#ffea00';X.lineWidth=2;X.strokeRect(RX[c]+1,RY+CH*r+1,RW-2,CH-2);X.lineWidth=3;});});}
+  // 줄 글자
+  LPOS.forEach(([k,x,y],i)=>{const on=bets[k]>0,won=lastWins.some(w=>w.line===k)&&(frame>>3)%2===0;
+    txt(k,x-6,y,on?'#fff':'#666',8,'center');X.fillStyle=won?'#ffea00':on?'#d50000':'#444';X.fillRect(x-1,y-5,10,10);txt(String(bets[k]),x+4,y,won?'#000':'#fff',8,'center');LBL[i]={k,x:x-11,y:y-7,w:22,h:14};});
+  // 아래 계기
+  X.fillStyle='#101030';X.fillRect(0,206,320,34);X.fillStyle='#2fd3b5';X.fillRect(0,206,320,1);
+  txt('CREDIT',4,214,'#ffeb3b');txt(pad(credit,6),4,227,'#ffd740',8);
+  txt('BET',120,214,'#ffeb3b');txt(pad(totalBet(),2),120,227,'#ff5252');
+  txt('WIN',170,214,'#ffeb3b');txt(pad(win,5),170,227,'#69f0ae');
+  const blink=(frame>>4)%2===0;
+  if(blink||busy)txt(note,316,221,busy?'#ffffff':win>0?'#ff80ab':'#ff7043',8,'right');
 }
-function drawReel(r){const a=360/r.n,rad=cellH/2/Math.tan(Math.PI/r.n);
-  if(r.rad!==rad){r.rad=rad;[...r.strip.children].forEach((f,i)=>f.style.transform=`rotateX(${-i*a}deg) translateZ(${rad}px)`);}
-  r.strip.style.transform=`translateZ(${-rad}px) rotateX(${(r.p+1)*a}deg)`;r.el.classList.toggle('blur',r.spinning&&!r.anim);}
-// 돌리기: 위에서 아래로 내려오듯 p를 줄인다
-let raf=null,lastT=0;
-function loop(t){const dt=Math.min(50,t-(lastT||t))/1000;lastT=t;let any=false;
-  for(const r of REEL){if(!r.spinning)continue;any=true;
-    if(r.anim){const a=r.anim,k=Math.min(1,(t-a.t0)/a.dur),e=k<1?1-Math.pow(1-k,3)*(1-2.2*k*(1-k)):1;r.p=a.from+(a.to-a.from)*e;
-      if(k>=1){r.p=a.to;r.spinning=false;r.anim=null;SND.stop();if(!REEL.some(x=>x.spinning&&x!==r))SND.spinEnd();a.done&&a.done();}}
-    else{r.p-=22*dt;if(r.stopAt!=null&&performance.now()>=r.stopAt)beginStop(r);}
-    drawReel(r);}
-  raf=any?requestAnimationFrame(loop):null;if(!any)lastT=0;}
+function drawReel(c){
+  const r=REEL[c],R=SL.REELS[c],x=RX[c];
+  X.save();X.beginPath();X.rect(x,RY,RW,RH);X.clip();
+  X.fillStyle='#e6e4ff';X.fillRect(x,RY,RW,RH);
+  const base=Math.floor(r.p),fr=r.p-base,fast=r.spinning&&!r.anim;
+  for(let k=-1;k<=3;k++){const idx=((base+k)%r.n+r.n)%r.n,y=Math.round(RY+(k-fr)*CH);
+    X.fillStyle=(idx%2)?'#dedcf8':'#e9e7ff';X.fillRect(x,y,RW,CH);
+    const s=SPR[R[idx]];if(fast){X.globalAlpha=.45;X.drawImage(s,x+9,y+8-10,46,37);X.drawImage(s,x+9,y+8+10,46,37);X.globalAlpha=.8;}X.drawImage(s,x+9,y+8,46,37);X.globalAlpha=1;}
+  // 위아래 어둡게 (곡면 느낌)
+  const g=X.createLinearGradient(0,RY,0,RY+RH);g.addColorStop(0,'rgba(0,0,40,.45)');g.addColorStop(.18,'rgba(0,0,40,0)');g.addColorStop(.82,'rgba(0,0,40,0)');g.addColorStop(1,'rgba(0,0,40,.45)');X.fillStyle=g;X.fillRect(x,RY,RW,RH);
+  X.restore();
+}
+/* ---------- 더블업 화면 ---------- */
+const RANK=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+function suitPath(s,x,y,k){X.beginPath();
+  if(s===0){X.moveTo(x,y+k);X.lineTo(x-k,y);X.arc(x-k/2,y-k/3,k/2,Math.PI*0.8,Math.PI*1.9);X.arc(x+k/2,y-k/3,k/2,Math.PI*1.1,Math.PI*0.2);X.closePath();}   // ♥
+  else if(s===1){X.moveTo(x,y-k);X.lineTo(x+k*.8,y);X.lineTo(x,y+k);X.lineTo(x-k*.8,y);X.closePath();}   // ♦
+  else if(s===2){X.arc(x,y-k*.45,k*.42,0,7);X.moveTo(x-k*.45,y+k*.1);X.arc(x-k*.45,y+k*.1,k*.42,0,7);X.moveTo(x+k*.45,y+k*.1);X.arc(x+k*.45,y+k*.1,k*.42,0,7);X.rect(x-k*.12,y,k*.24,k*.9);}   // ♣
+  else{X.moveTo(x,y-k);X.lineTo(x+k,y+k*.2);X.arc(x+k/2,y+k*.25,k/2,0,Math.PI);X.lineTo(x,y+k*.2);X.arc(x-k/2,y+k*.25,k/2,0,Math.PI);X.closePath();X.rect(x-k*.12,y,k*.24,k*.9);}   // ♠
+  X.fill();}
+function drawCard(cd,x,y,w,h,scaleX=1){
+  X.save();X.translate(x+w/2,y);X.scale(scaleX,1);X.translate(-w/2,0);
+  if(!cd){X.fillStyle='#fff';X.fillRect(0,0,w,h);X.fillStyle='#1565c0';X.fillRect(3,3,w-6,h-6);X.fillStyle='#1e88e5';for(let i=0;i<w;i+=6)for(let j=0;j<h;j+=6)if(((i+j)/6)%2===0)X.fillRect(3+i,3+j,3,3);
+    X.fillStyle='#ffd54f';X.fillRect(w/2-6,h/2-6,12,12);}
+  else{const red=cd.s<2;X.fillStyle='#fff';X.fillRect(0,0,w,h);X.strokeStyle='#999';X.strokeRect(.5,.5,w-1,h-1);X.fillStyle=red?'#d50000':'#111';
+    const big=w>30;txt(RANK[cd.r-1],big?6:3,big?10:6,red?'#d50000':'#111',big?8:8);suitPath(cd.s,w/2,h/2+(big?4:2),big?12:5);X.fillStyle=red?'#d50000':'#111';}
+  X.restore();}
+function drawDouble(){
+  X.fillStyle='#002a10';X.fillRect(0,0,320,240);X.strokeStyle='#ffd54f';X.lineWidth=2;X.strokeRect(4,4,312,232);
+  txt('DOUBLE UP',160,18,(frame>>4)%2?'#ffea00':'#ff9100',16,'center');
+  txt('HISTORY',10,40,'#9ccc65');DBL.hist.slice(-8).forEach((cd,i)=>drawCard(cd,10+i*22,48,18,26));
+  txt('BET',190,40,'#ffeb3b');txt(pad(win,6),190,54,'#69f0ae');txt('CREDIT',250,40,'#ffeb3b');txt(pad(credit,6),250,54,'#ffd740');
+  const fl=DBL.flip,sx=fl>0?Math.abs(Math.cos(fl*Math.PI)):1,show=fl>=.5||DBL.state==='done';
+  drawCard(show?DBL.card:null,130,82,60,84,Math.max(.05,sx));
+  txt('SMALL',62,124,'#00b0ff',8,'center');txt('A - 6',62,138,'#fff',8,'center');txt('BIG',258,124,'#ff6d00',8,'center');txt('8 - K',258,138,'#fff',8,'center');
+  if(DBL.pick){X.strokeStyle='#ffea00';X.lineWidth=2;X.strokeRect(DBL.pick==='small'?28:224,114,68,32);}
+  txt('7 = DRAW',160,180,'#ccc',8,'center');
+  const m=DBL.state==='wait'?((frame>>4)%2?'BIG OR SMALL ?':''):DBL.msg;txt(m,160,200,DBL.msg.startsWith('YOU WIN')?'#69f0ae':DBL.msg.startsWith('YOU LOSE')?'#ff5252':'#fff',8,'center');
+  txt('TAKE / HALF / BIG / SMALL',160,222,'#888',8,'center');
+}
+/* ---------- 데모 화면 (손님 없을 때) ---------- */
+function drawDemo(){
+  const page=Math.floor((Date.now()-idleAt)/5000)%2;
+  X.fillStyle='#05051a';X.fillRect(0,0,320,240);
+  for(let i=0;i<40;i++){const x=(i*73+frame*(1+i%3))%320,y=(i*41)%240;X.fillStyle=i%5?'#334':'#ffd54f';X.fillRect(x,y,2,2);}
+  if(page===0){const bob=Math.round(Math.sin(frame/8)*4);X.drawImage(SPR[7],137,40+bob,46,37);
+    txt('GOLDEN',160,110,'#ffd600',16,'center');txt('STAR',160,132,'#ff9100',16,'center');
+    if((frame>>4)%2)txt(credit>0?'PUSH START':'INSERT COIN',160,170,'#ff5252',8,'center');
+    txt('8 LINES  3 REELS',160,195,'#80deea',8,'center');txt('CREDIT '+pad(credit,6),160,215,'#ffd740',8,'center');}
+  else{txt('PAY TABLE',160,16,'#ffea00',8,'center');
+    SL.PAY.map((p,i)=>[p,i]).reverse().forEach(([p,i],k)=>{const y=30+k*24;for(let j=0;j<3;j++)X.drawImage(MINI[i],70+j*20,y,16,13);txt('x'+p,190,y+7,'#ffd740');});
+    txt('2 CHERRY  x'+SL.CHERRY2,160,228,'#fff',8,'center');}
+}
+/* ---------- 움직임 ---------- */
+let lastT=0;
+function loop(t){const dt=Math.min(50,t-(lastT||t))/1000;lastT=t;
+  for(const r of REEL){if(!r.spinning)continue;
+    if(r.anim){const a=r.anim,k=Math.min(1,(t-a.t0)/a.dur),e=k<1?1-Math.pow(1-k,3)*(1-2.4*k*(1-k)):1;r.p=a.from+(a.to-a.from)*e;
+      if(k>=1){r.p=a.to;r.spinning=false;r.anim=null;SND.stop();a.done&&a.done();}}
+    else{r.p-=24*dt;if(r.stopAt!=null&&performance.now()>=r.stopAt)beginStop(r);}}
+  if(DBL.flip>0&&DBL.flip<1){DBL.flip=Math.min(1,DBL.flip+dt*2.2);}
+  if(mode==='game'&&!busy&&win===0&&!auto&&Date.now()-idleAt>25000){mode='demo';idleAt=Date.now();}
+  draw();requestAnimationFrame(loop);}
 function beginStop(r){if(r.anim||!r.spinning)return;const c=REEL.indexOf(r),t=((stops[c]-1)%r.n+r.n)%r.n;
-  let to=Math.floor(r.p)-2;while(((to%r.n)+r.n)%r.n!==t)to--;r.anim={from:r.p,to,t0:performance.now(),dur:380+(r.p-to)*12,done:r.onStop};r.stopAt=null;}
+  let to=Math.floor(r.p)-2;while(((to%r.n)+r.n)%r.n!==t)to--;r.anim={from:r.p,to,t0:performance.now(),dur:300+(r.p-to)*10,done:r.onStop};r.stopAt=null;}
 function stopNext(){const r=REEL.find(x=>x.spinning&&!x.anim);if(r)beginStop(r);}
+function wake(){idleAt=Date.now();if(mode==='demo'){mode='game';return true;}return false;}
 
-/* ---------- 줄 그리기 ---------- */
-function cellCenter(rw,c){const box=$('reelarea').getBoundingClientRect(),el=REEL[c].el.getBoundingClientRect();return[el.left-box.left+el.width/2,el.top-box.top+cellH*(rw+0.5)];}
-const LCOL={A:'#ff1744',B:'#2979ff',C:'#00c853',D:'#ff9100',E:'#d500f9',F:'#00b8d4',G:'#ffd600',H:'#76ff03'};
-function drawLines(){const svg=$('lines');if(!svg||!REEL[0].el)return;const box=$('reelarea').getBoundingClientRect();svg.setAttribute('viewBox',`0 0 ${box.width} ${box.height}`);
-  svg.innerHTML=lastWins.map(w=>{const pts=SL.LINES[w.line].map(([r,c])=>cellCenter(r,c));
-    // 줄 양 끝을 조금 늘려서 테두리 글자까지
-    const [a,,b]=pts,dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy),ex=dx/L*cellH*0.45,ey=dy/L*cellH*0.45;
-    const P=[[a[0]-ex,a[1]-ey],...pts,[b[0]+ex,b[1]+ey]].map(p=>p.join(',')).join(' ');
-    return `<polyline points="${P}" fill="none" stroke="#000" stroke-width="9" opacity=".35" stroke-linecap="round"/><polyline class="wl" points="${P}" fill="none" stroke="${LCOL[w.line]}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;}).join('');
-  // 맞은 칸 반짝이
-  document.querySelectorAll('.hitcell').forEach(e=>e.remove());
-  const cells=new Set();lastWins.forEach(w=>SL.LINES[w.line].slice(0,w.three?3:2).forEach(([r,c])=>cells.add(r+','+c)));
-  cells.forEach(k=>{const [r,c]=k.split(',').map(Number),d=document.createElement('div');d.className='hitcell';const el=REEL[c].el;d.style.cssText=`left:${el.offsetLeft}px;top:${el.offsetTop+cellH*r}px;width:${el.clientWidth}px;height:${cellH}px`;$('reelarea').appendChild(d);});
-}
-
-/* ---------- 화면 표시 ---------- */
-function renderBets(){LN.forEach(k=>document.querySelectorAll(`[data-line="${k}"]`).forEach(el=>{el.querySelector('i').textContent=bets[k];el.classList.toggle('off',!bets[k]);el.classList.toggle('won',lastWins.some(w=>w.line===k));}));}
-function renderMeters(){$('mCredit').textContent=credit;$('mBet').textContent=totalBet();$('mWin').textContent=win;
-  const busyOrWin=busy||win>0;$('bBet').disabled=busyOrWin;$('bMax').disabled=busyOrWin;
-  $('bStart').textContent=busy?'STOP':win>0?'TAKE':'START';$('bStart').disabled=!busy&&win===0&&totalBet()===0;
-  $('bTake').disabled=!(win>0)||busy;$('bDouble').disabled=!(win>0)||busy;
-  $('bAuto').classList.toggle('on',auto);
+/* ---------- 버튼 불빛 ---------- */
+function lights(){
+  const L=(id,on,bl)=>{$(id).classList.toggle('lit',!!on);$(id).classList.toggle('blink',!!bl);};
+  const dbl=mode==='double',wait=dbl&&DBL.state==='wait',idle=mode!=='double'&&!busy&&win===0;
+  L('bBet',idle);L('bMax',idle);L('bStart',!dbl&&(busy||win>0||(idle&&totalBet()>0)),!dbl&&(busy||(idle&&credit>=totalBet())));
+  L('bTake',(win>0&&!busy&&!dbl)||(dbl&&DBL.state!=='flip'&&win>0),win>0&&!busy);L('bDouble',win>0&&!busy&&!dbl,win>0&&!busy&&!dbl);
+  L('bBig',wait,wait);L('bSmall',wait,wait);L('bHalf',wait&&win>=2);L('bAuto',auto);
+  $('startLbl').textContent=busy?'STOP':win>0&&!dbl?'TAKE':'START';$('startSub').textContent=busy?'멈추기':win>0&&!dbl?'받기':'돌리기';
   $('stat').innerHTML=`돌린 횟수 ${stat.spins.toLocaleString()} · 건 크레딧 ${stat.bet.toLocaleString()} · 받은 크레딧 ${stat.won.toLocaleString()} · 실제 환수율 <b>${stat.bet?Math.round(stat.won/stat.bet*1000)/10:0}%</b> · 최고 당첨 ${stat.best}`;}
-function renderBonus(){$('bonus').innerHTML=SL.BONUS.map((b,i)=>`<div class="bn b${i}"><div class="bnh">${ART.sym(b.sym)}<b>BONUS</b></div><div class="bnc">LAST <span>${counters[i]}</span> TIMES</div><div class="bns">${ART.sym(b.sym)}${ART.sym(b.sym)}${ART.sym(b.sym)}</div><div class="bnp">${b.pay*Math.max(1,Math.floor(totalBet()/8))} 크레딧</div></div>`).join('')+
-  `<div class="minbet">${totalBet()>=SL.MIN_BONUS_BET?'<b class="ok">보너스 적용 중</b>':`MIN BET ${SL.MIN_BONUS_BET}<br><small>FOR ANY BONUS</small>`}</div>`;}
-function msg(h,kind){$('msg').innerHTML=h;$('msg').className='msg '+(kind||'');}
-function renderAll(){renderBets();renderMeters();renderBonus();}
 
 /* ---------- 베팅 ---------- */
-function pushBet(){if(busy||win>0)return;const t=totalBet();
-  // 모든 줄에 1씩 더함 (최대 9), 9를 넘으면 처음(1)으로
-  const mx=Math.max(...LN.map(k=>bets[k]));LN.forEach(k=>bets[k]=mx>=9?1:Math.min(9,(bets[k]||0)+1));
-  if(totalBet()>credit){LN.forEach(k=>bets[k]=Math.max(0,Math.min(bets[k],Math.floor(credit/8))));}
-  SND.bet();lastWins=[];drawLines();save();renderAll();msg(`줄마다 ${bets.A}씩, 모두 ${totalBet()} 크레딧을 걸어요.`);}
-function maxBet(){if(busy||win>0)return;const per=Math.max(1,Math.min(9,Math.floor(credit/8)));LN.forEach(k=>bets[k]=per);SND.bet();lastWins=[];drawLines();save();renderAll();msg(`MAX BET: 줄마다 ${per}, 모두 ${totalBet()} 크레딧.`);}
-function lineClick(k){if(busy||win>0)return;bets[k]=((bets[k]||0)+1)%10;SND.bet();lastWins=[];drawLines();save();renderAll();msg(`${k}줄에 ${bets[k]} 걸었어요.${bets[k]?'':' (이 줄은 쉬어요)'}`);}
+function pushBet(){if(wake()||busy||win>0||mode!=='game')return;const mx=Math.max(...LN.map(k=>bets[k]));LN.forEach(k=>bets[k]=mx>=9?1:Math.min(9,(bets[k]||0)+1));
+  if(totalBet()>credit)LN.forEach(k=>bets[k]=Math.max(0,Math.min(bets[k],Math.floor(credit/8))));SND.bet();lastWins=[];note='PUSH START';save();lights();}
+function maxBet(){if(wake()||busy||win>0||mode!=='game')return;const per=Math.max(1,Math.min(9,Math.floor(credit/8)));LN.forEach(k=>bets[k]=per);SND.bet();lastWins=[];note='PUSH START';save();lights();}
+function lineClick(k){if(busy||win>0||mode!=='game')return;bets[k]=((bets[k]||0)+1)%10;SND.bet();lastWins=[];save();lights();}
+scr.addEventListener('click',e=>{if(wake())return;const b=scr.getBoundingClientRect(),x=(e.clientX-b.left)*320/b.width,y=(e.clientY-b.top)*240/b.height;
+  if(mode==='double'){if(DBL.state!=='wait')return;if(x<110)dblPick('small');else if(x>210)dblPick('big');return;}
+  const hit=Object.values(LBL).find(L=>x>=L.x&&x<=L.x+L.w&&y>=L.y&&y<=L.y+L.h);if(hit)lineClick(hit.k);});
 
 /* ---------- 돌리기 ---------- */
 async function start(){
+  if(wake())return;
+  if(mode==='double')return;
   if(busy){stopNext();return;}
   if(win>0){take();return;}
-  const tb=totalBet();if(!tb){msg('줄을 눌러 걸거나 BET을 누르세요.','bad');return;}
-  if(credit<tb){msg('크레딧이 모자라요. 아래 <b>동전 넣기</b>를 누르세요.','bad');auto=false;renderMeters();return;}
-  busy=true;credit-=tb;stat.bet+=tb;stat.spins++;lastWins=[];drawLines();msg('행운을 빌어요!');
-  stops=SL.spinStops();const g=SL.grid(stops),res=SL.evaluate(g,bets);
-  save();renderAll();
-  const t0=performance.now();let left=3;const allStopped=new Promise(res=>{REEL.forEach((r,c)=>{r.spinning=true;r.anim=null;r.stopAt=t0+900+c*420;r.onStop=()=>{if(--left===0)res();};});});
-  if(!raf){lastT=0;raf=requestAnimationFrame(loop);}
-  SND.spinStart();
-  await allStopped;SND.spinEnd();
-  await settle(g,res,tb);
+  const tb=totalBet();if(!tb){note='PUSH BET';return;}
+  if(credit<tb){note='INSERT COIN';auto=false;lights();return;}
+  busy=true;credit-=tb;stat.bet+=tb;stat.spins++;lastWins=[];note='GOOD LUCK!';
+  stops=SL.spinStops();const g=SL.grid(stops),res=SL.evaluate(g,bets);save();lights();
+  const t0=performance.now();let left=3;
+  const done=new Promise(ok=>REEL.forEach((r,c)=>{r.spinning=true;r.anim=null;r.stopAt=t0+900+c*420;r.onStop=()=>{if(--left===0)ok();};}));
+  let k=0;const ti=setInterval(()=>{if(REEL.some(r=>r.spinning))SND.spinTick(k++);},65);
+  await done;clearInterval(ti);
+  await settle(res,tb);
 }
-async function settle(g,res,tb){
-  lastWins=res.wins;drawLines();renderBets();
-  let bonusTotal=0;const notes=[];
+async function settle(res,tb){
+  lastWins=res.wins;let bonusTotal=0;const notes=[];
   if(tb>=SL.MIN_BONUS_BET){const hits=res.wins.filter(w=>w.three);
-    SL.BONUS.forEach((B,i)=>{const n=hits.filter(w=>w.sym===B.sym).length;for(let k=0;k<n;k++){counters[i]--;if(counters[i]<=0){const amt=B.pay*Math.floor(tb/8);bonusTotal+=amt;notes.push(`${B.name} ${amt}`);counters[i]=B.count;}}});}
+    SL.BONUS.forEach((B,i)=>{const n=hits.filter(w=>w.sym===B.sym).length;for(let j=0;j<n;j++){counters[i]--;if(counters[i]<=0){const amt=B.pay*Math.floor(tb/8);bonusTotal+=amt;notes.push(B.name);counters[i]=B.count;}}});}
   const total=res.total+bonusTotal;
-  if(total>0){
-    const big=total>=tb*20||bonusTotal>0||res.wins.some(w=>w.three&&w.sym>=6);
-    SND.win(big);if(big)bigWin(bonusTotal?'BONUS!':res.wins.some(w=>w.sym===7&&w.three)?'GOLDEN STAR!':'BIG WIN!');
-    const lines=res.wins.map(w=>`<span class="wtag" style="--c:${LCOL[w.line]}">${w.line}</span>${SL.NAME[w.sym]}${w.three?' 3개':' 2개'} ×${w.mult}=${w.amount}`).join(' · ');
-    msg(`🎉 <b>${total} 크레딧</b> 당첨! ${lines}${notes.length?` · <b>${notes.join(', ')}</b>`:''}<br><small>TAKE로 받거나 DOUBLE로 두 배에 도전하세요.</small>`,'ok');
-    // 당첨 크레딧 올라가는 연출
-    const steps=Math.min(40,total),inc=total/steps;for(let k=1;k<=steps;k++){win=Math.round(inc*k);renderMeters();SND.coin();await sleep(big?45:30);}
-    win=total;stat.best=Math.max(stat.best,total);
-  }else{msg('아쉬워요. 다시 돌려 보세요.');win=0;}
-  busy=false;save();renderAll();
-  if(auto){if(win>0){await sleep(700);take();}await sleep(500);if(auto)start();}
+  if(total>0){const jack=res.wins.some(w=>w.three&&w.sym>=6)||bonusTotal>0,big=jack||total>=tb*20;
+    if(jack){SND.jackpot();flash();party=40;}else SND.win(big);
+    note=bonusTotal?'BONUS!!':res.wins.some(w=>w.three&&w.sym===7)?'GOLDEN STAR!!':big?'BIG WIN!':'YOU WIN!';
+    const steps=Math.min(40,total),inc=total/steps;for(let j=1;j<=steps;j++){win=Math.round(inc*j);if(j%2)SND.coin();await sleep(big?45:28);}
+    win=total;stat.best=Math.max(stat.best,total);note='TAKE OR DOUBLE';
+  }else{win=0;note='PUSH START';}
+  busy=false;idleAt=Date.now();save();lights();
+  if(auto){if(win>0){await sleep(800);take();}await sleep(500);if(auto&&mode==='game')start();}
 }
-function take(){if(!win||busy)return;const n=win;credit+=win;stat.won+=win;msg(`${win} 크레딧을 받았어요.`);win=0;lastWins=[];drawLines();save();renderAll();dropCoins(n);}
-// 동전받이: 받은 크레딧만큼 동전이 떨어져 쌓임 (많으면 줄여서)
+function take(){if(!win||busy)return;const n=win;credit+=win;stat.won+=win;win=0;lastWins=[];note='PUSH START';
+  if(mode==='double')mode='game';save();lights();dropCoins(n);idleAt=Date.now();}
+function flash(){const c=$('crt');c.classList.remove('flick');void c.offsetWidth;c.classList.add('flick');}
+
+/* ---------- 더블업 ---------- */
+function openDouble(){if(wake()||!win||busy||mode!=='game')return;mode='double';DBL.state='wait';DBL.card=null;DBL.flip=0;DBL.pick=null;DBL.msg='';DBL.half=0;SND.bet();lights();}
+function half(){if(mode!=='double'||DBL.state!=='wait'||win<2)return;const h=Math.floor(win/2);credit+=h;stat.won+=h;win-=h;dropCoins(h);DBL.msg=`TAKE ${h}`;SND.coin();save();lights();}
+async function dblPick(pick){
+  if(mode!=='double'||DBL.state!=='wait')return;DBL.state='flip';DBL.pick=pick;lights();
+  for(let k=0;k<8;k++){SND.tension(k);await sleep(70);}
+  const cd={r:1+Math.floor(Math.random()*13),s:Math.floor(Math.random()*4)};DBL.card=cd;DBL.flip=0.001;SND.flip();await sleep(500);
+  DBL.hist.push(cd);if(DBL.hist.length>8)DBL.hist.shift();
+  if(cd.r===7){DBL.msg='DRAW  (7)';SND.bet();}
+  else if((cd.r>7)===(pick==='big')){win*=2;DBL.msg='YOU WIN!  '+win;SND.win(win>=200);stat.best=Math.max(stat.best,win);}
+  else{SND.lose();DBL.msg='YOU LOSE';win=0;lastWins=[];}
+  DBL.state='done';save();lights();await sleep(1300);
+  if(win>0){DBL.state='wait';DBL.card=null;DBL.flip=0;DBL.pick=null;}else{mode='game';note='PUSH START';}
+  lights();}
+
+/* ---------- 동전받이 · 전구 ---------- */
 let trayN=0;
 function dropCoins(n){const tray=$('tray'),k=Math.min(30,Math.max(1,Math.round(Math.sqrt(n)*2)));
   for(let i=0;i<k;i++)setTimeout(()=>{const c=document.createElement('i');const w=tray.clientWidth||300;
     c.style.left=(Math.random()*(w-20))+'px';c.style.bottom=(Math.min(30,Math.floor(trayN/14)*3)+Math.random()*3)+'px';tray.appendChild(c);trayN++;SND.coin();
     if(tray.children.length>90)tray.firstElementChild.remove();},i*55);}
-function clearTray(){$('tray').innerHTML='';trayN=0;}
-// 간판 전구: 둘레를 따라 불이 돌아감
-const BULBS=[];
+const BULBS=[];let bulbT=0,party=0;
 function buildBulbs(){const b=$('bulbs');b.innerHTML='';BULBS.length=0;const W=b.clientWidth,H=b.clientHeight;if(!W)return;const per=Math.round((W+H)*2/22);
   for(let i=0;i<per;i++){const t=i/per*(2*W+2*H);let x,y;if(t<W){x=t;y=0;}else if(t<W+H){x=W;y=t-W;}else if(t<2*W+H){x=2*W+H-t;y=H;}else{x=0;y=2*W+2*H-t;}
     const e=document.createElement('i');e.style.left=x+'px';e.style.top=y+'px';b.appendChild(e);BULBS.push(e);}}
-let bulbT=0,party=0;
-setInterval(()=>{bulbT++;const n=BULBS.length;BULBS.forEach((e,i)=>e.classList.toggle('on',party>0?((i+bulbT)%2===0):busy?((i+bulbT)%4===0):((i+Math.floor(bulbT/2))%6<3)));if(party>0)party--;},busy?90:140);
-// 레버: 누르거나 아래로 끌면 당겨지고 돌기 시작
-function pullLever(){if(busy){stopNext();return;}const L=$('lever');if(L.classList.contains('pull'))return;L.classList.add('pull');SND.lever();
-  setTimeout(()=>{L.classList.remove('pull');start();},260);}
-(()=>{const L=$('lever');let y0=null;
-  L.addEventListener('pointerdown',e=>{y0=e.clientY;try{L.setPointerCapture(e.pointerId);}catch(_){}});
-  L.addEventListener('pointerup',e=>{if(y0!=null){y0=null;pullLever();}});
-  L.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pullLever();}});})();
-function bigWin(t){party=24;$('cabinet').classList.remove('party');void $('cabinet').offsetWidth;$('cabinet').classList.add('party');const b=$('big');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');
-  const box=$('coins');for(let i=0;i<26;i++){const c=document.createElement('i');c.style.left=(Math.random()*100)+'%';c.style.animationDelay=(Math.random()*.6)+'s';c.style.setProperty('--x',((Math.random()-.5)*120)+'px');box.appendChild(c);setTimeout(()=>c.remove(),2200);}}
-
-/* ---------- 더블 업: 카드 숫자가 빅(8~13)일까 스몰(1~6)일까. 7이 나오면 무승부 ---------- */
-function openDouble(){if(!win||busy)return;$('dbl').hidden=false;$('dblWin').textContent=win;$('dblCard').className='dcard back';$('dblCard').textContent='?';$('dblMsg').textContent='빅(8~K) 또는 스몰(A~6)을 고르세요. 7이 나오면 무승부예요.';$('dblBtns').hidden=false;}
-async function playDouble(pick){
-  $('dblBtns').hidden=true;const n=1+Math.floor(Math.random()*13),card=$('dblCard');
-  for(let k=0;k<8;k++){card.className='dcard';card.textContent=['A','2','3','4','5','6','7','8','9','10','J','Q','K'][Math.floor(Math.random()*13)];SND.tick();await sleep(60);}
-  card.textContent=['A','2','3','4','5','6','7','8','9','10','J','Q','K'][n-1];card.className='dcard '+(n%2?'red':'black');
-  if(n===7){$('dblMsg').innerHTML='7이에요. <b>무승부</b>라 그대로예요.';}
-  else if((n>7)===(pick==='big')){win*=2;SND.win(win>=200);$('dblMsg').innerHTML=`맞았어요! <b>${win}</b> 크레딧이 됐어요.`;}
-  else{SND.lose();$('dblMsg').innerHTML='틀렸어요. 당첨 크레딧을 잃었어요.';win=0;lastWins=[];drawLines();}
-  $('dblWin').textContent=win;renderAll();
-  if(win>0)$('dblBtns').hidden=false;else{await sleep(1200);$('dbl').hidden=true;msg('다시 돌려 보세요.');}
-}
+setInterval(()=>{bulbT++;BULBS.forEach((e,i)=>e.classList.toggle('on',party>0?((i+bulbT)%2===0):busy?((i+bulbT)%4===0):((i+Math.floor(bulbT/2))%6<3)));if(party>0)party--;},110);
 
 /* ---------- 배당표 ---------- */
 function renderPay(){
@@ -445,29 +449,28 @@ function renderPay(){
   const r=SL.exactRTP();
   $('payBody').innerHTML=`<div class="paygrid">${rows}</div>
     <p>건 크레딧 × 배수만큼 받아요. 체리 2개는 줄의 처음 두 칸(가로·대각선은 왼쪽부터, 세로는 위부터)이 체리일 때예요.</p>
-    <h3>8줄</h3><div class="linesmap">${LN.map(k=>`<span><svg viewBox="0 0 30 30">${[0,1,2].map(r=>[0,1,2].map(c=>`<rect x="${c*10+1}" y="${r*10+1}" width="8" height="8" fill="#333" opacity=".25"/>`).join('')).join('')}<polyline points="${SL.LINES[k].map(([r,c])=>`${c*10+5},${r*10+5}`).join(' ')}" stroke="${LCOL[k]}" stroke-width="3" fill="none"/></svg>${k}</span>`).join('')}</div>
-    <p>A 가운데 · B 위 · C 아래 · D·E 대각선 · F·G·H 세로. 테두리의 글자를 누르면 그 줄에 거는 크레딧이 1씩 바뀌어요 (0이면 쉼).</p>
+    <h3>8줄</h3><div class="linesmap">${LN.map(k=>`<span><svg viewBox="0 0 30 30">${[0,1,2].map(rr=>[0,1,2].map(c=>`<rect x="${c*10+1}" y="${rr*10+1}" width="8" height="8" fill="#333" opacity=".25"/>`).join('')).join('')}<polyline points="${SL.LINES[k].map(([rr,c])=>`${c*10+5},${rr*10+5}`).join(' ')}" stroke="${LCOL[k]}" stroke-width="3" fill="none"/></svg>${k}</span>`).join('')}</div>
     <h3>보너스</h3><p>${SL.BONUS.map(b=>`<b>${b.name}</b>: ${SL.NAME[b.sym]} 3개가 ${b.count}번 맞으면 ${b.pay} 크레딧 × (건 크레딧 ÷ 8)`).join('<br>')}<br>모두 합쳐 <b>${SL.MIN_BONUS_BET} 크레딧 이상</b> 걸었을 때만 숫자가 줄어요.</p>
-    <h3>공정성</h3><p>돌리는 순간 릴 3개의 멈출 자리를 무작위로 정해요. STOP은 보이는 연출만 빨리 끝내고 결과는 바꾸지 않아요.
-    모든 멈춤 조합 ${r.N.toLocaleString()}가지를 다 세어 보면 줄마다 1씩 8줄을 걸었을 때 돌려받는 비율(환수율)은 약 <b>${Math.round(r.withBonus*1000)/10}%</b>예요 (보너스 포함, 더블 업 제외).
-    오래 할수록 건 것보다 조금씩 잃게 만들어진 게 슬롯머신이에요.</p>`;}
+    <h3>더블업</h3><p>다음 카드가 BIG(8~K)인지 SMALL(A~6)인지 맞히면 두 배, 틀리면 잃어요. 7은 무승부. HALF는 절반을 먼저 받고 나머지만 걸어요. 맞힐 확률은 반반이라 환수율에는 영향이 없어요.</p>
+    <h3>공정성</h3><p>레버(START)를 누르는 순간 릴 3개의 멈출 자리를 무작위로 정해요. STOP은 연출만 빨리 끝내요. 모든 멈춤 조합 ${r.N.toLocaleString()}가지를 다 세면 줄마다 1씩 8줄 걸 때 환수율은 약 <b>${Math.round(r.withBonus*1000)/10}%</b>예요 (보너스 포함).</p>`;}
 
-/* ---------- 버튼 ---------- */
-$('bBet').onclick=pushBet;$('bMax').onclick=maxBet;$('bStart').onclick=start;$('bTake').onclick=take;$('bDouble').onclick=openDouble;
-$('bAuto').onclick=()=>{auto=!auto;renderMeters();if(auto&&!busy){if(win>0)take();start();}};
-document.querySelectorAll('[data-line]').forEach(el=>el.onclick=()=>lineClick(el.dataset.line));
-$('dBig').onclick=()=>playDouble('big');$('dSmall').onclick=()=>playDouble('small');
-$('dTake').onclick=()=>{$('dbl').hidden=true;take();};
-$('bCoin').onclick=()=>{dropCoins(25);credit+=100;stat.coins+=100;SND.coin();save();renderAll();msg('동전을 넣었어요. <b>+100 크레딧</b> (가짜 크레딧이에요)');};
-$('bPay').onclick=()=>{renderPay();$('pay').hidden=false;};$('payClose').onclick=()=>$('pay').hidden=true;
-$('pay').onclick=e=>{if(e.target.id==='pay')$('pay').hidden=true;};
+/* ---------- 버튼 연결 ---------- */
+const tap=(id,fn)=>{$(id).addEventListener('click',()=>{fn();lights();});};
+tap('bBet',pushBet);tap('bMax',maxBet);tap('bStart',start);
+tap('bTake',()=>{if(wake())return;if(mode==='double'&&DBL.state==='flip')return;take();});
+tap('bDouble',openDouble);tap('bBig',()=>dblPick('big'));tap('bSmall',()=>dblPick('small'));tap('bHalf',half);
+tap('bAuto',()=>{wake();auto=!auto;if(auto&&!busy&&mode==='game'){if(win>0)take();start();}});
+const coin=()=>{wake();credit+=100;stat.coins+=100;SND.coin();setTimeout(()=>SND.coin(),120);dropCoins(10);note='PUSH START';save();lights();};
+$('bCoin').onclick=coin;$('bCoin').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();coin();}};
+$('bPay').onclick=()=>{renderPay();$('pay').hidden=false;};$('payClose').onclick=()=>$('pay').hidden=true;$('pay').onclick=e=>{if(e.target.id==='pay')$('pay').hidden=true;};
 $('bSound').onclick=()=>{SND.on=!SND.on;store.set('sound',SND.on);$('bSound').textContent=SND.on?'🔊':'🔇';};$('bSound').textContent=SND.on?'🔊':'🔇';
-$('bReset').onclick=()=>{if(!confirm('크레딧과 기록을 처음으로 돌릴까요?'))return;credit=100;counters=SL.BONUS.map(b=>b.count);stat={bet:0,won:0,spins:0,best:0,coins:0};win=0;save();renderAll();msg('처음으로 돌렸어요.');};
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
-  if(e.code==='Space'||e.key==='Enter'){e.preventDefault();if(!$('dbl').hidden)return;start();}
-  else if(e.key==='b'||e.key==='B')pushBet();else if(e.key==='m'||e.key==='M')maxBet();else if(e.key==='t'||e.key==='T')take();else if(e.key==='d'||e.key==='D')openDouble();});
-addEventListener('resize',()=>{layout();buildBulbs();});
-buildReels();buildBulbs();renderAll();msg('줄을 정하고 <b>START</b>(스페이스)를 누르세요. 돌아가는 동안 <b>STOP</b>을 누르면 릴이 하나씩 멈춰요.');
+$('bReset').onclick=()=>{if(!confirm('크레딧과 기록을 처음으로 돌릴까요?'))return;credit=100;counters=SL.BONUS.map(b=>b.count);stat={bet:0,won:0,spins:0,best:0,coins:0};win=0;DBL.hist=[];mode='game';save();lights();};
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+  if(e.code==='Space'||e.key==='Enter'){e.preventDefault();start();}else if(k==='b'){mode==='double'?dblPick('big'):pushBet();}else if(k==='s'){dblPick('small');}
+  else if(k==='m')maxBet();else if(k==='t')take();else if(k==='d')openDouble();else if(k==='h')half();lights();});
+addEventListener('resize',buildBulbs);
+buildBulbs();lights();requestAnimationFrame(loop);
+(document.fonts&&document.fonts.load?document.fonts.load('8px "Press Start 2P"'):Promise.resolve()).catch(()=>{});
 
 </script>
 
