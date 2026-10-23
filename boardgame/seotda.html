@@ -450,7 +450,7 @@ function playTurn(s,mv,pick){
     played=mv.card;const m=monthOf(played);s.hands[p]=s.hands[p].filter(x=>x!==played);
     if(mv.shake){s.mult[p]*=2;s.shook[p].push(m);ev.push({k:'shake',p,m,cards:sameMonth(s.hands[p],m).concat(played)});}
     const fm=sameMonth(s.floor,m);ev.push({k:'play',p,card:played,match:fm.slice()});
-    if(fm.length===3){take(fm);taken.push(played);played=null;if(s.ppeok[m]!=null){steal+=s.ppeok[m]===p?2:1;ev.push({k:'ppeokEat',p,m});delete s.ppeok[m];}else ev.push({k:'four',p,m});}
+    if(fm.length===3){take(fm);taken.push(played);played=null;if(s.ppeok[m]!=null){steal+=s.ppeok[m]===p?2:1;ev.push({k:s.ppeok[m]===p?'jappeok':'ppeokEat',p,m});delete s.ppeok[m];}else ev.push({k:'four',p,m});}
     else if(fm.length===2){pend={played,with:pick(fm,'play'),pair:fm};}
     else if(fm.length===1){pend={played,with:fm[0]};}
     if(fm.length!==3)s.floor.push(played);   // 일단 바닥에 놓음 (먹으면 아래에서 가져감). 4장 다 먹은 경우는 이미 가져감
@@ -465,7 +465,7 @@ function playTurn(s,mv,pick){
       else{s.floor.push(f);s.ppeok[m]=p;ev.push({k:'ppeok',p,m});pend=null;}                                     // 뻑
     }else{
       const fm=sameMonth(s.floor,fmn).filter(x=>!pend||(x!==pend.played&&x!==pend.with));
-      if(fm.length===3){take(fm);taken.push(f);if(s.ppeok[fmn]!=null){steal+=s.ppeok[fmn]===p?2:1;ev.push({k:'ppeokEat',p,m:fmn});delete s.ppeok[fmn];}else ev.push({k:'four',p,m:fmn});}
+      if(fm.length===3){take(fm);taken.push(f);if(s.ppeok[fmn]!=null){steal+=s.ppeok[fmn]===p?2:1;ev.push({k:s.ppeok[fmn]===p?'jappeok':'ppeokEat',p,m:fmn});delete s.ppeok[fmn];}else ev.push({k:'four',p,m:fmn});}
       else if(fm.length===2){const w=pick(fm,'flip');take([w]);taken.push(f);}
       else if(fm.length===1){take(fm);taken.push(f);}
       else s.floor.push(f);

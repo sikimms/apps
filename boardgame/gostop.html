@@ -245,6 +245,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
         <li>손패를 누르면 내요. 손패에 마우스를 올리면 바닥의 같은 달 패가 반짝여요.</li>
         <li>같은 달이 바닥에 2장이면 어느 것을 먹을지 물어봐요.</li>
         <li>먹은 패(내 것·상대 것)를 누르면 종류별로 크게 펼쳐 보여 줘요.</li>
+        <li><b>뻑</b>을 먹으면 피 1장, 내가 싼 뻑을 내가 먹는 <b>자뻑</b>은 피 2장을 받아요.</li>
         <li>맞고는 7점, 3명은 3점이 넘으면 고/스톱을 고를 수 있어요.</li>
         <li>점수와 돈은 모두 가짜예요. 1점 = 100원. <button class="linkbtn" id="gReset">돈·기록 처음으로</button></li>
       </ul><p class="sub" style="margin-top:10px">화투 그림: Marcus Richert (Louie Mantia Jr.의 화투 그림 바탕), <a href="https://commons.wikimedia.org/wiki/File:Hwatu_overview.svg" target="_blank" rel="noopener">위키미디어 공용</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko" target="_blank" rel="noopener">CC BY-SA 4.0</a> · 카드별로 잘라서 사용</p></div>
@@ -363,7 +364,7 @@ function playTurn(s,mv,pick){
     played=mv.card;const m=monthOf(played);s.hands[p]=s.hands[p].filter(x=>x!==played);
     if(mv.shake){s.mult[p]*=2;s.shook[p].push(m);ev.push({k:'shake',p,m,cards:sameMonth(s.hands[p],m).concat(played)});}
     const fm=sameMonth(s.floor,m);ev.push({k:'play',p,card:played,match:fm.slice()});
-    if(fm.length===3){take(fm);taken.push(played);played=null;if(s.ppeok[m]!=null){steal+=s.ppeok[m]===p?2:1;ev.push({k:'ppeokEat',p,m});delete s.ppeok[m];}else ev.push({k:'four',p,m});}
+    if(fm.length===3){take(fm);taken.push(played);played=null;if(s.ppeok[m]!=null){steal+=s.ppeok[m]===p?2:1;ev.push({k:s.ppeok[m]===p?'jappeok':'ppeokEat',p,m});delete s.ppeok[m];}else ev.push({k:'four',p,m});}
     else if(fm.length===2){pend={played,with:pick(fm,'play'),pair:fm};}
     else if(fm.length===1){pend={played,with:fm[0]};}
     if(fm.length!==3)s.floor.push(played);   // 일단 바닥에 놓음 (먹으면 아래에서 가져감). 4장 다 먹은 경우는 이미 가져감
@@ -378,7 +379,7 @@ function playTurn(s,mv,pick){
       else{s.floor.push(f);s.ppeok[m]=p;ev.push({k:'ppeok',p,m});pend=null;}                                     // 뻑
     }else{
       const fm=sameMonth(s.floor,fmn).filter(x=>!pend||(x!==pend.played&&x!==pend.with));
-      if(fm.length===3){take(fm);taken.push(f);if(s.ppeok[fmn]!=null){steal+=s.ppeok[fmn]===p?2:1;ev.push({k:'ppeokEat',p,m:fmn});delete s.ppeok[fmn];}else ev.push({k:'four',p,m:fmn});}
+      if(fm.length===3){take(fm);taken.push(f);if(s.ppeok[fmn]!=null){steal+=s.ppeok[fmn]===p?2:1;ev.push({k:s.ppeok[fmn]===p?'jappeok':'ppeokEat',p,m:fmn});delete s.ppeok[fmn];}else ev.push({k:'four',p,m:fmn});}
       else if(fm.length===2){const w=pick(fm,'flip');take([w]);taken.push(f);}
       else if(fm.length===1){take(fm);taken.push(f);}
       else s.floor.push(f);
@@ -735,7 +736,7 @@ function askCard(T,title,text,ids){
   return new Promise(res=>{const o=T.overlay(`<h3>${title}</h3><div>${text}</div><div class="gpick">${ids.map(id=>`<button data-id="${id}" aria-label="${GS.cardName(id)}">${faceFor(id,T.labels,'pk_')}</button>`).join('')}</div>`);
     o.onclick=e=>{const b=e.target.closest('[data-id]');if(!b)return;T.closeOverlay();o.onclick=null;res(+b.dataset.id);};});
 }
-const BANG={jjok:'쪽!',ppeok:'뻑!',ttadak:'따닥!',sseul:'쓸!',bomb:'폭탄!',shake:'흔들기!',ppeokEat:'뻑 먹기!',four:'싹 먹기!'};
+const BANG={jjok:'쪽!',ppeok:'뻑!',ttadak:'따닥!',sseul:'쓸!',bomb:'폭탄!',shake:'흔들기!',ppeokEat:'뻑 먹기!',jappeok:'자뻑! 피 2장',four:'싹 먹기!'};
 
 /* ---------- 한 차례 연출: 내기 → 뒤집기 → 먹기 ---------- */
 async function animateTurn(T,s,mv,pick,o){
