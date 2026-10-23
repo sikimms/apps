@@ -121,6 +121,11 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .pk button:hover{border-color:var(--accent)}
 #rvEyebrow{text-transform:none;letter-spacing:0}
 
+.netbox{margin-top:14px;padding:12px 14px;border:1px solid var(--accent);border-radius:12px;background:var(--accent-soft)}
+.netin{width:9em;font:600 16px var(--f-body);padding:7px 10px;border:1px solid var(--rule);border-radius:8px;letter-spacing:3px;text-align:center;background:var(--surface);color:var(--ink)}
+.netcode{font-size:14px;margin:6px 0}.netcode b{font:900 28px var(--f-display);letter-spacing:6px;color:var(--accent);margin-left:6px}
+.netmsg{font-size:13px;margin-top:8px;color:var(--muted)}.netmsg.ok{color:var(--ok)}.netmsg.bad{color:var(--danger)}
+
 :root{--frame:#9c7238;--bar-a:#151515;--bar-b:#f4f1ea;--accent:#8a5a1c;--accent-soft:#f3e6d3}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--accent:#e8b877;--accent-soft:#3a2c1a;--accent-ink:#1a120a}}
 :root[data-theme="dark"]{--accent:#e8b877;--accent-soft:#3a2c1a;--accent-ink:#1a120a}
@@ -175,8 +180,15 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="opts">
         <label hidden><input type="checkbox" id="optLabels" checked> 말 이름 표시</label>
         <label><input type="checkbox" id="optDots" checked> 갈 수 있는 곳 표시</label>
-        <label>상대 <select id="optMode"><option value="ai">컴퓨터</option><option value="pvp">친구 (번갈아 두기)</option></select></label>
+        <label>상대 <select id="optMode"><option value="ai">컴퓨터</option><option value="pvp">친구 (번갈아 두기)</option><option value="online">온라인 (친구와)</option></select></label>
         <label>고누 종류 <select id="optVar" data-newgame><option value="umul">우물고누 (쉬움)</option><option value="cham">참고누 (말 12개)</option></select></label>
+      </div>
+      <div id="netbox" class="netbox" hidden>
+        <div class="eyebrow">온라인 대국</div>
+        <div id="netIdle"><div class="row" style="margin-top:6px"><button class="btn primary" id="netHost">방 만들기</button>
+          <input id="netIn" class="netin" inputmode="numeric" maxlength="4" placeholder="방 코드 4자리" aria-label="방 코드"><button class="btn" id="netJoin">들어가기</button></div></div>
+        <div id="netLive" hidden><div class="netcode">방 코드 <b id="netCode"></b></div><div class="row"><button class="btn primary" id="netShare">초대 링크 보내기</button><button class="btn" id="netLeave">나가기</button></div></div>
+        <div id="netMsg" class="netmsg">같은 앱을 쓰는 친구와 인터넷으로 둘 수 있어요. 방장이 먼저 두는 쪽이에요.</div>
       </div>
       <div class="tips"><strong>초보 요령</strong><ul><li><b>우물고누</b>: 옮기기 전에 내 말이 갇히지 않는지 보세요. 상대를 가두면 이겨요.</li>
 <li><b>참고누</b>: 셋을 한 줄로 이으면(고누) 상대 말 하나를 들어내요. 상대의 두 개짜리 줄은 바로 막으세요.</li>
@@ -513,6 +525,79 @@ function woodGrain(ctx,w,h,base,dark){ctx.fillStyle=base;ctx.fillRect(0,0,w,h);
   for(let i=0;i<70;i++){const y=Math.random()*h;ctx.strokeStyle=dark;ctx.globalAlpha=0.03+Math.random()*0.05;ctx.lineWidth=1+Math.random()*3;
     ctx.beginPath();ctx.moveTo(0,y);for(let x=0;x<=w;x+=w/8)ctx.lineTo(x,y+Math.sin(x/w*6+i)*6);ctx.stroke();}ctx.globalAlpha=1;}
 
+/* ===== 온라인 대국: 방 코드로 두 기기를 직접 연결 (PeerJS, WebRTC) =====
+   방장(먼저 두는 쪽)이 방을 만들면 4자리 코드가 나오고, 친구가 코드를 넣으면 연결된다.
+   주고받는 것: hello(설정), new(새 판), move(수), pass, resign. 수는 받은 쪽에서도 규칙으로 다시 확인한다. */
+const NET={peer:null,conn:null,host:false,ok:false,side:0,code:'',
+  send(o){if(this.conn&&this.ok)try{this.conn.send(o);}catch(e){}},
+  say(h,kind){const el=document.getElementById('netMsg');if(el){el.innerHTML=h;el.className='netmsg '+(kind||'');}}};
+const NET_PREFIX='sikimms-bgc-';
+function netLoad(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');
+  s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej(new Error('load'));document.head.appendChild(s);});}
+function netSettings(){const o={};document.querySelectorAll('[data-newgame]').forEach(el=>{o[el.id]=el.type==='checkbox'?el.checked:el.value;});return o;}
+function netApplySettings(o){for(const id in o){const el=document.getElementById(id);if(!el)continue;if(el.type==='checkbox')el.checked=o[id];else el.value=o[id];}}
+function netReset(){try{NET.conn&&NET.conn.close();}catch(e){}try{NET.peer&&NET.peer.destroy();}catch(e){}NET.peer=null;NET.conn=null;NET.ok=false;netUI();}
+function netUI(){
+  const on=mode()==='online',box=document.getElementById('netbox');if(!box)return;box.hidden=!on;
+  document.getElementById('netIdle').hidden=!!NET.peer;document.getElementById('netLive').hidden=!NET.peer;
+  document.getElementById('netCode').textContent=NET.code?NET.code.split('').join(' '):'';
+  document.getElementById('netShare').hidden=!(NET.host&&!NET.ok);
+}
+function netSetup(c){
+  NET.conn=c;
+  c.on('open',()=>{NET.ok=true;netUI();
+    if(NET.host){NET.send({t:'hello',opts:netSettings()});netStart();NET.say(`친구가 들어왔어요! 당신은 <b>${GAME.sideName(NET.side)}</b>이에요.`,'ok');}
+    else NET.say('연결됐어요. 방장이 판을 시작해요.','ok');});
+  c.on('data',d=>netOnData(d));
+  c.on('close',()=>{NET.ok=false;NET.say('친구와 연결이 끊겼어요. 다시 방을 만들거나 들어가 주세요.','bad');netUI();if(G){G.coach='연결이 끊겼어요.';G.kind='no';renderPlay();}});
+  c.on('error',()=>{});
+}
+async function netHost(){
+  try{await netLoad();}catch(e){NET.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad');return;}
+  netReset();NET.host=true;NET.side=US;
+  const tryOpen=(left)=>{NET.code=String(1000+Math.floor(Math.random()*9000));
+    NET.peer=new Peer(NET_PREFIX+GAME.id+'-'+NET.code);
+    NET.peer.on('open',()=>{netUI();NET.say(`방을 만들었어요. 친구에게 <b>방 코드 ${NET.code}</b>를 알려 주거나 초대 링크를 보내세요. 기다리는 중…`);});
+    NET.peer.on('connection',c=>{if(NET.conn&&NET.ok){c.close();return;}netSetup(c);});
+    NET.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){NET.peer.destroy();tryOpen(left-1);return;}
+      NET.say(e.type==='network'||e.type==='server-error'?'연결 서버에 닿지 못했어요. 회사망처럼 막힌 곳에서는 안 될 수 있어요.':'방을 만들지 못했어요 ('+e.type+')','bad');});};
+  tryOpen(3);netUI();
+}
+async function netJoin(code){
+  code=String(code||'').replace(/\D/g,'');if(code.length!==4){NET.say('방 코드 4자리를 넣어 주세요.','bad');return;}
+  try{await netLoad();}catch(e){NET.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad');return;}
+  netReset();NET.host=false;NET.side=-US;NET.code=code;
+  NET.peer=new Peer();
+  NET.peer.on('open',()=>{NET.say(`방 ${code}에 들어가는 중…`);const c=NET.peer.connect(NET_PREFIX+GAME.id+'-'+code,{reliable:true});netSetup(c);
+    setTimeout(()=>{if(!NET.ok)NET.say('방을 찾지 못했어요. 코드를 다시 확인해 주세요. (방장이 방을 만든 상태여야 해요)','bad');},9000);});
+  NET.peer.on('error',e=>{NET.say(e.type==='peer-unavailable'?'그 코드의 방이 없어요. 코드를 다시 확인해 주세요.':'연결하지 못했어요 ('+e.type+'). 회사망처럼 막힌 곳에서는 안 될 수 있어요.','bad');});
+  netUI();
+}
+function netStart(){G=null;newGame();G.coach=`온라인 대국을 시작해요. 당신은 <b>${GAME.sideName(NET.side)}</b>이에요. ${NET.side===1?'먼저 두세요.':'친구가 먼저 둬요.'}`;renderPlay();if(NET.host)NET.send({t:'new',opts:netSettings()});}
+function netOnData(d){
+  if(!d||!d.t)return;
+  if(d.t==='hello'||d.t==='new'){netApplySettings(d.opts||{});G=null;newGame();G.coach=`온라인 대국을 시작해요. 당신은 <b>${GAME.sideName(NET.side)}</b>이에요. ${NET.side===1?'먼저 두세요.':'친구가 먼저 둬요.'}`;renderPlay();return;}
+  if(!G||G.over)return;
+  if(d.t==='move'){const mv=G.legal.find(x=>RULES.same(x,d.m));if(!mv){NET.say('친구의 수가 이 판과 맞지 않아요. 새 판을 시작해 주세요.','bad');return;}
+    const side=G.pos.side,{before,after}=doMove(mv);const c=GAME.coach(before,after,mv,side,false);G.coach='친구 · '+c.text;G.kind='info';renderPlay();checkEnd();return;}
+  if(d.t==='pass'){doPass(G.pos.side);return;}
+  if(d.t==='resign'){finish(NET.side,'친구가 기권했어요.');return;}
+}
+// 버튼
+(()=>{const $$=id=>document.getElementById(id);
+  if(!$$('netbox'))return;
+  $$('netHost').onclick=netHost;
+  $$('netJoin').onclick=()=>netJoin($$('netIn').value);
+  $$('netIn').addEventListener('keydown',e=>{if(e.key==='Enter')netJoin($$('netIn').value);});
+  $$('netLeave').onclick=()=>{netReset();NET.code='';NET.say('방에서 나왔어요.');netUI();};
+  $$('netShare').onclick=async()=>{const url=location.href.split('#')[0]+'#join='+NET.code,text=`${document.title} 같이 해요! 방 코드 ${NET.code}`;
+    try{if(navigator.share){await navigator.share({title:document.title,text,url});return;}}catch(e){}
+    try{await navigator.clipboard.writeText(text+' '+url);NET.say('초대 링크를 복사했어요. 메신저에 붙여 넣어 보내세요.','ok');}catch(e){NET.say(`초대 링크: ${url}`);}};
+  // 초대 링크로 들어온 경우: #join=1234
+  const m=location.hash.match(/join=(\d{4})/);
+  if(m){setTimeout(()=>{const sel=$$('optMode');sel.value='online';sel.dispatchEvent(new Event('change'));showTab('play');$$('netIn').value=m[1];netJoin(m[1]);},300);}
+})();
+
 /* ===== 고누: 그리기 · 수업 · 설정 ===== */
 const GU=62,GM=38,GSZ=GU*6+GM*2;
 const gxy=(v,i)=>{const q=RULES.V[v].xy[i];return[GM+q[0]*GU,GM+q[1]*GU];};
@@ -793,14 +878,14 @@ let prof=store.get('profile',{R:null,n:0,hist:[]});if(!prof||!Array.isArray(prof
 let levelSel=store.get('level',1);if(!LEVELS[levelSel])levelSel=1;
 const mode=()=>$('optMode').value;
 let G;
-const pint=makeInteractor($('pboard'),()=>({pos:G.pos,legal:G.legal,canMove:!G.over&&!G.thinking&&(mode()!=='ai'||G.pos.side===US),redraw:renderPlay}),userMove);
+const pint=makeInteractor($('pboard'),()=>({pos:G.pos,legal:G.legal,canMove:!G.over&&!G.thinking&&(mode()==='ai'?G.pos.side===US:mode()==='online'?(NET.ok&&G.pos.side===NET.side):true),redraw:renderPlay}),userMove);
 function setPos(p){G.pos=p;G.legal=RULES.legal(p);G.keys.push(RULES.key(p));}
 function newGame(){
   const gen=G?G.gen+1:1;
   G={gen,level:levelSel,pos:null,legal:[],keys:[],hist:[],ply:0,over:false,thinking:false,last:null,hint:null,evals:[],replies:{},
     evalHtml:'',coach:'',kind:'info',winUser:null,passes:0,capt:{1:[],'-1':[]},pending:null};
   setPos(GAME.start());
-  G.coach=mode()==='ai'?`<b>${LEVELS[levelSel].name}</b> 컴퓨터와 대국을 시작해요. ${GAME.startMsg}`:GAME.pvpMsg;
+  G.coach=mode()==='ai'?`<b>${LEVELS[levelSel].name}</b> 컴퓨터와 대국을 시작해요. ${GAME.startMsg}`:mode()==='online'?(NET.ok?'온라인 대국 준비 완료.':'아래에서 <b>방 만들기</b>를 누르거나 친구의 <b>방 코드</b>를 넣어 들어가세요.'):GAME.pvpMsg;
   pint.clear();renderPlay();
 }
 const snap=()=>({pos:G.pos,legal:G.legal,keysLen:G.keys.length,ply:G.ply,last:G.last,winUser:G.winUser,passes:G.passes,
@@ -815,6 +900,7 @@ function doMove(m){
 function userMove(m){
   if(G.over||G.thinking)return;
   const side=G.pos.side,{before,after}=doMove(m),ply=G.ply;
+  if(mode()==='online')NET.send({t:'move',m});
   const c=GAME.coach(before,after,m,side,mode()==='ai');G.coach=c.text;G.kind=c.kind;G.evalHtml='';
   if(mode()==='ai')analyzeUser(before,m,ply);
   renderPlay();
@@ -878,7 +964,7 @@ async function finish(w,reason){
   G.over=true;G.thinking=false;
   const ai=mode()==='ai';
   if(ai&&G.pending){G.coach='게임 끝! 마지막 수를 분석하는 중이에요';G.kind='info';renderPlay();await Promise.race([G.pending,sleep(4000)]);}
-  const title=w===0?'무승부':ai?(w===US?`당신(${GAME.sideName(US)})이 이겼어요!`:`컴퓨터(${GAME.sideName(AS)})가 이겼어요.`):`${GAME.sideName(w)} 승리!`;
+  const title=w===0?'무승부':ai?(w===US?`당신(${GAME.sideName(US)})이 이겼어요!`:`컴퓨터(${GAME.sideName(AS)})가 이겼어요.`):mode()==='online'?(w===NET.side?'🎉 내가 이겼어요!':'친구가 이겼어요'):`${GAME.sideName(w)} 승리!`;
   let h=`<div class="result"><b>게임 끝 · ${title}</b><div>${reason}</div>`;
   if(ai){
     const g=rateGame(w===US?1:w===0?0:-1);
@@ -909,16 +995,18 @@ $('levels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b)r
 function renderPlay(){
   const ai=mode()==='ai';
   renderLevels();
-  $('sbName').innerHTML=`${GAME.sideChip(US)}${GAME.sideName(US)}${ai?' · 나':''}`;
-  $('swName').innerHTML=`${GAME.sideChip(AS)}${GAME.sideName(AS)}${ai?` · 컴퓨터 (${LEVELS[G.level].name})`:''}`;
+  const on=mode()==='online',me=s=>on&&NET.ok?(s===NET.side?' · 나':' · 친구'):'';
+  $('sbName').innerHTML=`${GAME.sideChip(US)}${GAME.sideName(US)}${ai?' · 나':me(US)}`;
+  $('swName').innerHTML=`${GAME.sideChip(AS)}${GAME.sideName(AS)}${ai?` · 컴퓨터 (${LEVELS[G.level].name})`:me(AS)}`;
   if(GAME.statLine){$('sbCap').textContent=GAME.statLine(G.pos,US);$('swCap').textContent=GAME.statLine(G.pos,AS);}
   else{$('sbCap').textContent='잡은 말: '+GAME.captText(G.capt[US]);$('swCap').textContent='잡은 말: '+GAME.captText(G.capt[AS]);}
   $('sb').classList.toggle('cur',!G.over&&G.pos.side===US);$('sw').classList.toggle('cur',!G.over&&G.pos.side===AS);
   $('pmsg').className='fb '+G.kind+(G.thinking?' thinking':'');
   $('pmsg').innerHTML=(G.evalHtml?`<div style="margin-bottom:4px">방금 내 수: ${G.evalHtml}</div>`:'')+G.coach+
     (G.thinking?`<div class="sub">컴퓨터(${GAME.sideName(AS)})가 생각 중이에요</div>`:'')+(pint.choosing?`<div class="turn" style="margin-top:6px">${GAME.rmPrompt}</div>`:'');
-  const myTurn=!G.over&&!G.thinking&&(!ai||G.pos.side===US);
-  $('phint').disabled=!myTurn;$('presign').disabled=G.over||!G.hist.length;$('pundo').disabled=G.over||!G.hist.length;
+  const myTurn=!G.over&&!G.thinking&&(on?(NET.ok&&G.pos.side===NET.side):(!ai||G.pos.side===US));
+  $('phint').disabled=!myTurn||on;$('presign').disabled=G.over||!G.hist.length||(on&&!NET.ok);$('pundo').disabled=G.over||!G.hist.length||on;
+  if(typeof netUI==='function')netUI();
   if($('ppass'))$('ppass').disabled=!myTurn||RULES.inCheck(G.pos);
   const showW=ai&&G.winUser!=null;$('wwrap').hidden=!showW;
   if(showW){const p=Math.round(G.winUser*100);$('wbarB').style.width=p+'%';$('wB').textContent=`${GAME.sideName(US)}(나) ${p}%`;$('wW').textContent=`${GAME.sideName(AS)} ${100-p}%`;}
@@ -933,9 +1021,9 @@ let use3d=store.get('view3d',true),V3=null;
 function ensure3D(){if(!V3&&use3d){V3=make3D($('p3d'),GAME.spec3d,sq=>pint.handle(sq));if(!V3){use3d=false;$('v3d').hidden=true;}}return V3;}
 $('v3d').onclick=()=>{use3d=!use3d;store.set('view3d',use3d);ensure3D();renderPlay();if(V3&&use3d)V3.show();};
 $('vreset').onclick=()=>{if(V3)V3.reset();};
-$('pnew').onclick=newGame;
-$('presign').onclick=()=>finish(mode()==='ai'?AS:-G.pos.side,`${josa(GAME.sideName(mode()==='ai'?US:G.pos.side),'이','가')} 기권했어요.`);
-if($('ppass'))$('ppass').onclick=()=>doPass(G.pos.side);
+$('pnew').onclick=()=>{if(mode()==='online'){if(!NET.ok){newGame();return;}if(!NET.host){G.coach='온라인에서는 방장이 새 판을 시작해요.';G.kind='info';renderPlay();return;}netStart();return;}newGame();};
+$('presign').onclick=()=>{if(mode()==='online'){NET.send({t:'resign'});finish(-NET.side,'내가 기권했어요.');return;}finish(mode()==='ai'?AS:-G.pos.side,`${josa(GAME.sideName(mode()==='ai'?US:G.pos.side),'이','가')} 기권했어요.`);};
+if($('ppass'))$('ppass').onclick=()=>{if(mode()==='online')NET.send({t:'pass'});doPass(G.pos.side);};
 $('phint').onclick=async()=>{
   const gen=G.gen;G.thinking=true;G.coach='추천 수를 찾는 중이에요';G.kind='info';renderPlay();
   const r=await engA('best',{pos:G.pos,time:1200});
@@ -953,7 +1041,7 @@ $('resetRank').onclick=()=>{
   resetArmed=Date.now();$('resetRank').textContent='한 번 더 누르면 지워져요';
   setTimeout(()=>{if(resetArmed&&Date.now()-resetArmed>=4000)$('resetRank').textContent='기록 초기화';},4100);};
 ['optLabels','optDots'].forEach(id=>$(id).onchange=renderPlay);
-$('optMode').onchange=newGame;
+$('optMode').onchange=()=>{if(mode()!=='online'&&typeof netReset==='function')netReset();newGame();};
 document.querySelectorAll('[data-newgame]').forEach(el=>el.onchange=newGame);
 
 /* ---------- 실수 다시 보기 ---------- */
