@@ -285,6 +285,8 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .card .cf,.card .cb{overflow:hidden}
 .jokbo .jc svg{border-radius:3px}
 
+.card.dimc{opacity:.38;filter:grayscale(.6)}
+
 :root{--accent:#1e4fa3;--accent-soft:#dfe8f7}
 .card.reveal .ci{animation:sflip .55s ease both}@keyframes sflip{from{transform:rotateY(180deg)}to{transform:none}}
 .pkseat .scards{gap:0;flex-wrap:nowrap}.pkseat .card.pk{width:30px;aspect-ratio:60/90;margin-left:-13px;flex:none}.pkseat .card.pk:first-child{margin-left:0}
@@ -719,6 +721,16 @@ function roomMount(el,cfg){
 // 받은 메시지를 차례로 처리 (연출이 끝난 뒤 다음 메시지)
 function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>console.error(e));};}
 
+/* ===== 컴퓨터 손님: 돈을 다 잃으면 자리에서 일어나고 새 손님이 돈을 들고 앉는다 ===== */
+const GUEST_POOL=['김 사장','이 여사','박 부장','최 선생','정 과장','강 회장','조 대리','윤 사모님','장 교수','임 총무','한 실장','오 반장','서 원장','신 기사','권 팀장','황 회장님','문 할머니','배 선장'];
+const GUEST_COL=['#ffb74d','#64b5f6','#81c784','#ba68c8','#4db6ac','#e57373','#f06292','#9575cd','#4dd0e1','#aed581','#ffd54f','#a1887f','#90a4ae','#ff8a65','#7986cb','#dce775','#bcaaa4','#80cbc4'];
+// 지금 앉아 있지 않은 손님 한 명
+function newGuest(seated){const free=GUEST_POOL.filter(n=>!seated.includes(n));return free[Math.floor(Math.random()*free.length)]||GUEST_POOL[Math.floor(Math.random()*GUEST_POOL.length)];}
+const guestColor=(name,def)=>{const i=GUEST_POOL.indexOf(name);return i>=0?GUEST_COL[i]:def;};
+// 바뀐 손님 알림 문장
+const iga=w=>{const c=w.charCodeAt(w.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28?'이':'가';};
+const guestNote=list=>list.map(([o,n])=>`<b>${o}</b>${iga(o)} 돈을 다 잃고 일어났어요. 새 손님 <b>${n}</b>${iga(n)} 앉았어요.`).join('<br>');
+
 /* ===== 포커 화면: 세븐포커 · 하이로우 · 바둑이 ===== */
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -731,7 +743,7 @@ const SND={ctx:null,on:store.get('sound',true),
     const c=this.ctx,now=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(v,now);g.gain.exponentialRampToValueAtTime(0.0001,now+d);o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+d+0.02);},
   card(){this.tick(1500,.13,.05);},chip(){this.tick(2200,.12,.04);setTimeout(()=>this.tick(2600,.08,.04),40);},win(){[660,880,1320].forEach((f,i)=>setTimeout(()=>this.tick(f,.18,.25),i*110));}};
 const AVC=['#ffb74d','#64b5f6','#81c784','#ba68c8','#4db6ac'];
-const avatar=q=>`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="${AVC[q%5]}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
+const avatar=q=>`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="${guestColor(typeof nm==="function"&&G?nm(q):"",AVC[q%5])}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
 const NAMES=['나','김 사장','이 여사','박 부장','최 선생'];
 const SEATS={2:[[50,75],[50,18]],3:[[50,75],[17,33],[83,33]],4:[[50,76],[13,47],[50,16],[87,47]],5:[[50,76],[12,52],[27,16],[73,16],[88,52]]};
 const chipsHtml=amt=>{const cols=[['#c62828',100000],['#1565c0',10000],['#2e7d32',1000],['#f9a825',100]];let left=amt,h='';
@@ -815,10 +827,11 @@ async function newHand(){
   const n=opt.players;if(money<opt.ante*10){money=1000000;bigText('돈 충전!');}
   const ai=G&&G.ai&&G.ai.length===n?G.ai:Array(n).fill(1000000);
   G={kind:opt.kind,s:PK.newGame({kind:opt.kind,players:n,ante:opt.ante,dealer:G?(G.s.dealer+1)%n:0}),ai,known:Array(n).fill(0),last:{},sel:[],phase:'deal',busy:true,reveal:false,result:null,gen:(G?G.gen:0)+1,hid:Date.now()+Math.random()};
-  for(let p=0;p<n;p++){if(p===0)money-=opt.ante;else{if(G.ai[p]<opt.ante*10)G.ai[p]=1000000;G.ai[p]-=opt.ante;}}
+  const left=[];
+  for(let p=0;p<n;p++){if(p===0)money-=opt.ante;else{if(G.ai[p]<opt.ante*10){if(!NETP){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}G.ai[p]=1000000;}G.ai[p]-=opt.ante;}}
   G.s.stack=[money].concat(G.ai.slice(1));   // 가진 돈만큼만 걸 수 있음
   saveMoney();$('pnext').hidden=true;const gen=G.gen,s=G.s;
-  msg(`판돈 ${won(opt.ante)}씩 내고 <b>${KIND[s.kind]}</b>를 시작해요.`);
+  msg((left.length?guestNote(left)+'<br>':'')+`판돈 ${won(opt.ante)}씩 내고 <b>${KIND[s.kind]}</b>를 시작해요.`);if(left.length)setTimeout(()=>bigText('새 손님!'),200);
   if(s.kind==='badugi'){PK.badugiDeal(s);G.phase='deal';render();SND.card();await sleep(1100);if(gen!==G.gen)return;
     for(let round=0;round<4;round++){
       if(round>0){await drawPhase(round);if(gen!==G.gen)return;s.street=round;PK.startBetting(s,(s.dealer+1+round)%s.n);if(s.folded[s.turn])s.turn=PK.nextAlive(s,s.turn);}

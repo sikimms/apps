@@ -285,6 +285,8 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .card .cf,.card .cb{overflow:hidden}
 .jokbo .jc svg{border-radius:3px}
 
+.card.dimc{opacity:.38;filter:grayscale(.6)}
+
 .card.reveal .ci{animation:sflip .55s ease both}@keyframes sflip{from{transform:rotateY(180deg)}to{transform:none}}
 </style>
 </head>
@@ -304,6 +306,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
       <div class="levels" id="slevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="opts">
+        <label>방식 <select id="sCards"><option value="2">2장 섯다</option><option value="3">3장 섯다</option></select></label>
         <label>인원 <select id="sPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
         <label>판돈 <select id="sAnte"><option value="100">100원</option><option value="500">500원</option><option value="1000">1,000원</option></select></label>
       </div>
@@ -336,6 +339,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
     <div class="panel">
       <h2>섯다 족보 (높은 순)</h2>
       <div class="jokbo" id="jokbo"></div>
+      <p class="sub" style="margin-top:10px"><b>3장 섯다</b>: 처음에 2장을 받고 베팅, 3번째 장을 받고 한 번 더 베팅한 뒤, 3장 중 가장 좋은 2장을 골라 겨뤄요. 설정의 <b>방식</b>에서 2장·3장을 고를 수 있어요.</p>
       <p class="sub" style="margin-top:12px">같은 족보끼리면 판돈을 나눠요. 멍텅구리구사(4·9월 열끗)는 가장 높은 패가 9땡 이하면 재경기예요.</p>
       <div class="opts"><label><input type="checkbox" id="sLabels"> 카드에 달·종류 표시</label><label><input type="checkbox" id="sSound"> 소리</label><label><input type="checkbox" id="sSq"> 히든 카드 쪼아 보기</label></div>
       <div class="sub" id="srec" style="margin-top:8px"></div>
@@ -781,10 +785,10 @@ function strength1(a){let s=0,n=0;for(const b of DECK){if(b===a)continue;s+=stre
 // 베팅: 기본 판돈(ante)을 모두 내고 시작. 한 바퀴마다 다이·체크·삥·콜·하프·따당
 function newSeotda(o){
   const n=o.players,deck=shuffle(DECK);
-  return{n,deck,stack:(o.stacks||Array(n).fill(1e12)).slice(),hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),pot:o.ante*n,ante:o.ante,
+  return{n,deck,three:!!o.three,pick:Array(n).fill(null),stack:(o.stacks||Array(n).fill(1e12)).slice(),hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),pot:o.ante*n,ante:o.ante,
     round:0,cur:0,toCall:0,lastRaise:0,acted:Array(n).fill(false),raises:0,dealer:o.dealer||0,turn:(o.dealer||0)%n,over:false,log:[]};
 }
-function dealRound(s){for(let k=0;k<s.n;k++){const p=(s.dealer+k)%s.n;if(!s.folded[p])s.hands[p].push(s.deck.shift());}
+function dealRound(s){const times=s.three&&s.round===0?2:1;for(let t=0;t<times;t++)for(let k=0;k<s.n;k++){const p=(s.dealer+k)%s.n;if(!s.folded[p])s.hands[p].push(s.deck.shift());}
   s.round++;s.bet=Array(s.n).fill(0);s.toCall=0;s.lastRaise=0;s.acted=Array(s.n).fill(false);s.raises=0;s.turn=nextActive(s,s.dealer-1);}
 function nextActive(s,from){for(let k=1;k<=s.n;k++){const q=((from+k)%s.n+s.n)%s.n;if(!s.folded[q])return q;}return -1;}
 const alive=s=>s.folded.map((f,i)=>f?-1:i).filter(i=>i>=0);
@@ -815,8 +819,10 @@ function act(s,a){
   if(done)return s.round<2?'deal':'show';
   s.turn=nextActive(s,p);return'next';
 }
+// 3장 중 가장 좋은 2장 (땡잡이·암행어사는 땡·광땡이 있을 때만 쓸모 있어서 보통 패 값으로 비교)
+function bestPair(h){if(h.length<3)return h.slice(0,2);let best=null,bv=-1;for(let i=0;i<h.length;i++)for(let j=i+1;j<h.length;j++){const x=seotdaHand(h[i],h[j]),v=x.v+(x.ttaengjabi||x.amhaeng?0.5:0);if(v>bv){bv=v;best=[h[i],h[j]];}}return best;}
 function showdown(s){
-  const hands=alive(s).map(p=>({p,h:seotdaHand(s.hands[p][0],s.hands[p][1])}));
+  const hands=alive(s).map(p=>{const pr=s.pick&&s.pick[p]&&s.pick[p].every(x=>s.hands[p].includes(x))?s.pick[p]:bestPair(s.hands[p]);return{p,pair:pr,h:seotdaHand(pr[0],pr[1])};});
   s.result=seotdaShowdown(hands);s.result.hands=hands;s.over=true;return s.result;
 }
 // 컴퓨터: 패 세기 + 성격(등급)으로 결정
@@ -827,8 +833,9 @@ const SLV=[
   {name:'고수',bluff:0.1,tight:0.08,rnd:0.05}];
 function aiAct(s,lv){
   const p=s.turn,h=s.hands[p],L=SLV[lv];
-  let st=h.length>=2?strength2(h[0],h[1]):strength1(h[0]);
-  if(h.length>=2){const x=seotdaHand(h[0],h[1]);if(x.ttaengjabi||x.amhaeng)st=Math.max(st,0.55);if(x.gusa||x.mungGusa)st=Math.max(st,0.5);}
+  const bp=h.length>=2?bestPair(h):null;
+  let st=bp?strength2(bp[0],bp[1])+(s.three&&h.length===2?0.08:0):strength1(h[0]);   // 3장 섯다 첫 베팅은 한 장 더 받을 몫
+  if(bp){const x=seotdaHand(bp[0],bp[1]);if(x.ttaengjabi||x.amhaeng)st=Math.max(st,0.55);if(x.gusa||x.mungGusa)st=Math.max(st,0.5);}
   st+= (Math.random()-0.5)*L.rnd;
   const acts=actions(s),get=k=>acts.find(a=>a.k===k);
   if(acts.length===1)return acts[0];   // 올인해서 더 걸 돈이 없으면 그대로 넘어감
@@ -859,7 +866,7 @@ function checkThree(three){return three.length===3&&three.reduce((a,c)=>a+mon(c)
 function newDori(o){const deck=shuffle(DECK),n=o.players;   // 0번이 나, n-1번이 선(물주)
   return{n,deck,hands:Array.from({length:n},(_,i)=>deck.slice(i*5,i*5+5)),bets:o.bets.slice()};}
 return{DECK,mon,special,isGwang,seotdaHand,seotdaShowdown,strength1,strength2,newSeotda,dealRound,actions,act,showdown,alive,aiAct,SLV,
-  doriBest,doriHand,checkThree,newDori,shuffle};
+  doriBest,doriHand,checkThree,newDori,shuffle,bestPair};
 })();
 
 /* ===== 온라인 방 (2~5명): 방 코드로 여러 기기를 연결 (PeerJS, WebRTC) =====
@@ -963,6 +970,16 @@ function roomMount(el,cfg){
 // 받은 메시지를 차례로 처리 (연출이 끝난 뒤 다음 메시지)
 function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>console.error(e));};}
 
+/* ===== 컴퓨터 손님: 돈을 다 잃으면 자리에서 일어나고 새 손님이 돈을 들고 앉는다 ===== */
+const GUEST_POOL=['김 사장','이 여사','박 부장','최 선생','정 과장','강 회장','조 대리','윤 사모님','장 교수','임 총무','한 실장','오 반장','서 원장','신 기사','권 팀장','황 회장님','문 할머니','배 선장'];
+const GUEST_COL=['#ffb74d','#64b5f6','#81c784','#ba68c8','#4db6ac','#e57373','#f06292','#9575cd','#4dd0e1','#aed581','#ffd54f','#a1887f','#90a4ae','#ff8a65','#7986cb','#dce775','#bcaaa4','#80cbc4'];
+// 지금 앉아 있지 않은 손님 한 명
+function newGuest(seated){const free=GUEST_POOL.filter(n=>!seated.includes(n));return free[Math.floor(Math.random()*free.length)]||GUEST_POOL[Math.floor(Math.random()*GUEST_POOL.length)];}
+const guestColor=(name,def)=>{const i=GUEST_POOL.indexOf(name);return i>=0?GUEST_COL[i]:def;};
+// 바뀐 손님 알림 문장
+const iga=w=>{const c=w.charCodeAt(w.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28?'이':'가';};
+const guestNote=list=>list.map(([o,n])=>`<b>${o}</b>${iga(o)} 돈을 다 잃고 일어났어요. 새 손님 <b>${n}</b>${iga(n)} 앉았어요.`).join('<br>');
+
 /* ===== 섯다 · 도리짓고땡 화면 ===== */
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -977,8 +994,8 @@ const SND={ctx:null,on:store.get('sound',true),
     const c=this.ctx,now=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(v,now);g.gain.exponentialRampToValueAtTime(0.0001,now+d);o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+d+0.02);},
   card(){this.tick(1400,.15,.05);},chip(){this.tick(2200,.12,.04);setTimeout(()=>this.tick(2600,.08,.04),40);},win(){[660,880,1320].forEach((f,i)=>setTimeout(()=>this.tick(f,.18,.25),i*110));}};
 const AVC=['#ffb74d','#64b5f6','#81c784','#ba68c8','#4db6ac','#e57373'];
-const avatar=q=>`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="${AVC[q%AVC.length]}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
-const cardHtml=(id,o={})=>`<div class="card${o.down?' down':''}${o.deal?' deal':''}${o.pick?' pick':''}${o.chosen?' chosen':''}${o.reveal?' reveal':''}" data-id="${id}" style="${o.delay?`animation-delay:${o.delay}ms;`:''}"><div class="ci"><div class="cf">${face(id)}</div><div class="cb">${HW.back()}</div></div></div>`;
+const avatar=q=>`<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15" fill="${guestColor(NAMES[q],AVC[q%AVC.length])}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
+const cardHtml=(id,o={})=>`<div class="card${o.dim?' dimc':''}${o.down?' down':''}${o.deal?' deal':''}${o.pick?' pick':''}${o.chosen?' chosen':''}${o.reveal?' reveal':''}" data-id="${id}" style="${o.delay?`animation-delay:${o.delay}ms;`:''}"><div class="ci"><div class="cf">${face(id)}</div><div class="cb">${HW.back()}</div></div></div>`;
 const chipsHtml=amt=>{const cols=[['#c62828',10000],['#1565c0',5000],['#2e7d32',1000],['#f9a825',100]];let left=amt,h='';
   for(const [c,v] of cols){const n=Math.min(8,Math.floor(left/v));left-=n*v;if(n)h+=`<span class="chipstack" style="--c:${c}">${'<i></i>'.repeat(n)}</span>`;}return h||'<span class="chipstack" style="--c:#f9a825"><i></i></span>';};
 function bigText(t){const b=$('sbig');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),1200);}
@@ -1002,7 +1019,7 @@ const snm=p=>NET&&NET.game==='seotda'?NET.names[p]:NAMES[p];
 const schip=p=>NGUEST()||p!==0?S.aiMoney[p]:money;
 function sViewFor(v,dealing){
   const s=S.s,n=s.n,R=a=>a.map((_,i)=>a[(i+v)%n]),rp=p=>(p-v+n)%n;
-  const t={...s,deck:[],log:[],hands:R(s.hands.map((h,q)=>q===v||(S.reveal&&!s.folded[q])?h.slice():h.map(()=>-1))),
+  const t={...s,deck:[],log:[],pick:[],hands:R(s.hands.map((h,q)=>q===v||(S.reveal&&!s.folded[q])?h.slice():h.map(()=>-1))),
     folded:R(s.folded),bet:R(s.bet),stack:R(s.stack),acted:R(s.acted),turn:rp(s.turn),dealer:rp(s.dealer),
     result:s.result?{...s.result,winners:s.result.winners.map(rp),hands:s.result.hands&&s.result.hands.map(x=>({...x,p:rp(x.p)}))}:null};
   const last={};for(const p in S.last)last[rp(+p)]=S.last[p];
@@ -1011,25 +1028,27 @@ function sViewFor(v,dealing){
 }
 function sNetView(dealing){if(!NET||NET.guest||NET.game!=='seotda')return;const x=S.netx||{};S.netx=null;roomEach(gi=>({...sViewFor(NET.seats.indexOf(gi),dealing),...x}));}
 
-const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500)};
+const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500),cards:store.get('cards',2)};
 let S=null;
 function seotdaNew(carry){
   if(NGUEST())return;
   const n=sopt.players;
   const ai=S&&S.aiMoney&&S.aiMoney.length===n?S.aiMoney:Array(n).fill(100000);
   if(money<sopt.ante*4){money=100000;bigText('돈 충전!');}
-  S={s:SD.newSeotda({players:n,ante:sopt.ante,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false,hid:handId()};
-  for(let p=0;p<n;p++){if(p===0)money-=sopt.ante;else{if(S.aiMoney[p]<sopt.ante*4)S.aiMoney[p]=100000;S.aiMoney[p]-=sopt.ante;}}
+  S={s:SD.newSeotda({players:n,ante:sopt.ante,three:sopt.cards===3,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false,hid:handId()};
+  const left=[];
+  for(let p=0;p<n;p++){if(p===0)money-=sopt.ante;else{if(S.aiMoney[p]<sopt.ante*4){if(!NET){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,5));left.push([o,NAMES[p]]);}S.aiMoney[p]=100000;}S.aiMoney[p]-=sopt.ante;}}
   if(carry){S.s.pot+=carry;}
   S.s.stack=[money].concat(S.aiMoney.slice(1));   // 가진 돈만큼만 걸 수 있음
-  saveMoney();smsg(`판돈 ${won(sopt.ante)}씩 내고 시작해요. 한 장씩 나눠 줄게요.`);
+  saveMoney();smsg((left.length?guestNote(left)+'<br>':'')+`판돈 ${won(sopt.ante)}씩 내고 <b>${sopt.cards}장 섯다</b>를 시작해요. ${sopt.cards===3?'두 장씩':'한 장씩'} 나눠 줄게요.`);if(left.length)setTimeout(()=>bigText('새 손님!'),200);
   seotdaRender();seotdaDeal();
 }
 async function seotdaDeal(){
   const gen=S.gen;SD.dealRound(S.s);
   const mine=S.s.hands[0];if(S.s.round===2)S.netx={sq:1};
-  if(sqOn&&S.s.round===2&&!S.s.folded[0]){S.hideId=mine[1];seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;
-    await squeeze($('stable'),face(mine[1]),HW.back(),'60/97.5','두 번째 카드');if(gen!==S.gen)return;S.hideId=null;}
+  const lastC=mine[mine.length-1];
+  if(sqOn&&S.s.round===2&&!S.s.folded[0]){S.hideId=lastC;seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;
+    await squeeze($('stable'),face(lastC),HW.back(),'60/97.5',S.s.three?'세 번째 카드':'두 번째 카드');if(gen!==S.gen)return;S.hideId=null;}
   else{seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;}
   for(let p=0;p<S.s.n;p++)S.dealt[p]=S.s.hands[p].length;
   S.last={};seotdaRender();S.busy=false;seotdaStep();
@@ -1039,18 +1058,20 @@ function seotdaRender(dealing){
   const s=S.s,pos=SEATS[s.n],show=S.reveal;
   $('stable').querySelectorAll('.seat').forEach(e=>e.remove());
   for(let p=0;p<s.n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
-    const hand=s.hands[p],h2=hand.length===2?SD.seotdaHand(hand[0],hand[1]):null,isWin=S.result&&S.result.winners.includes(p);
-    const cards=hand.map((id,i)=>cardHtml(id,{down:(p!==0&&!(show&&!s.folded[p]))||(p===0&&id===S.hideId),deal:dealing&&i>=S.dealt[p],delay:dealing?(p*90+i*40):0,reveal:show&&p!==0&&!s.folded[p]})).join('');
+    const hand=s.hands[p],rh=S.result&&S.result.hands&&S.result.hands.find(x=>x.p===p),pr=rh&&rh.pair?rh.pair:(hand.length>=2&&hand.every(x=>x>=0)?SD.bestPair(hand):null),isWin=S.result&&S.result.winners.includes(p);
+    const h2=pr?SD.seotdaHand(pr[0],pr[1]):null,picking=p===0&&S.picking;
+    const cards=hand.map((id,i)=>cardHtml(id,{dim:hand.length>2&&show&&rh&&rh.pair&&!rh.pair.includes(id),pick:picking,chosen:picking&&S.sel.includes(id),down:(p!==0&&!(show&&!s.folded[p]))||(p===0&&id===S.hideId),deal:dealing&&i>=S.dealt[p],delay:dealing?(p*90+i*40):0,reveal:show&&p!==0&&!s.folded[p]})).join('');
     const la=S.last[p];
     el.innerHTML=(p===0?'':plate(p))+`<div class="scards">${cards}</div>`+
-      ((p===0||show)&&h2&&!s.folded[p]?`<span class="shand${isWin?' win':''}">${h2.name}</span>`:'')+
+      ((p===0||show)&&h2&&!s.folded[p]?`<span class="shand${isWin?' win':''}">${picking&&S.sel.length===2?SD.seotdaHand(S.sel[0],S.sel[1]).name:h2.name}${hand.length>2&&!show&&p===0&&!picking?' (가장 좋은 2장)':''}</span>`:'')+
       (la?`<span class="sact ${la.k==='die'?'die':la.k==='call'||la.k==='check'?'call':'raise'}">${la.name}${la.amt?' '+won(la.amt):''}</span>`:'')+(p===0?plate(p):'');
     $('stable').appendChild(el);}
-  $('spot').innerHTML=`<div class="chips">${chipsHtml(s.pot)}</div><b>${won(s.pot)}</b><small>${s.round>=2?'두 번째 장':'첫 번째 장'} · ${s.over?'끝':'베팅 중'}</small>`;
+  $('spot').innerHTML=`<div class="chips">${chipsHtml(s.pot)}</div><b>${won(s.pot)}</b><small>${s.three?'3장 섯다 · ':''}${s.round>=2?(s.three?'세 번째 장':'두 번째 장'):(s.three?'두 장':'첫 번째 장')} · ${s.over?'끝':S.picking?'2장 고르기':'베팅 중'}</small>`;
   seotdaBar();
 }
 function plate(p){const s=S.s;return `<div class="splate${s.turn===p&&!s.over?' turn':''}${s.folded[p]?' out':''}">${avatar(p)}<span class="sn"><b>${snm(p)}</b><small>${won(schip(p))}</small></span></div>`;}
 function seotdaBar(){
+  if(S.picking){const ok=S.sel.length===2;$('sbar').innerHTML=`<button class="btn call" data-pk="go"${ok?'':' disabled'}>이 두 장으로<small>${ok?SD.seotdaHand(S.sel[0],S.sel[1]).name:'2장을 누르세요'}</small></button><button class="btn raise" data-pk="auto">자동<small>가장 좋은 2장</small></button>`;return;}
   const s=S.s,mine=!s.over&&!S.busy&&s.turn===0&&!s.folded[0];
   const acts=mine?SD.actions(s):[];
   const cls={die:'die',check:'call',call:'call',bbing:'raise',half:'raise',ddadang:'raise'};
@@ -1058,6 +1079,17 @@ function seotdaBar(){
     const name={die:'다이',check:'체크',call:'콜',bbing:'삥',half:'하프',ddadang:'따당'}[k];
     return `<button class="btn ${cls[k]}" data-k="${k}"${a?'':' disabled'}>${name}${a&&a.amt?`<small>${won(a.amt)}</small>`:'<small>&nbsp;</small>'}</button>`;}).join('');
 }
+// 3장 섯다: 낼 2장 고르기
+$('sbar').addEventListener('click',e=>{const b=e.target.closest('[data-pk]');if(!b||b.disabled||!S||!S.picking)return;const h=S.s.hands[0];const pr=b.dataset.pk==='auto'?SD.bestPair(h):S.sel.slice();S.picking=false;S.sel=[];const r=S.pickRes;S.pickRes=null;r&&r(pr);seotdaRender();});
+$('stable').addEventListener('click',e=>{const c=e.target.closest('.card.pick');if(!c||!S||!S.picking)return;const id=+c.dataset.id,i=S.sel.indexOf(id);if(i>=0)S.sel.splice(i,1);else{if(S.sel.length>=2)S.sel.shift();S.sel.push(id);}SND.card();seotdaRender();});
+function askPick(){return new Promise(res=>{S.picking=true;S.sel=[];S.pickRes=res;smsg('3장 중에서 <b>겨룰 2장</b>을 고르세요. 모르겠으면 <b>자동</b>을 누르면 가장 좋은 2장을 골라요.');S.busy=false;seotdaRender();});}
+// 다들 2장을 고름: 나는 화면에서, 친구는 온라인으로, 컴퓨터는 가장 좋은 2장
+async function pickPhase(){const s=S.s,gen=S.gen,jobs=[];
+  for(const p of SD.alive(s)){if(p===0)jobs.push(askPick().then(v=>s.pick[0]=v));
+    else if(nremote(p))jobs.push(netAsk(p,{t:'ask',kind:'spick'},null).then(v=>{s.pick[p]=Array.isArray(v)&&v.length===2&&v.every(x=>s.hands[p].includes(x))&&v[0]!==v[1]?v:SD.bestPair(s.hands[p]);}));
+    else s.pick[p]=SD.bestPair(s.hands[p]);}
+  if(jobs.length>1||(jobs.length===1&&s.folded[0]))smsg('다른 사람이 2장을 고르는 중이에요…');
+  await Promise.all(jobs);return gen===S.gen;}
 $('sbar').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b||b.disabled||!S||S.busy)return;if(S.waiter){const w=S.waiter;S.waiter=null;w(b.dataset.k);return;}if(NGUEST())return;const a=SD.actions(S.s).find(x=>x.k===b.dataset.k);if(a)seotdaDo(a);});
 function smsg(h){$('smsg').innerHTML=h;}
 async function seotdaDo(a){
@@ -1067,13 +1099,13 @@ async function seotdaDo(a){
   if(a.k==='ddadang'||a.k==='half')bigText(a.name+'!');
   seotdaRender();
   if(r==='end'){await sleep(600);if(gen===S.gen)seotdaSettle();return;}
-  if(r==='deal'){S.busy=true;seotdaRender();await sleep(700);if(gen!==S.gen)return;smsg('두 번째 장을 나눠 줘요.');await seotdaDeal();return;}
-  if(r==='show'){S.busy=true;await sleep(500);if(gen!==S.gen)return;SD.showdown(s);S.reveal=true;S.result=s.result;SND.card();seotdaRender();await sleep(900);if(gen===S.gen)seotdaSettle();return;}
+  if(r==='deal'){S.busy=true;seotdaRender();await sleep(700);if(gen!==S.gen)return;smsg(s.three?'세 번째 장을 나눠 줘요.':'두 번째 장을 나눠 줘요.');await seotdaDeal();return;}
+  if(r==='show'){S.busy=true;await sleep(500);if(gen!==S.gen)return;if(s.three){if(!(await pickPhase()))return;S.busy=true;}SD.showdown(s);S.reveal=true;S.result=s.result;SND.card();seotdaRender();await sleep(900);if(gen===S.gen)seotdaSettle();return;}
   seotdaStep();
 }
 async function seotdaStep(){
   const s=S.s,gen=S.gen;if(s.over)return;
-  if(s.turn===0){const need=s.toCall-s.bet[0];smsg(`<b>내 차례</b>예요. ${s.hands[0].length===1?'첫 장만 보고':'두 장을 보고'} 베팅하세요.${need>0?` 따라가려면 ${won(need)}이 필요해요.`:''}`);seotdaRender();return;}
+  if(s.turn===0){const need=s.toCall-s.bet[0];smsg(`<b>내 차례</b>예요. ${['','첫 장만','두 장을','세 장을'][s.hands[0].length]} 보고 베팅하세요.${need>0?` 따라가려면 ${won(need)}이 필요해요.`:''}`);seotdaRender();return;}
   if(nremote(s.turn)){S.busy=true;seotdaRender();smsg(`<b>${snm(s.turn)}</b> 차례예요. 기다리는 중…`);const v=await netAsk(s.turn,{t:'ask',kind:'sbet'},null);if(gen!==S.gen)return;
     S.busy=false;seotdaDo(SD.actions(s).find(x=>x.k===v)||SD.aiAct(s,sopt.level));return;}
   S.busy=true;seotdaRender();smsg(`${snm(s.turn)}이(가) 생각 중이에요`);await sleep(700+Math.random()*500);if(gen!==S.gen)return;
@@ -1093,7 +1125,7 @@ function sSettleMsg(s,res){const iWon=res.winners.includes(0);if(iWon){SND.win()
   const hands=(res.hands||[]).map(x=>`${snm(x.p)}: <b>${x.h.name}</b>`).join(' · ');
   smsg(`${iWon?'🎉 <b>내가 이겼어요!</b>':`<b>${res.winners.map(p=>snm(p)).join(', ')}</b> 승리.`} ${res.reason||''} 판돈 ${won(s.pot)}${res.winners.length>1?' 나눔':''}.${hands?'<br>'+hands:''}${NGUEST()?'<br><small>다음 판은 방장이 시작해요.</small>':''}`);}
 // 재경기: 판돈을 남기고 같은 사람끼리 다시 (판돈은 다시 안 냄)
-function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,dealer:S.s.dealer,stacks:[money].concat(S.aiMoney.slice(1))});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.hid=handId();S.ended=false;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
+function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,three:sopt.cards===3,dealer:S.s.dealer,stacks:[money].concat(S.aiMoney.slice(1))});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.hid=handId();S.ended=false;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
 $('snext').onclick=()=>{$('snext').hidden=true;S.result=null;S.reveal=false;seotdaNew();};
 
 /* ================= 도리짓고땡 =================
@@ -1283,6 +1315,7 @@ function onNet(gi,d){
       if(d.end&&!D.settled){D.settled=true;if(D.res)doriResultMsg();else dmsg(`다이했어요. 건 돈 ${won(D.s.bets[0])}은 선이 가져가요.`);}
       return;}
     if(d.t==='ask'&&NGUEST()){
+      if(d.kind==='spick'&&S){const v=await askPick();roomToHost({t:'ans',v});return;}
       if(d.kind==='sbet'&&S){S.busy=false;seotdaRender();const need=S.s.toCall-S.s.bet[0];smsg(`<b>내 차례</b>예요. ${S.s.hands[0].length===1?'첫 장만 보고':'두 장을 보고'} 베팅하세요.${need>0?` 따라가려면 ${won(need)}이 필요해요.`:''}`);
         const k=await new Promise(r=>S.waiter=r);S.busy=true;seotdaRender();roomToHost({t:'ans',v:k});return;}
       if(d.kind==='dbet'&&D){D.stage=d.k===3?'bet1':'bet2';const pr=doriWinProb(D.s.hands[0].slice(0,d.k));
@@ -1306,6 +1339,7 @@ function renderRec(){$('srec').textContent=`섯다 ${rec.sw}승 ${rec.sl}패 · 
 function renderLevels(){$('slevels').innerHTML=SD.SLV.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===sopt.level}" data-k="${k}">${l.name}<span>${['막 걸기','조심','계산','노련함'][k]}</span></button>`).join('');}
 $('slevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b||NGUEST())return;sopt.level=+b.dataset.k;store.set('level',sopt.level);renderLevels();});
 $('sPlayers').value=String(sopt.players);$('sPlayers').onchange=e=>{sopt.players=+e.target.value;store.set('players',sopt.players);if(NET&&!NET.guest){startOnline();return;}S=null;seotdaNew();};
+$('sCards').value=String(sopt.cards);$('sCards').onchange=e=>{sopt.cards=+e.target.value;store.set('cards',sopt.cards);if(NET&&!NET.guest){startOnline();return;}S=null;seotdaNew();};
 $('sAnte').value=String(sopt.ante);$('sAnte').onchange=e=>{sopt.ante=+e.target.value;store.set('ante',sopt.ante);};
 $('dOthers').value=String(dopt.others);$('dOthers').onchange=e=>{dopt.others=+e.target.value;store.set('dothers',dopt.others);if(NET&&!NET.guest){startOnline();return;}D=null;doriNew();};
 $('dBet').innerHTML=[1000,5000,10000].map(v=>`<button style="background:${v===1000?'#2e7d32':v===5000?'#1565c0':'#c62828'}" data-v="${v}" aria-pressed="${v===dopt.bet}">${v/1000}천원`.replace('10천원','1만원')+'</button>').join('');

@@ -726,6 +726,16 @@ function roomMount(el,cfg){
 // 받은 메시지를 차례로 처리 (연출이 끝난 뒤 다음 메시지)
 function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>console.error(e));};}
 
+/* ===== 컴퓨터 손님: 돈을 다 잃으면 자리에서 일어나고 새 손님이 돈을 들고 앉는다 ===== */
+const GUEST_POOL=['김 사장','이 여사','박 부장','최 선생','정 과장','강 회장','조 대리','윤 사모님','장 교수','임 총무','한 실장','오 반장','서 원장','신 기사','권 팀장','황 회장님','문 할머니','배 선장'];
+const GUEST_COL=['#ffb74d','#64b5f6','#81c784','#ba68c8','#4db6ac','#e57373','#f06292','#9575cd','#4dd0e1','#aed581','#ffd54f','#a1887f','#90a4ae','#ff8a65','#7986cb','#dce775','#bcaaa4','#80cbc4'];
+// 지금 앉아 있지 않은 손님 한 명
+function newGuest(seated){const free=GUEST_POOL.filter(n=>!seated.includes(n));return free[Math.floor(Math.random()*free.length)]||GUEST_POOL[Math.floor(Math.random()*GUEST_POOL.length)];}
+const guestColor=(name,def)=>{const i=GUEST_POOL.indexOf(name);return i>=0?GUEST_COL[i]:def;};
+// 바뀐 손님 알림 문장
+const iga=w=>{const c=w.charCodeAt(w.length-1);return c>=0xAC00&&c<=0xD7A3&&(c-0xAC00)%28?'이':'가';};
+const guestNote=list=>list.map(([o,n])=>`<b>${o}</b>${iga(o)} 돈을 다 잃고 일어났어요. 새 손님 <b>${n}</b>${iga(n)} 앉았어요.`).join('<br>');
+
 /* ===== 고스톱 화면: 판 그리기 · 실전 · 배우기 ===== */
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem('gostop-'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
@@ -862,7 +872,8 @@ async function animateTurn(T,s,mv,pick,o){
 }
 
 /* ---------- 실전 ---------- */
-const CNAME=['나','컴퓨터 1','컴퓨터 2'];
+const CNAME=store.get('cname',['나','김 사장','이 여사']);
+let aiMoney=store.get('aimoney',[0,100000,100000]);
 const opt={players:store.get('players',2),level:store.get('level',1)};
 let money=store.get('money',100000),rec=store.get('rec',{}),G=null;
 /* 온라인: ME = 내 자리. 방장 기기는 NETG.seats[q] = 0(방장) / 친구 번호 / -1(컴퓨터).
@@ -874,8 +885,8 @@ const isAI=q=>NETG?NETG.names[q].ai:q!==ME;
 const who=q=>q===ME?'나':NETG?NETG.names[q].n:CNAME[q];
 const PT=makeTable($('gtable'));
 const AVC=['#ffb74d','#64b5f6','#81c784'];
-const avatar=q=>`<svg viewBox="0 0 32 32" class="gav"><circle cx="16" cy="16" r="15" fill="${AVC[q]}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
-const nameOf=q=>{const sc=GS.scoreOf(G.s.caps[q]);return `${avatar(q)}<span class="gpn"><b>${who(q)}</b><small>${q===ME?won(money):isAI(q)?GS.LEVELS[opt.level].name:'온라인'}</small></span><span class="gpt">${sc.total}<small>점</small></span>${G.s.go[q]?`<span class="gtag go">${G.s.go[q]}고</span>`:''}${G.s.mult[q]>1?`<span class="gtag mul">×${G.s.mult[q]}</span>`:''}`;};
+const avatar=q=>`<svg viewBox="0 0 32 32" class="gav"><circle cx="16" cy="16" r="15" fill="${guestColor(CNAME[q]&&!NETG?CNAME[q]:"",AVC[q])}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
+const nameOf=q=>{const sc=GS.scoreOf(G.s.caps[q]);return `${avatar(q)}<span class="gpn"><b>${who(q)}</b><small>${q===ME?won(money):isAI(q)?(NETG?GS.LEVELS[opt.level].name:won(aiMoney[q])):'온라인'}</small></span><span class="gpt">${sc.total}<small>점</small></span>${G.s.go[q]?`<span class="gtag go">${G.s.go[q]}고</span>`:''}${G.s.mult[q]>1?`<span class="gtag mul">×${G.s.mult[q]}</span>`:''}`;};
 const ro=()=>({nameOf,viewer:ME,canPlay:G&&!G.busy&&!G.s.over&&G.s.turn===ME,sel:G&&G.sel,hl:G&&G.hl||[],reveal:G&&G.s.over});
 function draw(){PT.render(G.s,ro());renderPanel();}
 /* ---------- 온라인: 가리기 · 채우기 ---------- */
@@ -907,11 +918,13 @@ function stopOnline(){NETG=null;ME=0;if(pendAsk){pendAsk.res(pendAsk.def);pendAs
 function newGame(keepFirst){
   if(GUEST())return;
   if(money<=0){money=100000;store.set('money',money);setTimeout(()=>PT.shout('돈 충전!'),300);}   // 돈이 다 떨어지면 다시 채워 줌 (가짜 돈)
+  const left=[];if(!NETG&&!GUEST())for(let q=1;q<3;q++)if(aiMoney[q]<=0){const o=CNAME[q];CNAME[q]=newGuest(CNAME);aiMoney[q]=100000;left.push([o,CNAME[q]]);}
+  if(left.length){store.set('cname',CNAME);store.set('aimoney',aiMoney);setTimeout(()=>PT.shout('새 손님!'),400);}
   const first=G&&keepFirst&&G.nextFirst!=null?G.nextFirst:0,nag=G&&G.nagariNext||1;
   PT.reset();PT.closeOverlay();
   G={s:GS.newRound({players:opt.players,first,nagari:nag}),busy:false,sel:null,hl:[],gen:(G?G.gen:0)+1,nagariNext:1,nextFirst:null};
   if(NETG){NETG.names=NETG.names.slice(0,G.s.n);roomEach(gi=>({t:'deal',seat:NETG.seats.indexOf(gi),names:NETG.names,level:opt.level,nag,st:maskFor(G.s,NETG.seats.indexOf(gi))}));}
-  msg(nag>1?`나가리 다음 판이라 점수가 <b>×${nag}</b>예요. `+turnMsg():turnMsg());
+  msg((left.length?guestNote(left)+'<br>':'')+(nag>1?`나가리 다음 판이라 점수가 <b>×${nag}</b>예요. `+turnMsg():turnMsg()));
   G.busy=true;const gen=G.gen,wait=PT.deal(G.s,ro());renderPanel();SND.slap(0.5);
   setTimeout(()=>{if(gen!==G.gen)return;G.busy=false;draw();
     if(G.s.over){showResult();return;}
@@ -1029,6 +1042,7 @@ function showResult(){
   const f=s.final,w=s.winner;let delta=0;
   for(const x of f.pay){if(w===ME)delta+=x.amt*POINT;else if(x.q===ME)delta-=x.amt*POINT;}
   money+=delta;store.set('money',money);
+  if(!NETG){for(const x of f.pay){const a=x.amt*POINT;if(w!==ME)aiMoney[w]+=a;if(x.q!==ME)aiMoney[x.q]-=a;}store.set('aimoney',aiMoney);}
   if(!NETG){const lv=GS.LEVELS[opt.level].name,r=rec[lv]||{w:0,l:0};if(w===ME)r.w++;else r.l++;rec[lv]=r;store.set('rec',rec);}
   G.nextFirst=w;
   const rows=f.parts.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}점</td></tr>`).join('')+(f.go?`<tr><td>${f.go}고</td><td>+${f.go}점</td></tr>`:'')+
@@ -1080,7 +1094,7 @@ $('gPlayers').value=String(opt.players);$('gPlayers').onchange=e=>{opt.players=+
 $('gNew').onclick=()=>{if(GUEST())return;G&&(G.nagariNext=1);if(NETG){startOnline();return;}newGame();};
 $('gLabels').checked=PT.labels;$('gLabels').onchange=e=>{PT.setLabels(e.target.checked);LT.setLabels(e.target.checked);if(G)draw();renderLesson();};
 $('gSound').checked=SND.on;$('gSound').onchange=e=>{SND.on=e.target.checked;store.set('sound',SND.on);};
-$('gReset').onclick=()=>{money=100000;store.set('money',money);rec={};store.set('rec',rec);renderRec();if(G)renderPanel();};
+$('gReset').onclick=()=>{aiMoney=[0,100000,100000];store.set('aimoney',aiMoney);money=100000;store.set('money',money);rec={};store.set('rec',rec);renderRec();if(G)renderPanel();};
 addEventListener('resize',()=>{if(G)draw();renderLesson(true);});
 
 /* ---------- 배우기 ---------- */
