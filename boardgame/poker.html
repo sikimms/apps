@@ -203,6 +203,9 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .cvc{display:flex;flex-wrap:wrap;gap:4px}.cvc span{width:44px;display:block}.cvc svg{display:block;width:100%;height:auto;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,.3)}
 .cvs{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule);font-size:14px}
 
+.gcard .gf,.gcard .gb{overflow:hidden}
+.gpick button svg,.cvc svg{border-radius:6px}
+
 /* 섯다 · 도리짓고땡 */
 .stable{position:relative;width:100%;aspect-ratio:1/1.05;border-radius:50%/42%;overflow:visible;user-select:none;-webkit-user-select:none;
   background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.10),rgba(0,0,0,0) 55%),radial-gradient(ellipse at 50% 50%,#2c8053 0%,#1d5e3b 58%,#123a25 100%);
@@ -210,7 +213,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 @media (min-width:700px){.stable{aspect-ratio:1.35/1}}
 .seat{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;width:34%;z-index:5}
 .seat .scards{display:flex;gap:4px;justify-content:center;min-height:10px}
-.seat .card{width:42px;aspect-ratio:60/92;position:relative;perspective:500px}
+.seat .card{width:42px;aspect-ratio:60/97.5;position:relative;perspective:500px}
 .seat.me .card{width:62px}
 .seat.dori .card{width:31px}.seat.dori.me .card{width:54px}
 .card .ci{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .5s ease}
@@ -272,6 +275,9 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 /* 판 밖으로 나온 카드도 다 보이게: 판 위·아래에 여유 */
 .boardcol .stable{margin:18px 0 8px}
 .seat{max-width:46%}.seat.me{max-width:96%}
+
+.card .cf,.card .cb{overflow:hidden}
+.jokbo .jc svg{border-radius:3px}
 
 :root{--accent:#1e4fa3;--accent-soft:#dfe8f7}
 .card.reveal .ci{animation:sflip .55s ease both}@keyframes sflip{from{transform:rotateY(180deg)}to{transform:none}}
