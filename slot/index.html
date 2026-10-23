@@ -17,7 +17,7 @@
 :root[data-theme="light"]{--bg:#0b1020}
 *{box-sizing:border-box}
 body{margin:0;background:radial-gradient(ellipse at top,#1b2550,var(--bg) 70%);background-color:var(--bg);color:var(--ink);font-family:var(--f);line-height:1.5;min-height:100vh}
-.wrap{max-width:760px;margin:0 auto;padding:14px 16px 40px}
+.wrap{max-width:800px;padding-right:44px!important;margin:0 auto;padding:14px 16px 40px}
 header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 h1{margin:0;font:900 26px var(--fd);letter-spacing:1px;background:linear-gradient(#fff59d,#f9a825 60%,#c77800);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #5d3a00)}
 h1 small{display:block;font:500 12px var(--f);color:var(--muted);-webkit-text-fill-color:var(--muted);filter:none}
@@ -43,12 +43,38 @@ header .sp{flex:1}
 #reelarea{position:relative}
 #reels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .reel{height:calc(var(--cell)*3);overflow:hidden;border-radius:8px;background:var(--glass);position:relative;box-shadow:inset 0 0 0 3px #8be9d6,inset 0 8px 14px #0005,inset 0 -8px 14px #0005}
-.reel::before,.reel::after{content:"";position:absolute;left:0;right:0;height:3px;background:#2fd3b5;z-index:2;opacity:.9}
-.reel::before{top:var(--cell)}.reel::after{top:calc(var(--cell)*2)}
-.strip{will-change:transform}
-.cell{height:var(--cell);display:flex;align-items:center;justify-content:center;padding:6% 10%}
-.cell svg{width:100%;height:100%}
-.reel.blur .strip{filter:blur(1.6px)}
+.reel{perspective:calc(var(--cell)*9);background:#fbf8ef}
+.cyl{position:absolute;left:0;right:0;top:var(--cell);height:var(--cell);transform-style:preserve-3d;will-change:transform}
+.face{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:6% 10%;backface-visibility:hidden;background:linear-gradient(#fffdf6,#f3eedf);border-top:1px solid #e2dac4}
+.face svg{width:100%;height:100%;filter:drop-shadow(0 2px 1.5px #0004)}
+.reel.blur .cyl{filter:blur(1.8px) brightness(1.05)}
+.shade{position:absolute;inset:0;pointer-events:none;z-index:2;background:linear-gradient(#000d 0%,#0007 12%,#0000 30%,#0000 70%,#0007 88%,#000d 100%)}
+.shade::after{content:"";position:absolute;left:0;right:0;top:44%;height:12%;background:linear-gradient(#fff0,#ffffff14,#fff0)}
+.glass{position:absolute;inset:-6px;pointer-events:none;z-index:4;border-radius:10px;background:linear-gradient(115deg,#fff0 40%,#ffffff1c 46%,#fff0 52%),linear-gradient(115deg,#fff0 58%,#ffffff12 61%,#fff0 64%)}
+.cabinet{position:relative;padding:12px 12px 16px;border-radius:26px 26px 18px 18px;background:linear-gradient(90deg,#5a3a08,#c79a2c 8%,#fff1b0 14%,#b8861f 22%,#6e4a0c 50%,#b8861f 78%,#fff1b0 86%,#c79a2c 92%,#5a3a08);box-shadow:0 18px 40px #000a,inset 0 2px 0 #fff8,inset 0 -3px 0 #0008}
+.cabinet::before{content:"";position:absolute;inset:8px;border-radius:20px 20px 12px 12px;background:linear-gradient(#24124a,#120a2a 40%,#0b0718);box-shadow:inset 0 0 0 2px #00000080,inset 0 0 30px #000}
+.cabinet>*{position:relative}
+.marquee{height:74px;margin:0 0 10px;border-radius:16px;background:radial-gradient(ellipse at 50% 30%,#d21f3c,#7a0a1f 70%);box-shadow:inset 0 0 0 3px #ffcf4d,inset 0 0 18px #000a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mq{text-align:center;z-index:1}.mq span{display:block;font:900 30px var(--fd);letter-spacing:2px;background:linear-gradient(#fffde7,#ffd600 45%,#ff8f00);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #5d1a00) drop-shadow(0 0 10px #ffb300)}
+.mq small{font:800 10px var(--fd);letter-spacing:3px;color:#ffe0a0}
+.bulbs{position:absolute;inset:4px;border-radius:13px}
+.bulbs i{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#7a5a10;box-shadow:inset 0 0 2px #000}
+.bulbs i.on{background:radial-gradient(circle at 40% 35%,#fffbe0,#ffd54f 55%,#ff8f00);box-shadow:0 0 8px #ffcc33,0 0 2px #fff}
+.machine{background:linear-gradient(160deg,#1a1240,#0b0820)!important;border-color:#c9a23a!important;box-shadow:0 0 0 3px #3b2a05,inset 0 0 30px #000!important}
+.lever{position:absolute;right:-30px;top:120px;width:40px;height:230px;z-index:6;cursor:grab;touch-action:none}
+.lslot{position:absolute;left:12px;top:40px;width:16px;height:150px;border-radius:8px;background:linear-gradient(90deg,#222,#555,#222);box-shadow:inset 0 0 4px #000}
+.larm{position:absolute;left:16px;top:0;width:8px;height:120px;transform-origin:50% 115px;background:linear-gradient(90deg,#9e9e9e,#fafafa 45%,#757575);border-radius:4px;transition:transform .35s cubic-bezier(.3,1.6,.5,1)}
+.lknob{position:absolute;left:-14px;top:-30px;width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8a80,#d50000 55%,#7f0000);box-shadow:0 4px 8px #0008}
+.lhub{position:absolute;left:4px;top:104px;width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff1b0,#c79a2c 55%,#5a3a08);box-shadow:0 2px 6px #0009}
+.lever.pull .larm{transform:scaleY(-.62);transition:transform .22s ease-in}
+.tray{margin-top:12px;height:56px;border-radius:0 0 22px 22px;background:linear-gradient(#0a0710,#2a2140);box-shadow:inset 0 10px 14px #000,inset 0 0 0 2px #c9a23a;overflow:hidden;position:relative}
+.tlip{position:absolute;left:0;right:0;top:0;height:8px;background:linear-gradient(#fff1b0,#8a6514)}
+.tcoins{position:absolute;inset:8px 10px 4px}
+.tcoins i{position:absolute;bottom:0;width:20px;height:9px;border-radius:50%;background:radial-gradient(ellipse at 40% 35%,#fff59d,#f9a825 55%,#9a6400);box-shadow:0 1px 0 #5a3a00;animation:tc .5s ease-in both}
+@keyframes tc{from{transform:translateY(-60px)}70%{transform:translateY(2px)}to{transform:none}}
+.tlabel{position:absolute;right:14px;bottom:4px;font:800 9px var(--fd);letter-spacing:2px;color:#c9a23a88}
+.cabinet.party .marquee{animation:mqp .25s steps(2) 8}@keyframes mqp{50%{filter:brightness(1.6) saturate(1.3)}}
+@media (max-width:600px){.lever{right:-14px;top:150px;transform:scale(.8);transform-origin:top right}.mq span{font-size:24px}.marquee{height:62px}}
 #lines{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
 .wl{animation:wl .45s steps(2) infinite}@keyframes wl{50%{opacity:.25}}
 .hitcell{position:absolute;pointer-events:none;border:3px solid #ffd600;border-radius:8px;box-shadow:0 0 14px #ffd600,inset 0 0 14px #ffd60088;z-index:1;animation:wl .45s steps(2) infinite}
@@ -92,6 +118,7 @@ header .sp{flex:1}
 .dbtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 .dbtns .ab{min-width:96px}
 @media (max-width:600px){
+  .wrap{padding-right:24px!important}
   .machine{grid-template-columns:1fr;padding:8px}
   .side{flex-direction:row;flex-wrap:wrap;gap:6px}.bn{flex:1 1 30%;padding:3px}.bns svg{width:20px;height:16px}.bnh svg{width:16px;height:13px}.bn{font-size:9.5px}
   .minbet{flex-basis:100%}
@@ -107,17 +134,22 @@ header .sp{flex:1}
 <div class="wrap">
   <header><h1>황금별 슬롯<small>3릴 · 8줄 고전 슬롯머신 · 가짜 크레딧으로만 해요</small></h1><span class="sp"></span>
     <button class="ibtn" id="bPay">배당표</button><button class="ibtn" id="bSound" aria-label="소리">🔊</button></header>
+  <div class="cabinet" id="cabinet">
+  <div class="marquee"><div class="bulbs" id="bulbs"></div><div class="mq"><span>★ 황금별 ★</span><small>GOLDEN STAR · 8 LINES</small></div></div>
   <div class="machine">
     <div class="side" id="bonus"></div>
     <div class="stage" id="stage">
-      <div id="reelarea"><div id="reels"></div><svg id="lines"></svg></div>
+      <div id="reelarea"><div id="reels"></div><svg id="lines"></svg><div class="glass"></div></div>
     </div>
   </div>
+  <div class="lever" id="lever" aria-label="레버 당기기" role="button" tabindex="0"><div class="lslot"></div><div class="larm" id="larm"><div class="lknob"></div></div><div class="lhub"></div></div>
   <div class="meters"><div class="meter c"><small>CREDIT</small><b id="mCredit">0</b></div><div class="meter"><small>BET</small><b id="mBet">0</b></div><div class="meter w"><small>WIN</small><b id="mWin">0</b></div></div>
   <div class="buttons">
     <button class="ab y" id="bBet">BET +1</button><button class="ab b" id="bMax">MAX BET</button>
     <button class="ab r" id="bStart">START</button>
     <button class="ab g" id="bTake">TAKE</button><button class="ab p" id="bDouble">DOUBLE</button>
+  </div>
+  <div class="tray"><div class="tlip"></div><div class="tcoins" id="tray"></div><span class="tlabel">COIN TRAY</span></div>
   </div>
   <div class="msg" id="msg"></div>
   <div class="foot"><button class="ab k" id="bAuto" style="padding:8px 14px;font-size:13px">AUTO</button><button class="ibtn" id="bCoin">🪙 동전 넣기 (+100)</button><button class="ibtn" id="bReset">처음으로</button>
@@ -236,9 +268,19 @@ const SND={ctx:null,on:store.get('sound',true),
   c(){if(!this.on)return null;try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume();}catch(e){return null;}return this.ctx;},
   tone(f,d=.08,v=.15,type='square',when=0){const c=this.c();if(!c)return;const t=c.currentTime+when,o=c.createOscillator(),g=c.createGain();o.type=type;o.frequency.value=f;
     g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.02);},
-  bet(){this.tone(880,.05,.1);},stop(){this.tone(140,.12,.25,'triangle');this.tone(90,.1,.2,'sine');},
-  tick(){this.tone(1200+Math.random()*200,.03,.05);},coin(){this.tone(1568,.06,.1);this.tone(2093,.08,.08,'square',.05);},
-  win(big){const n=big?[523,659,784,1047,784,1047,1319]:[659,784,1047];n.forEach((f,i)=>this.tone(f,.14,.12,'square',i*.09));},
+  noise(d,f,q,v,when=0,type='bandpass'){const c=this.c();if(!c)return;const t=c.currentTime+when,n=Math.floor(c.sampleRate*d),b=c.createBuffer(1,n,c.sampleRate),x=b.getChannelData(0);
+    for(let i=0;i<n;i++)x[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);const s=c.createBufferSource();s.buffer=b;const fl=c.createBiquadFilter();fl.type=type;fl.frequency.value=f;fl.Q.value=q;
+    const g=c.createGain();g.gain.value=v;s.connect(fl);fl.connect(g);g.connect(c.destination);s.start(t);},
+  // 릴 도는 소리: 걸쇠가 '드르르' 걸리는 소리를 빠르게 반복
+  spinStart(){const c=this.c();if(!c||this.sp)return;this.sp=setInterval(()=>{this.noise(.025,2400+Math.random()*600,6,.10);},55);
+    const o=c.createOscillator(),gg=c.createGain();o.type='sawtooth';o.frequency.value=48;gg.gain.value=.03;const lp=c.createBiquadFilter();lp.type='lowpass';lp.frequency.value=220;o.connect(lp);lp.connect(gg);gg.connect(c.destination);o.start();this.hum={o,gg};},
+  spinEnd(){clearInterval(this.sp);this.sp=null;if(this.hum){const c=this.ctx;try{this.hum.gg.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+.15);this.hum.o.stop(c.currentTime+.2);}catch(e){}this.hum=null;}},
+  lever(){this.noise(.18,900,1.2,.35);this.tone(110,.18,.25,'triangle');this.noise(.08,3000,4,.15,.2);},
+  bet(){this.tone(1320,.04,.08);this.noise(.03,4000,5,.08);},
+  stop(){this.noise(.09,380,1.5,.5);this.tone(95,.12,.28,'sine');this.noise(.04,2600,6,.12,.02);},
+  bell(when=0){const c=this.c();if(!c)return;for(const [f,v] of [[1760,.12],[2637,.07],[3520,.05],[4400,.03]]){const t=c.currentTime+when,o=c.createOscillator(),gg=c.createGain();o.frequency.value=f;gg.gain.setValueAtTime(v,t);gg.gain.exponentialRampToValueAtTime(0.0001,t+1.1);o.connect(gg);gg.connect(c.destination);o.start(t);o.stop(t+1.2);}},
+  tick(){},coin(){const c=this.c();if(!c)return;const f=3100+Math.random()*900;for(const [m,v] of [[1,.08],[1.51,.05],[2.3,.03]]){const t=c.currentTime,o=c.createOscillator(),gg=c.createGain();o.frequency.value=f*m;gg.gain.setValueAtTime(v,t);gg.gain.exponentialRampToValueAtTime(0.0001,t+.18);o.connect(gg);gg.connect(c.destination);o.start(t);o.stop(t+.2);}this.noise(.02,6000,3,.05);},
+  win(big){const n=big?[523,659,784,1047,784,1047,1319]:[659,784,1047];n.forEach((f,i)=>this.tone(f,.14,.1,'square',i*.09));for(let k=0;k<(big?6:2);k++)this.bell(.15+k*.32);},
   lose(){this.tone(220,.18,.12,'sawtooth');this.tone(165,.25,.1,'sawtooth',.15);}};
 
 /* ---------- 상태 ---------- */
@@ -253,9 +295,10 @@ function save(){store.set('credit',credit);store.set('bets',bets);store.set('cou
 const REEL=SL.REELS.map((R,c)=>({el:null,strip:null,p:R.length*2-1,n:R.length,spinning:false,stopAt:null,anim:null}));
 function buildReels(){
   const box=$('reels');box.innerHTML='';
-  REEL.forEach((r,c)=>{const w=document.createElement('div');w.className='reel';const s=document.createElement('div');s.className='strip';
-    const R=SL.REELS[c];let h='';for(let k=0;k<3;k++)for(const sym of R)h+=`<div class="cell">${ART.sym(sym)}</div>`;s.innerHTML=h;
-    w.appendChild(s);box.appendChild(w);r.el=w;r.strip=s;r.p=((stops[c]-1)%r.n+r.n)%r.n+r.n;});
+  // 릴마다 그림을 원통 둘레에 붙임 (돌면 진짜 릴처럼 위아래가 휘어 보임)
+  REEL.forEach((r,c)=>{const w=document.createElement('div');w.className='reel';const s=document.createElement('div');s.className='cyl';
+    const R=SL.REELS[c];s.innerHTML=R.map(sym=>`<div class="face">${ART.sym(sym)}</div>`).join('');
+    w.appendChild(s);const sh=document.createElement('div');sh.className='shade';w.appendChild(sh);box.appendChild(w);r.el=w;r.strip=s;r.p=((stops[c]-1)%r.n+r.n)%r.n+r.n;});
   layout();
 }
 let cellH=80;
@@ -271,13 +314,15 @@ function placeLabels(){
   [...st.querySelectorAll('.lbl')].forEach((d,i)=>{d.style.left=spots[i][1]+'px';d.style.top=spots[i][2]+'px';});
   renderBets();
 }
-function drawReel(r){const off=((r.p%r.n)+r.n)%r.n+r.n;r.strip.style.transform=`translateY(${-off*cellH}px)`;r.el.classList.toggle('blur',r.spinning&&!r.anim);}
+function drawReel(r){const a=360/r.n,rad=cellH/2/Math.tan(Math.PI/r.n);
+  if(r.rad!==rad){r.rad=rad;[...r.strip.children].forEach((f,i)=>f.style.transform=`rotateX(${-i*a}deg) translateZ(${rad}px)`);}
+  r.strip.style.transform=`translateZ(${-rad}px) rotateX(${(r.p+1)*a}deg)`;r.el.classList.toggle('blur',r.spinning&&!r.anim);}
 // 돌리기: 위에서 아래로 내려오듯 p를 줄인다
 let raf=null,lastT=0;
 function loop(t){const dt=Math.min(50,t-(lastT||t))/1000;lastT=t;let any=false;
   for(const r of REEL){if(!r.spinning)continue;any=true;
     if(r.anim){const a=r.anim,k=Math.min(1,(t-a.t0)/a.dur),e=k<1?1-Math.pow(1-k,3)*(1-2.2*k*(1-k)):1;r.p=a.from+(a.to-a.from)*e;
-      if(k>=1){r.p=a.to;r.spinning=false;r.anim=null;SND.stop();a.done&&a.done();}}
+      if(k>=1){r.p=a.to;r.spinning=false;r.anim=null;SND.stop();if(!REEL.some(x=>x.spinning&&x!==r))SND.spinEnd();a.done&&a.done();}}
     else{r.p-=22*dt;if(r.stopAt!=null&&performance.now()>=r.stopAt)beginStop(r);}
     drawReel(r);}
   raf=any?requestAnimationFrame(loop):null;if(!any)lastT=0;}
@@ -333,9 +378,8 @@ async function start(){
   save();renderAll();
   const t0=performance.now();let left=3;const allStopped=new Promise(res=>{REEL.forEach((r,c)=>{r.spinning=true;r.anim=null;r.stopAt=t0+900+c*420;r.onStop=()=>{if(--left===0)res();};});});
   if(!raf){lastT=0;raf=requestAnimationFrame(loop);}
-  // 돌아가는 소리
-  const ti=setInterval(()=>{if(REEL.some(r=>r.spinning))SND.tick();},70);
-  await allStopped;clearInterval(ti);
+  SND.spinStart();
+  await allStopped;SND.spinEnd();
   await settle(g,res,tb);
 }
 async function settle(g,res,tb){
@@ -356,8 +400,29 @@ async function settle(g,res,tb){
   busy=false;save();renderAll();
   if(auto){if(win>0){await sleep(700);take();}await sleep(500);if(auto)start();}
 }
-function take(){if(!win||busy)return;credit+=win;stat.won+=win;msg(`${win} 크레딧을 받았어요.`);win=0;lastWins=[];drawLines();save();renderAll();SND.coin();}
-function bigWin(t){const b=$('big');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');
+function take(){if(!win||busy)return;const n=win;credit+=win;stat.won+=win;msg(`${win} 크레딧을 받았어요.`);win=0;lastWins=[];drawLines();save();renderAll();dropCoins(n);}
+// 동전받이: 받은 크레딧만큼 동전이 떨어져 쌓임 (많으면 줄여서)
+let trayN=0;
+function dropCoins(n){const tray=$('tray'),k=Math.min(30,Math.max(1,Math.round(Math.sqrt(n)*2)));
+  for(let i=0;i<k;i++)setTimeout(()=>{const c=document.createElement('i');const w=tray.clientWidth||300;
+    c.style.left=(Math.random()*(w-20))+'px';c.style.bottom=(Math.min(30,Math.floor(trayN/14)*3)+Math.random()*3)+'px';tray.appendChild(c);trayN++;SND.coin();
+    if(tray.children.length>90)tray.firstElementChild.remove();},i*55);}
+function clearTray(){$('tray').innerHTML='';trayN=0;}
+// 간판 전구: 둘레를 따라 불이 돌아감
+const BULBS=[];
+function buildBulbs(){const b=$('bulbs');b.innerHTML='';BULBS.length=0;const W=b.clientWidth,H=b.clientHeight;if(!W)return;const per=Math.round((W+H)*2/22);
+  for(let i=0;i<per;i++){const t=i/per*(2*W+2*H);let x,y;if(t<W){x=t;y=0;}else if(t<W+H){x=W;y=t-W;}else if(t<2*W+H){x=2*W+H-t;y=H;}else{x=0;y=2*W+2*H-t;}
+    const e=document.createElement('i');e.style.left=x+'px';e.style.top=y+'px';b.appendChild(e);BULBS.push(e);}}
+let bulbT=0,party=0;
+setInterval(()=>{bulbT++;const n=BULBS.length;BULBS.forEach((e,i)=>e.classList.toggle('on',party>0?((i+bulbT)%2===0):busy?((i+bulbT)%4===0):((i+Math.floor(bulbT/2))%6<3)));if(party>0)party--;},busy?90:140);
+// 레버: 누르거나 아래로 끌면 당겨지고 돌기 시작
+function pullLever(){if(busy){stopNext();return;}const L=$('lever');if(L.classList.contains('pull'))return;L.classList.add('pull');SND.lever();
+  setTimeout(()=>{L.classList.remove('pull');start();},260);}
+(()=>{const L=$('lever');let y0=null;
+  L.addEventListener('pointerdown',e=>{y0=e.clientY;try{L.setPointerCapture(e.pointerId);}catch(_){}});
+  L.addEventListener('pointerup',e=>{if(y0!=null){y0=null;pullLever();}});
+  L.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pullLever();}});})();
+function bigWin(t){party=24;$('cabinet').classList.remove('party');void $('cabinet').offsetWidth;$('cabinet').classList.add('party');const b=$('big');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');
   const box=$('coins');for(let i=0;i<26;i++){const c=document.createElement('i');c.style.left=(Math.random()*100)+'%';c.style.animationDelay=(Math.random()*.6)+'s';c.style.setProperty('--x',((Math.random()-.5)*120)+'px');box.appendChild(c);setTimeout(()=>c.remove(),2200);}}
 
 /* ---------- 더블 업: 카드 숫자가 빅(8~13)일까 스몰(1~6)일까. 7이 나오면 무승부 ---------- */
@@ -393,7 +458,7 @@ $('bAuto').onclick=()=>{auto=!auto;renderMeters();if(auto&&!busy){if(win>0)take(
 document.querySelectorAll('[data-line]').forEach(el=>el.onclick=()=>lineClick(el.dataset.line));
 $('dBig').onclick=()=>playDouble('big');$('dSmall').onclick=()=>playDouble('small');
 $('dTake').onclick=()=>{$('dbl').hidden=true;take();};
-$('bCoin').onclick=()=>{credit+=100;stat.coins+=100;SND.coin();save();renderAll();msg('동전을 넣었어요. <b>+100 크레딧</b> (가짜 크레딧이에요)');};
+$('bCoin').onclick=()=>{dropCoins(25);credit+=100;stat.coins+=100;SND.coin();save();renderAll();msg('동전을 넣었어요. <b>+100 크레딧</b> (가짜 크레딧이에요)');};
 $('bPay').onclick=()=>{renderPay();$('pay').hidden=false;};$('payClose').onclick=()=>$('pay').hidden=true;
 $('pay').onclick=e=>{if(e.target.id==='pay')$('pay').hidden=true;};
 $('bSound').onclick=()=>{SND.on=!SND.on;store.set('sound',SND.on);$('bSound').textContent=SND.on?'🔊':'🔇';};$('bSound').textContent=SND.on?'🔊':'🔇';
@@ -401,8 +466,8 @@ $('bReset').onclick=()=>{if(!confirm('크레딧과 기록을 처음으로 돌릴
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
   if(e.code==='Space'||e.key==='Enter'){e.preventDefault();if(!$('dbl').hidden)return;start();}
   else if(e.key==='b'||e.key==='B')pushBet();else if(e.key==='m'||e.key==='M')maxBet();else if(e.key==='t'||e.key==='T')take();else if(e.key==='d'||e.key==='D')openDouble();});
-addEventListener('resize',layout);
-buildReels();renderAll();msg('줄을 정하고 <b>START</b>(스페이스)를 누르세요. 돌아가는 동안 <b>STOP</b>을 누르면 릴이 하나씩 멈춰요.');
+addEventListener('resize',()=>{layout();buildBulbs();});
+buildReels();buildBulbs();renderAll();msg('줄을 정하고 <b>START</b>(스페이스)를 누르세요. 돌아가는 동안 <b>STOP</b>을 누르면 릴이 하나씩 멈춰요.');
 
 </script>
 
