@@ -125,6 +125,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .netin{width:9em;font:600 16px var(--f-body);padding:7px 10px;border:1px solid var(--rule);border-radius:8px;letter-spacing:3px;text-align:center;background:var(--surface);color:var(--ink)}
 .netcode{font-size:14px;margin:6px 0}.netcode b{font:900 28px var(--f-display);letter-spacing:6px;color:var(--accent);margin-left:6px}
 .netmsg{font-size:13px;margin-top:8px;color:var(--muted)}.netmsg.ok{color:var(--ok)}.netmsg.bad{color:var(--danger)}
+.nrlist{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.nrp{font-size:13px;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--rule)}.nrp.me{border-color:var(--accent);color:var(--accent);font-weight:700}
 
 /* 고스톱 전용 */
 :root{--frame:#3b2414;--accent:#b3261e;--accent-soft:#f6dedb}
@@ -237,7 +238,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
     <div class="panel">
       <div class="gscore" id="gscore"></div>
       <div id="gmsg" class="fb info"></div>
-      <div class="row"><button class="btn primary" id="gNew">새 판</button></div>
+      <div class="row"><button class="btn primary" id="gNew">새 판</button></div><div id="netroom"></div>
       <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
       <div class="levels" id="glevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="sub" id="grec"></div>
@@ -624,6 +625,107 @@ const cache={};
 return{face:(id,o)=>{const k=id+(o&&o.labels===false?'n':'');return cache[k]||(cache[k]=face(id,o));},back:()=>cache.b||(cache.b=back()),W,H};
 })();
 
+/* ===== 온라인 방 (2~5명): 방 코드로 여러 기기를 연결 (PeerJS, WebRTC) =====
+   방장 기기가 판을 진행(딜러)하고, 친구 기기에는 각자 볼 수 있는 것만 보낸다.
+   친구는 행동(낼 패, 베팅 등)만 방장에게 보낸다.
+   roomMount(el,{game,max,start,msg,leave,off,showPlay}) 로 화면에 붙인다. */
+const ROOM={peer:null,host:false,ok:false,on:false,code:'',cfg:null,guests:[],conn:null,seq:0,
+  say(h,kind){const el=document.getElementById('nrMsg');if(el){el.innerHTML=h;el.className='netmsg '+(kind||'');}}};
+const ROOM_PREFIX='sikimms-bgr-';
+function roomLoad(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');
+  s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej(new Error('load'));document.head.appendChild(s);});}
+// 방장 → 친구 gi (1부터)
+function roomSend(gi,d){const g=ROOM.guests.find(x=>x.gi===gi);if(g&&g.open)try{g.conn.send(d);}catch(e){}}
+function roomEach(fn){for(const g of ROOM.guests)if(g.open){const d=fn(g.gi);if(d)try{g.conn.send(d);}catch(e){}}}
+// 친구 → 방장
+function roomToHost(d){if(ROOM.conn&&ROOM.ok)try{ROOM.conn.send(d);}catch(e){}}
+const roomGuests=()=>ROOM.guests.filter(g=>g.open).map(g=>g.gi);
+function roomReset(){
+  try{ROOM.conn&&ROOM.conn.close();}catch(e){}for(const g of ROOM.guests)try{g.conn.close();}catch(e){}
+  try{ROOM.peer&&ROOM.peer.destroy();}catch(e){}
+  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';roomUI();}
+function roomUI(){
+  const $$=id=>document.getElementById(id);if(!$$('nrBox'))return;
+  $$('nrOff').hidden=ROOM.on;$$('nrBox').hidden=!ROOM.on;
+  $$('nrIdle').hidden=!!ROOM.peer;$$('nrLive').hidden=!ROOM.peer;
+  $$('nrCode').textContent=ROOM.code?ROOM.code.split('').join(' '):'';
+  const gs=roomGuests();
+  $$('nrShare').hidden=!ROOM.host||gs.length>=ROOM.cfg.max;
+  $$('nrStart').hidden=!ROOM.host||!gs.length;
+  $$('nrList').innerHTML=ROOM.peer?(ROOM.host?`<span class="nrp me">방장 (나)</span>`+gs.map(gi=>`<span class="nrp">친구 ${gi}</span>`).join('')
+    :(ROOM.ok?`<span class="nrp">방장</span><span class="nrp me">나</span>`:'')):'';
+}
+function roomHost(){
+  const cfg=ROOM.cfg;
+  roomLoad().then(()=>{
+    roomReset();ROOM.host=true;ROOM.seq=0;
+    const tryOpen=left=>{ROOM.code=String(1000+Math.floor(Math.random()*9000));
+      ROOM.peer=new Peer(ROOM_PREFIX+cfg.game+'-'+ROOM.code);
+      ROOM.peer.on('open',()=>{roomUI();ROOM.say(`방을 만들었어요. 친구에게 <b>방 코드 ${ROOM.code}</b>를 알려 주거나 초대 링크를 보내세요. 친구가 들어오면 <b>판 시작</b>을 누르세요.`);});
+      ROOM.peer.on('connection',c=>{
+        if(roomGuests().length>=cfg.max){c.on('open',()=>{try{c.send({t:'full'});}catch(e){}setTimeout(()=>c.close(),300);});return;}
+        const g={gi:0,conn:c,open:false};
+        c.on('open',()=>{const used=new Set(roomGuests());let gi=1;while(used.has(gi))gi++;g.gi=gi;g.open=true;ROOM.guests.push(g);
+          try{c.send({t:'welcome',gi});}catch(e){}
+          ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();cfg.join&&cfg.join(gi);});
+        c.on('data',d=>{if(g.open&&d&&d.t)cfg.msg(g.gi,d);});
+        c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();cfg.leave&&cfg.leave(g.gi);});
+        c.on('error',()=>{});});
+      ROOM.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){ROOM.peer.destroy();tryOpen(left-1);return;}
+        if(e.type==='peer-unavailable')return;
+        ROOM.say(e.type==='network'||e.type==='server-error'?'연결 서버에 닿지 못했어요. 회사망처럼 막힌 곳에서는 안 될 수 있어요.':'방을 만들지 못했어요 ('+e.type+')','bad');});};
+    tryOpen(3);roomUI();
+  }).catch(()=>ROOM.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad'));
+}
+function roomJoin(code){
+  const cfg=ROOM.cfg;code=String(code||'').replace(/\D/g,'');
+  if(code.length!==4){ROOM.say('방 코드 4자리를 넣어 주세요.','bad');return;}
+  roomLoad().then(()=>{
+    roomReset();ROOM.host=false;ROOM.code=code;
+    ROOM.peer=new Peer();
+    ROOM.peer.on('open',()=>{ROOM.say(`방 ${code}에 들어가는 중…`);
+      const c=ROOM.peer.connect(ROOM_PREFIX+cfg.game+'-'+code,{reliable:true});ROOM.conn=c;
+      c.on('open',()=>{ROOM.ok=true;roomUI();ROOM.say('연결됐어요. 방장이 판을 시작하면 자동으로 시작돼요.','ok');});
+      c.on('data',d=>{if(!d||!d.t)return;if(d.t==='full'){ROOM.say('방이 꽉 찼어요.','bad');return;}if(d.t==='welcome'){ROOM.gi=d.gi;roomUI();return;}cfg.msg(0,d);});
+      c.on('close',()=>{if(!ROOM.ok)return;ROOM.ok=false;ROOM.say('방장과 연결이 끊겼어요. 다시 들어가 주세요.','bad');roomUI();cfg.leave&&cfg.leave(0);});
+      c.on('error',()=>{});
+      setTimeout(()=>{if(!ROOM.ok&&ROOM.code===code)ROOM.say('방을 찾지 못했어요. 코드를 다시 확인해 주세요. (방장이 방을 만든 상태여야 해요)','bad');},9000);});
+    ROOM.peer.on('error',e=>{ROOM.say(e.type==='peer-unavailable'?'그 코드의 방이 없어요. 코드를 다시 확인해 주세요.':'연결하지 못했어요 ('+e.type+'). 회사망처럼 막힌 곳에서는 안 될 수 있어요.','bad');});
+    roomUI();
+  }).catch(()=>ROOM.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad'));
+}
+// 친구가 방에 있는 동안: 방장 쪽에서는 친구가 둘 차례를 기다리는 중인지 등은 게임이 알아서 처리
+const roomGuest=()=>ROOM.on&&!ROOM.host&&ROOM.ok;     // 나는 친구(손님) 기기
+const roomHosting=()=>ROOM.on&&ROOM.host&&!!ROOM.peer; // 나는 방장 기기
+function roomMount(el,cfg){
+  if(!el)return;ROOM.cfg=cfg;
+  el.innerHTML=`<button class="btn" id="nrOff" style="margin-top:12px">🌐 온라인으로 친구와 하기</button>
+    <div id="nrBox" class="netbox" hidden>
+      <div class="eyebrow">온라인 방 <button class="linkbtn" id="nrQuit" style="float:right">혼자 하기로 돌아가기</button></div>
+      <div id="nrIdle"><div class="row" style="margin-top:6px"><button class="btn primary" id="nrHost">방 만들기</button>
+        <input id="nrIn" class="netin" inputmode="numeric" maxlength="4" placeholder="방 코드 4자리" aria-label="방 코드"><button class="btn" id="nrJoin">들어가기</button></div></div>
+      <div id="nrLive" hidden><div class="netcode">방 코드 <b id="nrCode"></b></div><div class="nrlist" id="nrList"></div>
+        <div class="row"><button class="btn primary" id="nrStart">판 시작</button><button class="btn" id="nrShare">초대 링크 보내기</button><button class="btn" id="nrLeave">나가기</button></div></div>
+      <div id="nrMsg" class="netmsg">같은 앱을 쓰는 친구${cfg.max>1?` (최대 ${cfg.max}명)`:''}와 인터넷으로 할 수 있어요. 방장 기기가 카드를 섞고 나눠요. 빈자리는 컴퓨터가 채워요.</div>
+    </div>`;
+  const $$=id=>document.getElementById(id);
+  $$('nrOff').onclick=()=>{ROOM.on=true;roomUI();};
+  $$('nrQuit').onclick=()=>{roomReset();ROOM.on=false;roomUI();cfg.off&&cfg.off();};
+  $$('nrHost').onclick=roomHost;
+  $$('nrJoin').onclick=()=>roomJoin($$('nrIn').value);
+  $$('nrIn').addEventListener('keydown',e=>{if(e.key==='Enter')roomJoin($$('nrIn').value);});
+  $$('nrLeave').onclick=()=>{roomReset();ROOM.say('방에서 나왔어요.');roomUI();cfg.off&&cfg.off();};
+  $$('nrStart').onclick=()=>{if(roomGuests().length)cfg.start();};
+  $$('nrShare').onclick=async()=>{const url=location.href.split('#')[0]+'#join='+ROOM.code,text=`${document.title} 같이 해요! 방 코드 ${ROOM.code}`;
+    try{if(navigator.share){await navigator.share({title:document.title,text,url});return;}}catch(e){}
+    try{await navigator.clipboard.writeText(text+' '+url);ROOM.say('초대 링크를 복사했어요. 메신저에 붙여 넣어 보내세요.','ok');}catch(e){ROOM.say(`초대 링크: ${url}`);}};
+  roomUI();
+  const m=location.hash.match(/join=(\d{4})/);
+  if(m)setTimeout(()=>{cfg.showPlay&&cfg.showPlay();ROOM.on=true;$$('nrIn').value=m[1];roomUI();roomJoin(m[1]);},300);
+}
+// 받은 메시지를 차례로 처리 (연출이 끝난 뒤 다음 메시지)
+function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>console.error(e));};}
+
 /* ===== 고스톱 화면: 판 그리기 · 실전 · 배우기 ===== */
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem('gostop-'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}},
@@ -763,32 +865,68 @@ async function animateTurn(T,s,mv,pick,o){
 const CNAME=['나','컴퓨터 1','컴퓨터 2'];
 const opt={players:store.get('players',2),level:store.get('level',1)};
 let money=store.get('money',100000),rec=store.get('rec',{}),G=null;
+/* 온라인: ME = 내 자리. 방장 기기는 NETG.seats[q] = 0(방장) / 친구 번호 / -1(컴퓨터).
+   친구 기기는 방장이 보내 준 판(남의 손패·더미는 가려짐)으로 화면만 그린다. */
+let ME=0,NETG=null;
+const GUEST=()=>!!(NETG&&NETG.guest);
+const remote=q=>!!(NETG&&!NETG.guest&&NETG.seats[q]>0);
+const isAI=q=>NETG?NETG.names[q].ai:q!==ME;
+const who=q=>q===ME?'나':NETG?NETG.names[q].n:CNAME[q];
 const PT=makeTable($('gtable'));
 const AVC=['#ffb74d','#64b5f6','#81c784'];
 const avatar=q=>`<svg viewBox="0 0 32 32" class="gav"><circle cx="16" cy="16" r="15" fill="${AVC[q]}" stroke="#fff" stroke-width="2"/><circle cx="16" cy="13" r="5.5" fill="#fff3e0"/><path d="M6 27 C8 20 24 20 26 27" fill="#fff3e0"/><circle cx="14" cy="12.5" r=".9" fill="#333"/><circle cx="18" cy="12.5" r=".9" fill="#333"/><path d="M14 15.5 Q16 17 18 15.5" stroke="#c0392b" stroke-width="1" fill="none"/></svg>`;
-const nameOf=q=>{const sc=GS.scoreOf(G.s.caps[q]);return `${avatar(q)}<span class="gpn"><b>${q===0?'나':CNAME[q]}</b><small>${q===0?won(money):GS.LEVELS[opt.level].name}</small></span><span class="gpt">${sc.total}<small>점</small></span>${G.s.go[q]?`<span class="gtag go">${G.s.go[q]}고</span>`:''}${G.s.mult[q]>1?`<span class="gtag mul">×${G.s.mult[q]}</span>`:''}`;};
-const ro=()=>({nameOf,canPlay:G&&!G.busy&&!G.s.over&&G.s.turn===0,sel:G&&G.sel,hl:G&&G.hl||[],reveal:G&&G.s.over});
+const nameOf=q=>{const sc=GS.scoreOf(G.s.caps[q]);return `${avatar(q)}<span class="gpn"><b>${who(q)}</b><small>${q===ME?won(money):isAI(q)?GS.LEVELS[opt.level].name:'온라인'}</small></span><span class="gpt">${sc.total}<small>점</small></span>${G.s.go[q]?`<span class="gtag go">${G.s.go[q]}고</span>`:''}${G.s.mult[q]>1?`<span class="gtag mul">×${G.s.mult[q]}</span>`:''}`;};
+const ro=()=>({nameOf,viewer:ME,canPlay:G&&!G.busy&&!G.s.over&&G.s.turn===ME,sel:G&&G.sel,hl:G&&G.hl||[],reveal:G&&G.s.over});
 function draw(){PT.render(G.s,ro());renderPanel();}
+/* ---------- 온라인: 가리기 · 채우기 ---------- */
+function maskFor(s,v){const t=GS.clone(s);if(t.over)return t;for(let q=0;q<t.n;q++)if(q!==v)t.hands[q]=t.hands[q].map(()=>-1);t.deck=t.deck.map(()=>-1);return t;}
+// 가려진 패(-1)에 아직 안 보인 카드 번호를 채움 (앞 판 자리를 되도록 유지해서 카드가 이리저리 날지 않게)
+function unmask(t,prev){
+  const known=new Set();t.hands.forEach(h=>h.forEach(id=>id>=0&&known.add(id)));t.floor.forEach(id=>known.add(id));t.caps.forEach(c=>c.forEach(id=>known.add(id)));
+  const pool=new Set([...Array(48).keys()].filter(id=>!known.has(id)));
+  const fill=(arr,pref)=>arr.map(id=>{pref=pref||[];if(id>=0)return id;const p=pref.find(x=>pool.has(x));const v=p!=null?p:pool.values().next().value;pool.delete(v);return v;});
+  for(let q=0;q<t.n;q++)t.hands[q]=fill(t.hands[q],prev&&prev.hands[q]);t.deck=fill(t.deck,prev&&prev.deck);return t;
+}
+// 받은 정보에 맞게 가짜 자리를 진짜 패로 바꿈 (낸 패는 그 사람 손에, 뒤집을 패는 더미 맨 위에)
+function fixFor(t,p,show,top){
+  const where=id=>{for(let q=0;q<t.n;q++){const i=t.hands[q].indexOf(id);if(i>=0)return[t.hands[q],i];}const i=t.deck.indexOf(id);return i>=0?[t.deck,i]:null;};
+  for(const id of show){if(t.hands[p].includes(id))continue;const w=where(id),i=t.hands[p].findIndex(x=>!show.includes(x));if(!w||i<0)continue;const tmp=t.hands[p][i];t.hands[p][i]=id;w[0][w[1]]=tmp;}
+  if(top!=null&&t.deck.length&&t.deck[0]!==top){const w=where(top);if(w){w[0][w[1]]=t.deck[0];t.deck[0]=top;}}
+}
+function netSync(){if(NETG&&!NETG.guest)roomEach(gi=>({t:'sync',st:maskFor(G.s,NETG.seats.indexOf(gi)),nag:G.nagariNext}));}
+let pendAsk=null;   // 방장: 친구의 대답 기다리는 중
+function netAsk(p,d,def){return new Promise(res=>{const gi=NETG.seats[p];pendAsk={gi,res,def};roomSend(gi,d);});}
+function startOnline(){
+  const gs=roomGuests();if(!gs.length)return;
+  if(gs.length>=2&&opt.players<3){opt.players=3;$('gPlayers').value='3';}
+  const n=opt.players,seats=[0];for(let q=1;q<n;q++)seats.push(gs[q-1]!=null?gs[q-1]:-1);
+  let ai=0;NETG={seats,names:seats.map((g,q)=>q===0?{n:'방장',ai:false}:g>0?{n:'친구 '+g,ai:false}:{n:'컴퓨터'+(n>2?' '+(++ai):''),ai:true})};
+  ME=0;G=null;newGame();
+}
+function stopOnline(){NETG=null;ME=0;if(pendAsk){pendAsk.res(pendAsk.def);pendAsk=null;}$('gNew').disabled=false;$('gPlayers').disabled=false;G=null;if(!$('play').hidden)newGame();}
 function newGame(keepFirst){
+  if(GUEST())return;
   const first=G&&keepFirst&&G.nextFirst!=null?G.nextFirst:0,nag=G&&G.nagariNext||1;
   PT.reset();PT.closeOverlay();
   G={s:GS.newRound({players:opt.players,first,nagari:nag}),busy:false,sel:null,hl:[],gen:(G?G.gen:0)+1,nagariNext:1,nextFirst:null};
+  if(NETG){NETG.names=NETG.names.slice(0,G.s.n);roomEach(gi=>({t:'deal',seat:NETG.seats.indexOf(gi),names:NETG.names,level:opt.level,nag,st:maskFor(G.s,NETG.seats.indexOf(gi))}));}
   msg(nag>1?`나가리 다음 판이라 점수가 <b>×${nag}</b>예요. `+turnMsg():turnMsg());
   G.busy=true;const gen=G.gen,wait=PT.deal(G.s,ro());renderPanel();SND.slap(0.5);
   setTimeout(()=>{if(gen!==G.gen)return;G.busy=false;draw();
     if(G.s.over){showResult();return;}
-    if(G.s.turn!==0)aiTurn();},wait);
+    nextTurn();},wait);
 }
-function turnMsg(){const s=G.s;return s.turn===0?`<b>내 차례</b>예요. 손패를 누르면 내요. 금색 테두리 패는 바닥 패를 먹을 수 있어요.${s.bombPass[0]?` 폭탄으로 받은 <b>넘기기</b> 카드를 누르면 패를 안 내고 더미만 뒤집어요 (${s.bombPass[0]}번 남음).`:''}`:`${CNAME[s.turn]} 차례예요`;}
+function nextTurn(){const s=G.s;if(s.turn===ME||remote(s.turn))msg(turnMsg());else aiTurn();}
+function turnMsg(){const s=G.s;return s.turn===ME?`<b>내 차례</b>예요. 손패를 누르면 내요. 금색 테두리 패는 바닥 패를 먹을 수 있어요.${s.bombPass[ME]?` 폭탄으로 받은 <b>넘기기</b> 카드를 누르면 패를 안 내고 더미만 뒤집어요 (${s.bombPass[ME]}번 남음).`:''}`:`${who(s.turn)} 차례예요`;}
 function msg(h,kind){$('gmsg').className='fb '+(kind||'info');$('gmsg').innerHTML=h;}
 function renderPanel(){
   const s=G.s;
   $('gscore').innerHTML=[...Array(s.n).keys()].map(q=>{const sc=GS.scoreOf(s.caps[q]);
-    return `<div class="gsc${s.turn===q&&!s.over?' cur':''}"><span class="gp">${sc.total}점</span><div class="gn">${q===0?'나':CNAME[q]+` (${GS.LEVELS[opt.level].name})`}${s.go[q]?` · ${s.go[q]}고`:''}${s.mult[q]>1?` · ×${s.mult[q]}`:''}</div>
+    return `<div class="gsc${s.turn===q&&!s.over?' cur':''}"><span class="gp">${sc.total}점</span><div class="gn">${who(q)}${q!==ME&&isAI(q)?` (${GS.LEVELS[opt.level].name})`:''}${s.go[q]?` · ${s.go[q]}고`:''}${s.mult[q]>1?` · ×${s.mult[q]}`:''}</div>
       <div class="gd">광 ${sc.gwang} · 열끗 ${sc.yeol} · 띠 ${sc.tti} · 피 ${sc.pi}${sc.parts.length?' · '+sc.parts.map(x=>x[0]+' '+x[1]+'점').join(', '):''}</div></div>`;}).join('');
-  $('gmoney').textContent=`내 돈 ${won(money)} (가짜 돈) · ${s.need}점부터 고/스톱 · 1점 ${POINT}원`;
-  $('flipOnly').hidden=!(s.turn===0&&!s.over&&!G.busy&&s.bombPass[0]>0);
-  $('flipOnly').textContent=`뒤집기만 하기 (${s.bombPass[0]}번 남음)`;
+  $('gmoney').textContent=`내 돈 ${won(money)} (가짜 돈) · ${s.need}점부터 고/스톱 · 1점 ${POINT}원${NETG?' · 온라인':''}`;
+  $('flipOnly').hidden=!(s.turn===ME&&!s.over&&!G.busy&&s.bombPass[ME]>0);
+  $('flipOnly').textContent=`뒤집기만 하기 (${s.bombPass[ME]}번 남음)`;
 }
 // 내 손패 누르기
 function showCaps(T,s,q,who){
@@ -801,92 +939,147 @@ function showCaps(T,s,q,who){
   o.querySelector('.gbox').classList.add('wide');
   o.onclick=ev=>{if(ev.target.id==='cvClose'||ev.target===o){T.closeOverlay();o.onclick=null;}};
 }
+const myTurn=()=>G&&!G.busy&&!G.s.over&&G.s.turn===ME;
 PT.el.addEventListener('click',async e=>{
-  {const c0=e.target.closest('.gcard');if(c0&&G){const id0=+c0.dataset.id,q=G.s.caps.findIndex(c=>c.includes(id0));if(q>=0){showCaps(PT,G.s,q,q===0?'내':CNAME[q]);return;}}}
-  if(e.target.closest('.gpass')){if(G&&!G.busy&&!G.s.over&&G.s.turn===0&&G.s.bombPass[0]>0)humanMove({flipOnly:true});return;}
-  const c=e.target.closest('.gcard');if(!c||!G||G.busy||G.s.over||G.s.turn!==0)return;const id=+c.dataset.id;
-  if(!G.s.hands[0].includes(id))return;
-  const ms=GS.moves(G.s,0),m=monthOf(id),bomb=ms.find(x=>x.bomb&&monthOf(x.card)===m),plain=ms.find(x=>x.card===id&&!x.bomb);
+  {const c0=e.target.closest('.gcard');if(c0&&G){const id0=+c0.dataset.id,q=G.s.caps.findIndex(c=>c.includes(id0));if(q>=0){showCaps(PT,G.s,q,q===ME?'내':who(q));return;}}}
+  if(e.target.closest('.gpass')){if(myTurn()&&G.s.bombPass[ME]>0)humanMove({flipOnly:true});return;}
+  const c=e.target.closest('.gcard');if(!c||!myTurn())return;const id=+c.dataset.id;
+  if(!G.s.hands[ME].includes(id))return;
+  const ms=GS.moves(G.s,ME),m=monthOf(id),bomb=ms.find(x=>x.bomb&&monthOf(x.card)===m),plain=ms.find(x=>x.card===id&&!x.bomb);
   let mv=plain;
   if(bomb){const a=await ask(PT,'폭탄?',`${m}월 패를 3장 들고 있고 바닥에 1장이 있어요. <b>폭탄</b>을 하면 3장을 한꺼번에 내서 4장을 다 먹고, 피를 1장씩 받고, 점수가 <b>2배</b>가 돼요. 대신 다음 두 번은 손패 없이 뒤집기만 할 수 있어요.`,['폭탄!','그냥 한 장 내기']);if(a===0)mv=bomb;}
   else if(plain&&plain.shake){const a=await ask(PT,'흔들까요?',`${m}월 패를 3장 들고 있어요. <b>흔들기</b>를 하면 이 판을 이겼을 때 점수가 <b>2배</b>가 돼요. 대신 다른 사람에게 3장을 보여 줘요.`,['흔들기!','그냥 내기']);mv={...plain,shake:a===0};}
   humanMove(mv);
 });
-$('flipOnly').onclick=()=>{if(G&&!G.busy&&G.s.turn===0&&G.s.bombPass[0]>0)humanMove({flipOnly:true});};
+$('flipOnly').onclick=()=>{if(myTurn()&&G.s.bombPass[ME]>0)humanMove({flipOnly:true});};
 // 마우스를 올리면 같은 달 바닥 패 반짝임
-PT.el.addEventListener('mouseover',e=>{const c=e.target.closest('.gcard');if(!c||!G||G.busy||G.s.turn!==0)return;const id=+c.dataset.id;
-  if(!G.s.hands[0].includes(id))return;G.hl=GS.sameMonth(G.s.floor,monthOf(id));draw();});
+PT.el.addEventListener('mouseover',e=>{const c=e.target.closest('.gcard');if(!c||!G||G.busy||G.s.turn!==ME)return;const id=+c.dataset.id;
+  if(!G.s.hands[ME].includes(id))return;G.hl=GS.sameMonth(G.s.floor,monthOf(id));draw();});
 PT.el.addEventListener('mouseleave',()=>{if(G&&G.hl.length){G.hl=[];draw();}});
 async function humanMove(mv){
   const s=G.s,gen=G.gen;G.busy=true;G.hl=[];draw();
   const ans={};
   if(mv.card!=null&&!mv.bomb){const fm=GS.sameMonth(s.floor,monthOf(mv.card));if(fm.length===2)ans.play=await askCard(PT,'어느 패를 먹을까요?',`바닥에 ${monthOf(mv.card)}월 패가 2장 있어요. 하나를 골라 주세요.`,fm);}
+  if(GUEST()){roomToHost({t:'play',mv,play:ans.play});msg('방장에게 보냈어요…');return;}   // 친구 기기: 방장이 처리해서 돌려줌
   // 뒤집은 패도 고를 게 있는지 미리 확인 (더미 순서는 정해져 있음)
   let need=null;const t=GS.clone(s);GS.playTurn(t,mv,(list,k)=>k==='play'?ans.play:(need=list,list[0]));
   if(need){const f=s.deck[0];ans.flip=await askCard(PT,'뒤집은 패로 무엇을 먹을까요?',`더미에서 <b>${GS.cardName(f)}</b>가 나왔어요. 바닥의 같은 달 2장 중 하나를 골라 주세요.`,need);}
   if(gen!==G.gen)return;
-  const ev=await animateTurn(PT,s,mv,(list,k)=>k==='play'?ans.play:(ans.flip!=null?ans.flip:list[0]),{ro:ro()});
-  describe(ev,0);await endTurn();
+  await playMove(ME,mv,(list,k)=>k==='play'?ans.play:(ans.flip!=null?ans.flip:list[0]));
+}
+// 방장: 친구가 보낸 수 처리
+async function remoteMove(p,d){
+  const s=G.s,ms=GS.moves(s,p),dm=d.mv||{};
+  let mv=dm.flipOnly?ms.find(x=>x.flipOnly):dm.bomb?ms.find(x=>x.bomb&&monthOf(x.card)===monthOf(dm.card)):ms.find(x=>x.card===dm.card&&!x.bomb);
+  if(!mv){roomSend(NETG.seats[p],{t:'sync',st:maskFor(s,p)});return;}
+  if(!mv.bomb&&!mv.flipOnly)mv={...mv,shake:!!(mv.shake&&dm.shake)};
+  const gen=G.gen;G.busy=true;draw();const ans={};
+  if(mv.card!=null&&!mv.bomb){const fm=GS.sameMonth(s.floor,monthOf(mv.card));if(fm.length===2)ans.play=fm.includes(d.play)?d.play:fm[0];}
+  let need=null;const t=GS.clone(s);GS.playTurn(t,mv,(list,k)=>k==='play'?ans.play:(need=list,list[0]));
+  if(need){msg(`${who(p)}이(가) 뒤집은 패로 먹을 패를 고르는 중…`);const v=await netAsk(p,{t:'askFlip',card:s.deck[0],list:need},need[0]);ans.flip=need.includes(v)?v:need[0];}
+  if(gen!==G.gen)return;
+  await playMove(p,mv,(list,k)=>k==='play'?ans.play:(ans.flip!=null?ans.flip:list[0]));
+}
+// 한 수 진행 (방장·혼자 할 때). 온라인이면 친구들에게도 같은 수를 보내서 똑같이 연출
+async function playMove(p,mv,pick){
+  const s=G.s,gen=G.gen;G.busy=true;
+  if(NETG){const r={};const t=GS.clone(s);GS.playTurn(t,mv,(l,k)=>(r[k]=pick(l,k)));
+    const show=mv.bomb||mv.shake?GS.sameMonth(s.hands[p],monthOf(mv.card)):mv.card!=null?[mv.card]:[];
+    roomEach(()=>({t:'turn',p,mv,play:r.play,flip:r.flip,show,top:s.deck.length?s.deck[0]:null}));}
+  const ev=await animateTurn(PT,s,mv,pick,{ro:ro()});
+  if(gen!==G.gen)return;describe(ev,p);await endTurn();
 }
 function describe(ev,p){
   const tk=ev.find(e=>e.k==='take'),st=ev.filter(e=>e.k==='steal').length,b=ev.filter(e=>BANG[e.k]).map(e=>BANG[e.k].replace('!',''));
-  const who=p===0?'나':CNAME[p];
-  msg(`${who}: ${tk&&tk.cards.length?`${tk.cards.length}장을 먹었어요`:'먹은 패가 없어요'}${b.length?` · <b>${b.join(', ')}</b>`:''}${st?` · 피 ${st}장 받음`:''}`,b.length&&p===0?'ok':'info');
+  msg(`${who(p)}: ${tk&&tk.cards.length?`${tk.cards.length}장을 먹었어요`:'먹은 패가 없어요'}${b.length?` · <b>${b.join(', ')}</b>`:''}${st?` · 피 ${st}장 받음`:''}`,b.length&&p===ME?'ok':'info');
 }
+const GO_TEXT=`<b>고</b>: 계속해서 점수를 더 올려요 (고 1번마다 +1점, 3고부터는 2배씩). 대신 다른 사람이 먼저 점수를 내면 져요.<br><b>스톱</b>: 지금 끝내고 이겨요.`;
 async function endTurn(){
   const s=G.s,p=s.turn,gen=G.gen;
   const r=GS.afterTurn(s);
   if(r==='ask'){
     const sc=GS.scoreOf(s.caps[p]).total;
     let go;
-    if(p===0){draw();const a=await ask(PT,`${sc}점! 고? 스톱?`,`<b>고</b>: 계속해서 점수를 더 올려요 (고 1번마다 +1점, 3고부터는 2배씩). 대신 다른 사람이 먼저 점수를 내면 져요.<br><b>스톱</b>: 지금 끝내고 이겨요.`,['스톱','고!']);go=a===1;}
+    if(p===ME){draw();go=(await ask(PT,`${sc}점! 고? 스톱?`,GO_TEXT,['스톱','고!']))===1;}
+    else if(remote(p)){draw();msg(`${who(p)}이(가) ${sc}점! 고/스톱을 고르는 중…`);go=!!(await netAsk(p,{t:'askGo',sc},false));}
     else{go=GS.LEVELS[opt.level].go(s,p);}
     if(gen!==G.gen)return;
-    if(go){PT.shout(`${s.go[p]+1}고!`);SND.ding();GS.declareGo(s);msg(`${p===0?'나':CNAME[p]}: <b>${s.go[p]}고!</b>`,'info');await sleep(700);}
-    else{PT.shout('스톱!');SND.ding();GS.finish(s,p);await sleep(600);G.busy=false;draw();showResult();return;}
-  }else if(r==='stop'){G.busy=false;draw();showResult();return;}
-  else if(r==='nagari'){G.busy=false;draw();showResult();return;}
-  G.busy=false;G.sel=null;draw();
+    if(NETG)roomEach(()=>({t:'call',p,go,n:s.go[p]+1}));
+    if(go){PT.shout(`${s.go[p]+1}고!`);SND.ding();GS.declareGo(s);msg(`${who(p)}: <b>${s.go[p]}고!</b>`,'info');await sleep(700);}
+    else{PT.shout('스톱!');SND.ding();GS.finish(s,p);await sleep(600);G.busy=false;draw();netSync();showResult();return;}
+  }else if(r==='stop'||r==='nagari'){G.busy=false;draw();netSync();showResult();return;}
+  G.busy=false;G.sel=null;draw();netSync();
   if(s.over){showResult();return;}
-  if(s.turn!==0)aiTurn();else msg(turnMsg());
+  nextTurn();
 }
 async function aiTurn(){
   const gen=G.gen;G.busy=true;draw();msg(turnMsg());
   await sleep(650);if(gen!==G.gen)return;
   const s=G.s,p=s.turn,lv=GS.LEVELS[opt.level];
   const mv=lv.choose(s,p);if(mv.shake){PT.shout('흔들기!');await sleep(500);}
-  const ev=await animateTurn(PT,s,mv,GS.greedyPick(s,p),{ro:ro()});
-  if(gen!==G.gen)return;describe(ev,p);await endTurn();
+  await playMove(p,mv,GS.greedyPick(s,p));
 }
 function showResult(){
-  const s=G.s;
+  const s=G.s,host=!GUEST();
+  const nextBtn=host?`<button class="btn primary" id="gNext">다음 판</button>`:`<button class="btn primary" id="gNext">닫기</button>`,guestNote=host?'':'<div style="margin-top:6px;color:var(--muted)">다음 판은 방장이 시작해요.</div>';
   if(s.winner<0){G.nagariNext=s.nagariNext||2;G.nextFirst=s.turn;
-    PT.overlay(`<h3>나가리</h3><div>아무도 점수를 못 내고 패가 다 떨어졌어요. 다음 판은 점수가 <b>×${G.nagariNext}</b>예요.</div><div class="gbtns"><button class="btn primary" id="gNext">다음 판</button></div>`);
-    $('gNext').onclick=()=>newGame(true);return;}
+    PT.overlay(`<h3>나가리</h3><div>아무도 점수를 못 내고 패가 다 떨어졌어요. 다음 판은 점수가 <b>×${G.nagariNext}</b>예요.</div>${guestNote}<div class="gbtns">${nextBtn}</div>`);
+    $('gNext').onclick=()=>host?newGame(true):PT.closeOverlay();return;}
   const f=s.final,w=s.winner;let delta=0;
-  for(const x of f.pay){if(w===0)delta+=x.amt*POINT;else if(x.q===0)delta-=x.amt*POINT;}
+  for(const x of f.pay){if(w===ME)delta+=x.amt*POINT;else if(x.q===ME)delta-=x.amt*POINT;}
   money+=delta;store.set('money',money);
-  const lv=GS.LEVELS[opt.level].name,r=rec[lv]||{w:0,l:0};if(w===0)r.w++;else r.l++;rec[lv]=r;store.set('rec',rec);
+  if(!NETG){const lv=GS.LEVELS[opt.level].name,r=rec[lv]||{w:0,l:0};if(w===ME)r.w++;else r.l++;rec[lv]=r;store.set('rec',rec);}
   G.nextFirst=w;
   const rows=f.parts.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}점</td></tr>`).join('')+(f.go?`<tr><td>${f.go}고</td><td>+${f.go}점</td></tr>`:'')+
     f.notes.filter(n=>!/고 \+/.test(n)).map(n=>`<tr><td colspan="2" style="text-align:left;color:var(--muted)">${n}</td></tr>`).join('');
-  const pays=f.pay.map(x=>`<tr><td>${x.q===0?'나':CNAME[x.q]}${x.notes.length?` <span style="color:var(--muted)">(${x.notes.join(', ')})</span>`:''}</td><td>${x.amt}점 · ${won(x.amt*POINT)}</td></tr>`).join('');
-  PT.overlay(`<h3>${w===0?'🎉 내가 이겼어요!':`${CNAME[w]} 승리`}</h3>
+  const pays=f.pay.map(x=>`<tr><td>${who(x.q)}${x.notes.length?` <span style="color:var(--muted)">(${x.notes.join(', ')})</span>`:''}</td><td>${x.amt}점 · ${won(x.amt*POINT)}</td></tr>`).join('');
+  PT.overlay(`<h3>${w===ME?'🎉 내가 이겼어요!':`${who(w)} 승리`}</h3>
     ${s.chongtong?`<div>${s.chongtong}월 4장을 처음부터 들고 있어서 <b>총통</b>이에요.</div>`:''}
     <table class="gres" style="width:100%">${rows}</table><div style="margin:6px 0 2px;font-weight:700">진 사람이 내는 돈</div><table class="gres" style="width:100%">${pays}</table>
-    <div style="margin-top:8px">내 돈 ${delta>=0?'+':''}${won(delta)} → <b>${won(money)}</b></div>
-    <div class="gbtns"><button class="btn primary" id="gNext">다음 판</button></div>`);
-  $('gNext').onclick=()=>newGame(true);
+    <div style="margin-top:8px">내 돈 ${delta>=0?'+':''}${won(delta)} → <b>${won(money)}</b></div>${guestNote}
+    <div class="gbtns">${nextBtn}</div>`);
+  $('gNext').onclick=()=>host?newGame(true):PT.closeOverlay();
   renderRec();renderPanel();
 }
+/* ---------- 온라인 메시지 ---------- */
+const gq=roomQueue();
+function onNet(gi,d){
+  if(ROOM.host){   // 방장: 친구가 보낸 행동
+    if(!NETG||!G)return;const p=NETG.seats.indexOf(gi);if(p<0)return;
+    if(d.t==='ans'&&pendAsk&&pendAsk.gi===gi){const r=pendAsk.res;pendAsk=null;r(d.v);return;}
+    if(d.t==='play'&&!G.busy&&!G.s.over&&G.s.turn===p)remoteMove(p,d);
+    return;}
+  gq(async()=>{   // 친구: 방장이 보낸 판 소식
+    if(d.t==='deal'){ME=d.seat;NETG={guest:true,names:d.names};opt.level=d.level;$('gNew').disabled=true;$('gPlayers').disabled=true;showTab('play');
+      PT.reset();PT.closeOverlay();G={s:unmask(d.st,null),busy:true,sel:null,hl:[],gen:(G?G.gen:0)+1};
+      msg((d.nag>1?`나가리 다음 판이라 점수가 <b>×${d.nag}</b>예요. `:'')+'온라인 판이 시작됐어요.');
+      const wait=PT.deal(G.s,ro());renderPanel();SND.slap(0.5);await sleep(wait);G.busy=false;draw();
+      if(G.s.over)showResult();else msg(turnMsg());return;}
+    if(!G||!GUEST())return;
+    if(d.t==='turn'){PT.closeOverlay();fixFor(G.s,d.p,d.show||[],d.top);G.busy=true;
+      const ev=await animateTurn(PT,G.s,d.mv,(list,k)=>k==='play'?(d.play!=null?d.play:list[0]):(d.flip!=null?d.flip:list[0]),{ro:ro()});describe(ev,d.p);return;}
+    if(d.t==='call'){if(d.go){PT.shout(`${d.n}고!`);msg(`${who(d.p)}: <b>${d.n}고!</b>`,'info');}else PT.shout('스톱!');SND.ding();await sleep(650);return;}
+    if(d.t==='sync'){G.s=unmask(d.st,G.s);G.busy=false;G.hl=[];draw();if(G.s.over){showResult();return;}if(G.s.turn===ME)msg(turnMsg());return;}
+    if(d.t==='askGo'){draw();const a=await ask(PT,`${d.sc}점! 고? 스톱?`,GO_TEXT,['스톱','고!']);roomToHost({t:'ans',v:a===1});return;}
+    if(d.t==='askFlip'){const v=await askCard(PT,'뒤집은 패로 무엇을 먹을까요?',`더미에서 <b>${GS.cardName(d.card)}</b>가 나왔어요. 바닥의 같은 달 2장 중 하나를 골라 주세요.`,d.list);roomToHost({t:'ans',v});return;}
+  });
+}
+function onLeave(gi){
+  if(!ROOM.host){if(GUEST()){NETG=null;ME=0;$('gNew').disabled=false;$('gPlayers').disabled=false;msg('방장과 연결이 끊겼어요. <b>새 판</b>을 누르면 컴퓨터와 해요.','no');if(G)G.busy=true;}return;}
+  if(!NETG)return;const p=NETG.seats.indexOf(gi);if(p<0)return;
+  NETG.seats[p]=-1;NETG.names[p]={n:'컴퓨터',ai:true};
+  if(pendAsk&&pendAsk.gi===gi){const r=pendAsk.res,def=pendAsk.def;pendAsk=null;r(def);}
+  if(G&&!G.busy&&!G.s.over&&G.s.turn===p)aiTurn();else if(G)draw();
+}
+roomMount($('netroom'),{game:'gostop',max:2,start:startOnline,msg:onNet,leave:onLeave,off:stopOnline,showPlay:()=>showTab('play')});
 function renderRec(){const lv=GS.LEVELS[opt.level].name,r=rec[lv]||{w:0,l:0};$('grec').innerHTML=`<b>${lv}</b> 상대 ${r.w}승 ${r.l}패 · 내 돈 ${won(money)}`;}
 function renderLevels(){$('glevels').innerHTML=GS.LEVELS.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===opt.level}" data-k="${k}">${l.name}<span>${['막 둠','눈앞만','계산함','깊이 계산'][k]}</span></button>`).join('');}
-$('glevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b)return;opt.level=+b.dataset.k;store.set('level',opt.level);renderLevels();renderRec();if(G&&!G.s.over)draw();});
-$('gPlayers').value=String(opt.players);$('gPlayers').onchange=e=>{opt.players=+e.target.value;store.set('players',opt.players);G=null;newGame();};
-$('gNew').onclick=()=>{G&&(G.nagariNext=1);newGame();};
-$('gLabels').checked=PT.labels;$('gLabels').onchange=e=>{PT.setLabels(e.target.checked);LT.setLabels(e.target.checked);draw();renderLesson();};
+$('glevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b||GUEST())return;opt.level=+b.dataset.k;store.set('level',opt.level);renderLevels();renderRec();if(G&&!G.s.over)draw();});
+$('gPlayers').value=String(opt.players);$('gPlayers').onchange=e=>{opt.players=+e.target.value;store.set('players',opt.players);if(NETG){startOnline();return;}G=null;newGame();};
+$('gNew').onclick=()=>{if(GUEST())return;G&&(G.nagariNext=1);if(NETG){startOnline();return;}newGame();};
+$('gLabels').checked=PT.labels;$('gLabels').onchange=e=>{PT.setLabels(e.target.checked);LT.setLabels(e.target.checked);if(G)draw();renderLesson();};
 $('gSound').checked=SND.on;$('gSound').onchange=e=>{SND.on=e.target.checked;store.set('sound',SND.on);};
-$('gReset').onclick=()=>{money=100000;store.set('money',money);rec={};store.set('rec',rec);renderRec();renderPanel();};
+$('gReset').onclick=()=>{money=100000;store.set('money',money);rec={};store.set('rec',rec);renderRec();if(G)renderPanel();};
 addEventListener('resize',()=>{if(G)draw();renderLesson(true);});
 
 /* ---------- 배우기 ---------- */

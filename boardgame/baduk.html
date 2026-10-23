@@ -133,6 +133,11 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .legend{font-size:13px;color:var(--muted);margin:8px 0 2px;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .lg{display:inline-block;width:14px;height:14px;border-radius:50%;border:3px solid var(--c)}
 .lg.dash{border:3px dashed var(--accent)}
+.netbox{margin-top:14px;padding:12px 14px;border:1px solid var(--accent);border-radius:12px;background:var(--accent-soft)}
+.netin{width:9em;font:600 16px var(--f-body);padding:7px 10px;border:1px solid var(--rule);border-radius:8px;letter-spacing:3px;text-align:center;background:var(--surface);color:var(--ink)}
+.netcode{font-size:14px;margin:6px 0}.netcode b{font:900 28px var(--f-display);letter-spacing:6px;color:var(--accent);margin-left:6px}
+.netmsg{font-size:13px;margin-top:8px;color:var(--muted)}.netmsg.ok{color:var(--ok)}.netmsg.bad{color:var(--danger)}
+.nrlist{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.nrp{font-size:13px;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--rule)}.nrp.me{border-color:var(--accent);color:var(--accent);font-weight:700}
 </style>
 </head>
 <body>
@@ -194,6 +199,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
         <button class="btn" id="presign">기권</button>
         <button class="btn primary" id="pnew">새 게임</button>
       </div>
+      <div id="netroom"></div>
       <div class="opts">
         <label><input type="checkbox" id="optLibs"> 숨구멍 표시</label>
         <label><input type="checkbox" id="optAtari" checked> 단수 경고</label>
@@ -333,6 +339,107 @@ function woodBoard(w,d,thick,topTex,sideColor){
 function woodGrain(ctx,w,h,base,dark){ctx.fillStyle=base;ctx.fillRect(0,0,w,h);
   for(let i=0;i<70;i++){const y=Math.random()*h;ctx.strokeStyle=dark;ctx.globalAlpha=0.03+Math.random()*0.05;ctx.lineWidth=1+Math.random()*3;
     ctx.beginPath();ctx.moveTo(0,y);for(let x=0;x<=w;x+=w/8)ctx.lineTo(x,y+Math.sin(x/w*6+i)*6);ctx.stroke();}ctx.globalAlpha=1;}
+</script>
+<script>/* ===== 온라인 방 (2~5명): 방 코드로 여러 기기를 연결 (PeerJS, WebRTC) =====
+   방장 기기가 판을 진행(딜러)하고, 친구 기기에는 각자 볼 수 있는 것만 보낸다.
+   친구는 행동(낼 패, 베팅 등)만 방장에게 보낸다.
+   roomMount(el,{game,max,start,msg,leave,off,showPlay}) 로 화면에 붙인다. */
+const ROOM={peer:null,host:false,ok:false,on:false,code:'',cfg:null,guests:[],conn:null,seq:0,
+  say(h,kind){const el=document.getElementById('nrMsg');if(el){el.innerHTML=h;el.className='netmsg '+(kind||'');}}};
+const ROOM_PREFIX='sikimms-bgr-';
+function roomLoad(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');
+  s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej(new Error('load'));document.head.appendChild(s);});}
+// 방장 → 친구 gi (1부터)
+function roomSend(gi,d){const g=ROOM.guests.find(x=>x.gi===gi);if(g&&g.open)try{g.conn.send(d);}catch(e){}}
+function roomEach(fn){for(const g of ROOM.guests)if(g.open){const d=fn(g.gi);if(d)try{g.conn.send(d);}catch(e){}}}
+// 친구 → 방장
+function roomToHost(d){if(ROOM.conn&&ROOM.ok)try{ROOM.conn.send(d);}catch(e){}}
+const roomGuests=()=>ROOM.guests.filter(g=>g.open).map(g=>g.gi);
+function roomReset(){
+  try{ROOM.conn&&ROOM.conn.close();}catch(e){}for(const g of ROOM.guests)try{g.conn.close();}catch(e){}
+  try{ROOM.peer&&ROOM.peer.destroy();}catch(e){}
+  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';roomUI();}
+function roomUI(){
+  const $$=id=>document.getElementById(id);if(!$$('nrBox'))return;
+  $$('nrOff').hidden=ROOM.on;$$('nrBox').hidden=!ROOM.on;
+  $$('nrIdle').hidden=!!ROOM.peer;$$('nrLive').hidden=!ROOM.peer;
+  $$('nrCode').textContent=ROOM.code?ROOM.code.split('').join(' '):'';
+  const gs=roomGuests();
+  $$('nrShare').hidden=!ROOM.host||gs.length>=ROOM.cfg.max;
+  $$('nrStart').hidden=!ROOM.host||!gs.length;
+  $$('nrList').innerHTML=ROOM.peer?(ROOM.host?`<span class="nrp me">방장 (나)</span>`+gs.map(gi=>`<span class="nrp">친구 ${gi}</span>`).join('')
+    :(ROOM.ok?`<span class="nrp">방장</span><span class="nrp me">나</span>`:'')):'';
+}
+function roomHost(){
+  const cfg=ROOM.cfg;
+  roomLoad().then(()=>{
+    roomReset();ROOM.host=true;ROOM.seq=0;
+    const tryOpen=left=>{ROOM.code=String(1000+Math.floor(Math.random()*9000));
+      ROOM.peer=new Peer(ROOM_PREFIX+cfg.game+'-'+ROOM.code);
+      ROOM.peer.on('open',()=>{roomUI();ROOM.say(`방을 만들었어요. 친구에게 <b>방 코드 ${ROOM.code}</b>를 알려 주거나 초대 링크를 보내세요. 친구가 들어오면 <b>판 시작</b>을 누르세요.`);});
+      ROOM.peer.on('connection',c=>{
+        if(roomGuests().length>=cfg.max){c.on('open',()=>{try{c.send({t:'full'});}catch(e){}setTimeout(()=>c.close(),300);});return;}
+        const g={gi:0,conn:c,open:false};
+        c.on('open',()=>{const used=new Set(roomGuests());let gi=1;while(used.has(gi))gi++;g.gi=gi;g.open=true;ROOM.guests.push(g);
+          try{c.send({t:'welcome',gi});}catch(e){}
+          ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();cfg.join&&cfg.join(gi);});
+        c.on('data',d=>{if(g.open&&d&&d.t)cfg.msg(g.gi,d);});
+        c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();cfg.leave&&cfg.leave(g.gi);});
+        c.on('error',()=>{});});
+      ROOM.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){ROOM.peer.destroy();tryOpen(left-1);return;}
+        if(e.type==='peer-unavailable')return;
+        ROOM.say(e.type==='network'||e.type==='server-error'?'연결 서버에 닿지 못했어요. 회사망처럼 막힌 곳에서는 안 될 수 있어요.':'방을 만들지 못했어요 ('+e.type+')','bad');});};
+    tryOpen(3);roomUI();
+  }).catch(()=>ROOM.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad'));
+}
+function roomJoin(code){
+  const cfg=ROOM.cfg;code=String(code||'').replace(/\D/g,'');
+  if(code.length!==4){ROOM.say('방 코드 4자리를 넣어 주세요.','bad');return;}
+  roomLoad().then(()=>{
+    roomReset();ROOM.host=false;ROOM.code=code;
+    ROOM.peer=new Peer();
+    ROOM.peer.on('open',()=>{ROOM.say(`방 ${code}에 들어가는 중…`);
+      const c=ROOM.peer.connect(ROOM_PREFIX+cfg.game+'-'+code,{reliable:true});ROOM.conn=c;
+      c.on('open',()=>{ROOM.ok=true;roomUI();ROOM.say('연결됐어요. 방장이 판을 시작하면 자동으로 시작돼요.','ok');});
+      c.on('data',d=>{if(!d||!d.t)return;if(d.t==='full'){ROOM.say('방이 꽉 찼어요.','bad');return;}if(d.t==='welcome'){ROOM.gi=d.gi;roomUI();return;}cfg.msg(0,d);});
+      c.on('close',()=>{if(!ROOM.ok)return;ROOM.ok=false;ROOM.say('방장과 연결이 끊겼어요. 다시 들어가 주세요.','bad');roomUI();cfg.leave&&cfg.leave(0);});
+      c.on('error',()=>{});
+      setTimeout(()=>{if(!ROOM.ok&&ROOM.code===code)ROOM.say('방을 찾지 못했어요. 코드를 다시 확인해 주세요. (방장이 방을 만든 상태여야 해요)','bad');},9000);});
+    ROOM.peer.on('error',e=>{ROOM.say(e.type==='peer-unavailable'?'그 코드의 방이 없어요. 코드를 다시 확인해 주세요.':'연결하지 못했어요 ('+e.type+'). 회사망처럼 막힌 곳에서는 안 될 수 있어요.','bad');});
+    roomUI();
+  }).catch(()=>ROOM.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad'));
+}
+// 친구가 방에 있는 동안: 방장 쪽에서는 친구가 둘 차례를 기다리는 중인지 등은 게임이 알아서 처리
+const roomGuest=()=>ROOM.on&&!ROOM.host&&ROOM.ok;     // 나는 친구(손님) 기기
+const roomHosting=()=>ROOM.on&&ROOM.host&&!!ROOM.peer; // 나는 방장 기기
+function roomMount(el,cfg){
+  if(!el)return;ROOM.cfg=cfg;
+  el.innerHTML=`<button class="btn" id="nrOff" style="margin-top:12px">🌐 온라인으로 친구와 하기</button>
+    <div id="nrBox" class="netbox" hidden>
+      <div class="eyebrow">온라인 방 <button class="linkbtn" id="nrQuit" style="float:right">혼자 하기로 돌아가기</button></div>
+      <div id="nrIdle"><div class="row" style="margin-top:6px"><button class="btn primary" id="nrHost">방 만들기</button>
+        <input id="nrIn" class="netin" inputmode="numeric" maxlength="4" placeholder="방 코드 4자리" aria-label="방 코드"><button class="btn" id="nrJoin">들어가기</button></div></div>
+      <div id="nrLive" hidden><div class="netcode">방 코드 <b id="nrCode"></b></div><div class="nrlist" id="nrList"></div>
+        <div class="row"><button class="btn primary" id="nrStart">판 시작</button><button class="btn" id="nrShare">초대 링크 보내기</button><button class="btn" id="nrLeave">나가기</button></div></div>
+      <div id="nrMsg" class="netmsg">같은 앱을 쓰는 친구${cfg.max>1?` (최대 ${cfg.max}명)`:''}와 인터넷으로 할 수 있어요. 방장 기기가 카드를 섞고 나눠요. 빈자리는 컴퓨터가 채워요.</div>
+    </div>`;
+  const $$=id=>document.getElementById(id);
+  $$('nrOff').onclick=()=>{ROOM.on=true;roomUI();};
+  $$('nrQuit').onclick=()=>{roomReset();ROOM.on=false;roomUI();cfg.off&&cfg.off();};
+  $$('nrHost').onclick=roomHost;
+  $$('nrJoin').onclick=()=>roomJoin($$('nrIn').value);
+  $$('nrIn').addEventListener('keydown',e=>{if(e.key==='Enter')roomJoin($$('nrIn').value);});
+  $$('nrLeave').onclick=()=>{roomReset();ROOM.say('방에서 나왔어요.');roomUI();cfg.off&&cfg.off();};
+  $$('nrStart').onclick=()=>{if(roomGuests().length)cfg.start();};
+  $$('nrShare').onclick=async()=>{const url=location.href.split('#')[0]+'#join='+ROOM.code,text=`${document.title} 같이 해요! 방 코드 ${ROOM.code}`;
+    try{if(navigator.share){await navigator.share({title:document.title,text,url});return;}}catch(e){}
+    try{await navigator.clipboard.writeText(text+' '+url);ROOM.say('초대 링크를 복사했어요. 메신저에 붙여 넣어 보내세요.','ok');}catch(e){ROOM.say(`초대 링크: ${url}`);}};
+  roomUI();
+  const m=location.hash.match(/join=(\d{4})/);
+  if(m)setTimeout(()=>{cfg.showPlay&&cfg.showPlay();ROOM.on=true;$$('nrIn').value=m[1];roomUI();roomJoin(m[1]);},300);
+}
+// 받은 메시지를 차례로 처리 (연출이 끝난 뒤 다음 메시지)
+function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>console.error(e));};}
 </script>
 <script type="text/plain" id="engineSrc">// 바둑 엔진 (Web Worker): 몬테카를로 트리 탐색(UCT+RAVE) + 형세 판단
 let N=0,W,SZ,DIRS,DIAG,PTS,mark,lmark,stack,emp,MAXMOVES;
@@ -692,14 +799,29 @@ $('levels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b)r
   try{localStorage.setItem('baduk-level',levelSel);}catch(err){}
   if(!G.hist.length||G.over)newGame();else{G.kind='info';G.msg=`<b>${LEVELS[levelSel].name}</b>은(는) 새 게임부터 적용돼요. 지금 판은 ${LEVELS[G.level].name} 상대예요.`;renderPlay();}});
 
-let G;const pboard=makeBoard($('pboard'),'P',userMove);
-const mode=()=>$('optMode').value;
+let G;const pboard=makeBoard($('pboard'),'P',i=>userMove(i));
+/* 온라인 대국: 방장이 흑, 친구가 백. 수·패스·기권을 주고받고, 계가(죽은 돌 판정)는 방장 기기가 해서 보낸다 */
+let BNET=null;   // {side:1|2, host:bool}
+const mode=()=>BNET?'online':$('optMode').value;
+const bMine=()=>BNET&&G.turn===BNET.side;
+function bStart(){if(!roomGuests().length)return;BNET={side:1,host:true};newGame();roomEach(()=>({t:'new',size:G.size}));}
+function bNet(gi,d){
+  if(d.t==='new'){BNET={side:2,host:false};$('optSize').value=String(d.size);showTab&&showTab('play');newGame();return;}
+  if(!BNET||!G)return;
+  if(d.t==='move'&&!G.over&&G.turn!==BNET.side)userMove(d.i,true);
+  else if(d.t==='pass'&&!G.over&&G.turn!==BNET.side)pass(G.turn);
+  else if(d.t==='resign'&&!G.over){G.over=true;G.gen++;finish(BNET.side,'친구가 기권했어요.',null);}
+  else if(d.t==='end'&&!BNET.host)bScore(new Set(d.dead));
+}
+const bSend=d=>{if(!BNET)return;if(BNET.host)roomEach(()=>d);else roomToHost(d);};
+function bLeave(){if(!BNET)return;BNET=null;if(G&&!G.over){G.kind='no';G.msg='친구와 연결이 끊겼어요. <b>새 게임</b>을 누르면 다시 시작해요.';G.over=true;renderPlay();}}
+function bScore(dead){const b2=G.board.slice();dead.forEach(i=>b2[i]=0);const s=score(b2);G.dead=dead;G.result=s;G.thinking=false;finish(s.black>s.white?1:2,'',s);}
 const NAME=c=>c===1?'흑':'백';
 function newGame(){
   const gen=G?G.gen+1:1;
   G={gen,level:levelSel,size:+$('optSize').value,board:parse([],+$('optSize').value),turn:1,ko:-1,caps:{1:0,2:0},hist:[],passes:0,over:false,last:-1,hint:-1,
     result:null,dead:null,thinking:false,userBefore:null,winB:null,evals:[],lastUser:null,
-    msg:mode()==='ai'?`<b>${LEVELS[levelSel].name}</b> 컴퓨터와 대국을 시작해요. 당신이 흑이라 먼저 둬요.`:'친구와 번갈아 두세요. 흑부터 시작해요.',kind:'info'};
+    msg:mode()==='ai'?`<b>${LEVELS[levelSel].name}</b> 컴퓨터와 대국을 시작해요. 당신이 흑이라 먼저 둬요.`:mode()==='online'?`온라인 대국을 시작해요. 당신은 <b>${NAME(BNET.side)}</b>이에요. ${BNET.side===1?'먼저 두세요.':'친구(흑)가 먼저 둬요.'}`:'친구와 번갈아 두세요. 흑부터 시작해요.',kind:'info'};
   renderPlay();
 }
 const snap=()=>({board:G.board.slice(),turn:G.turn,ko:G.ko,caps:{...G.caps},last:G.last,passes:G.passes,userBefore:G.userBefore,winB:G.winB});
@@ -717,12 +839,14 @@ function coach(r,i,c){
   if(oppAtari)return['ok',`${you}을 단수로 몰았어요. ${you}이 도망가지 않으면 따낼 수 있어요.`];
   return['info',ai?'백(컴퓨터)이 생각 중이에요':`${you} 차례예요.`];
 }
-function userMove(i){
+function userMove(i,remote){
   if(G.over||G.thinking||(mode()==='ai'&&G.turn!==1))return;
+  if(mode()==='online'&&!remote&&!bMine())return;
   const c=G.turn,r=play(G.board,i,c,G.ko);
   if(r.err){G.msg=ERR[r.err];G.kind='no';renderPlay();return;}
   const sb=snap();G.hist.push(sb);apply(r,i,c);G.lastUser={ply:G.hist.length,move:i,before:sb.board,ko:sb.ko};
-  [G.kind,G.msg]=coach(r,i,c);renderPlay();
+  [G.kind,G.msg]=coach(r,i,c);if(remote)G.msg='친구 · '+G.msg;renderPlay();
+  if(mode()==='online'&&!remote)bSend({t:'move',i});
   if(mode()==='ai')aiTurn(false);
 }
 async function aiTurn(userPassed){
@@ -764,12 +888,14 @@ function pass(c,evalLine=''){
 function resign(c){G.over=true;G.thinking=false;G.gen++;finish(3-c,`${c===2&&mode()==='ai'?'컴퓨터':NAME(c)}가 기권했어요.`,null);}
 async function endGame(){
   G.over=true;G.thinking=true;G.kind='info';G.msg='게임 끝! 죽은 돌을 판정하고 집을 세는 중이에요';renderPlay();
+  if(BNET&&!BNET.host){G.msg='게임 끝! 방장 기기가 집을 세는 중이에요';renderPlay();return;}
   const gen=G.gen,r=await engineCall('own',{board:G.board,toPlay:G.turn,ko:-1,playouts:800});
   if(gen!==G.gen)return;
   G.thinking=false;
   const dead=new Set(),b2=G.board.slice();
   for(let i=0;i<G.board.length;i++){const v=G.board[i];if((v===1&&r.own[i]<-0.3)||(v===2&&r.own[i]>0.3)){dead.add(i);b2[i]=0;}}
   const s=score(b2);G.dead=dead;G.result=s;
+  if(BNET)bSend({t:'end',dead:[...dead]});
   finish(s.black>s.white?1:2,'',s);
 }
 function rateGame(win,margin){
@@ -783,7 +909,7 @@ function rateGame(win,margin){
 }
 function finish(w,why,s){
   const ai=mode()==='ai';
-  let h=`<div class="result"><b>게임 끝 · ${ai?(w===1?'당신(흑)이 이겼어요!':'컴퓨터(백)가 이겼어요.'):NAME(w)+' 승리!'}</b> ${why}`;
+  let h=`<div class="result"><b>게임 끝 · ${ai?(w===1?'당신(흑)이 이겼어요!':'컴퓨터(백)가 이겼어요.'):BNET?(w===BNET.side?`🎉 내가(${NAME(w)}) 이겼어요!`:`친구(${NAME(w)})가 이겼어요`):NAME(w)+' 승리!'}</b> ${why}`;
   if(s){
     let d1=0,d2=0;G.dead.forEach(i=>G.board[i]===1?d1++:d2++);
     h+=` (${Math.abs(s.black-s.white).toFixed(1)}점 차)
@@ -801,19 +927,20 @@ function finish(w,why,s){
     if(bad.length)h+=`<div style="margin-top:10px">실수 다시 보기 (눌러서 확인)<div class="rvlist">${bad.map(([e,k])=>`<button class="tag ${e.cls} rv" data-ev="${k}">${e.ply}수째 · ${e.cls==='b'?'큰 실수':'아쉬운 수'} −${Math.round(Math.max(0,e.loss)*100)}%</button>`).join('')}</div></div>`;
   }
   h+='</div>';
-  G.kind=(!ai||w===1)?'ok':'no';G.msg=h;renderPlay();renderProfile();
+  G.kind=(!ai||w===1)&&!(BNET&&w!==BNET.side)?'ok':'no';G.msg=h;renderPlay();renderProfile();
 }
 function renderPlay(){
   const ai=mode()==='ai';
   renderLevels();
-  $('sbName').textContent=ai?'흑 · 나':'흑';$('swName').textContent=ai?`백 · 컴퓨터 (${LEVELS[G.level].name})`:'백';
+  const on=mode()==='online',who=c=>on?(c===BNET.side?' · 나':' · 친구'):'';
+  $('sbName').textContent=ai?'흑 · 나':'흑'+who(1);$('swName').textContent=ai?`백 · 컴퓨터 (${LEVELS[G.level].name})`:'백'+who(2);
   $('sbCap').textContent=`따낸 돌 ${G.caps[1]}`;$('swCap').textContent=`따낸 돌 ${G.caps[2]}`;
   $('sb').classList.toggle('cur',!G.over&&G.turn===1);$('sw').classList.toggle('cur',!G.over&&G.turn===2);
   $('pmsg').className='fb '+G.kind+(G.thinking?' thinking':'');$('pmsg').innerHTML=G.msg;
-  const myTurn=!G.over&&!G.thinking&&(!ai||G.turn===1);
-  $('phint').disabled=$('ppass').disabled=!myTurn;
+  const myTurn=!G.over&&!G.thinking&&(on?G.turn===BNET.side:(!ai||G.turn===1));
+  $('phint').disabled=!myTurn||on;$('ppass').disabled=!myTurn;
   $('presign').disabled=G.over||!G.hist.length;
-  $('pundo').disabled=G.over||!G.hist.length;
+  $('pundo').disabled=G.over||!G.hist.length||on;
   const showW=ai&&G.winB!=null;$('wwrap').hidden=!showW;
   if(showW){const p=Math.round(G.winB*100);$('wbarB').style.width=p+'%';$('wB').textContent=`흑(나) ${p}%`;$('wW').textContent=`백 ${100-p}%`;}
   const o={last:G.last,hint:G.hint,ghost:myTurn?G.turn:0,dead:G.dead};
@@ -822,9 +949,9 @@ function renderPlay(){
   if(G.over&&G.result)o.terr=G.result.map;
   drawPlayBoard(o);
 }
-$('pnew').onclick=newGame;
-$('ppass').onclick=()=>pass(G.turn);
-$('presign').onclick=()=>resign(mode()==='ai'?1:G.turn);
+$('pnew').onclick=()=>{if(BNET){if(BNET.host)bStart();else{G.kind='info';G.msg='온라인에서는 방장이 새 게임을 시작해요.';renderPlay();}return;}newGame();};
+$('ppass').onclick=()=>{if(mode()==='online'){if(!bMine())return;bSend({t:'pass'});}pass(G.turn);};
+$('presign').onclick=()=>{if(mode()==='online'){bSend({t:'resign'});G.over=true;G.gen++;finish(3-BNET.side,'내가 기권했어요.',null);return;}resign(mode()==='ai'?1:G.turn);};
 $('phint').onclick=async()=>{
   const gen=G.gen;G.thinking=true;G.kind='info';G.msg='추천 수를 찾는 중이에요';renderPlay();
   const r=await engineCall('search',{board:G.board,toPlay:G.turn,ko:G.ko,playouts:3000,timeMs:1200});
@@ -841,6 +968,7 @@ $('resetRank').onclick=()=>{
   setTimeout(()=>{if(resetArmed&&Date.now()-resetArmed>=4000){$('resetRank').textContent='기록 초기화';}},4100);};
 ['optLibs','optAtari'].forEach(id=>$(id).onchange=renderPlay);
 $('optMode').onchange=newGame;
+roomMount($('netroom'),{game:'baduk',max:1,start:bStart,msg:bNet,leave:bLeave,off:()=>{BNET=null;newGame();},showPlay:()=>{try{showTab('play');}catch(e){}}});
 $('optSize').onchange=()=>{try{localStorage.setItem('baduk-size',$('optSize').value);}catch(e){}newGame();};
 try{const v=localStorage.getItem('baduk-size');if(v&&['9','13','19'].includes(v))$('optSize').value=v;}catch(e){}
 renderProfile();

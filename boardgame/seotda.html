@@ -125,6 +125,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .netin{width:9em;font:600 16px var(--f-body);padding:7px 10px;border:1px solid var(--rule);border-radius:8px;letter-spacing:3px;text-align:center;background:var(--surface);color:var(--ink)}
 .netcode{font-size:14px;margin:6px 0}.netcode b{font:900 28px var(--f-display);letter-spacing:6px;color:var(--accent);margin-left:6px}
 .netmsg{font-size:13px;margin-top:8px;color:var(--muted)}.netmsg.ok{color:var(--ok)}.netmsg.bad{color:var(--danger)}
+.nrlist{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}.nrp{font-size:13px;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--rule)}.nrp.me{border-color:var(--accent);color:var(--accent);font-weight:700}
 
 /* 고스톱 전용 */
 :root{--frame:#3b2414;--accent:#b3261e;--accent-soft:#f6dedb}
@@ -299,7 +300,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="sbar" id="sbar"></div></div>
     <div class="panel">
       <div id="smsg" class="fb info"></div>
-      <div class="row"><button class="btn primary" id="snext" hidden>다음 판</button></div>
+      <div class="row"><button class="btn primary" id="snext" hidden>다음 판</button></div><div id="netroom"></div>
       <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
       <div class="levels" id="slevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="opts">
@@ -860,6 +861,107 @@ return{DECK,mon,special,isGwang,seotdaHand,seotdaShowdown,strength1,strength2,ne
   doriBest,doriHand,checkThree,newDori,shuffle};
 })();
 
+/* ===== 온라인 방 (2~5명): 방 코드로 여러 기기를 연결 (PeerJS, WebRTC) =====
+   방장 기기가 판을 진행(딜러)하고, 친구 기기에는 각자 볼 수 있는 것만 보낸다.
+   친구는 행동(낼 패, 베팅 등)만 방장에게 보낸다.
+   roomMount(el,{game,max,start,msg,leave,off,showPlay}) 로 화면에 붙인다. */
+const ROOM={peer:null,host:false,ok:false,on:false,code:'',cfg:null,guests:[],conn:null,seq:0,
+  say(h,kind){const el=document.getElementById('nrMsg');if(el){el.innerHTML=h;el.className='netmsg '+(kind||'');}}};
+const ROOM_PREFIX='sikimms-bgr-';
+function roomLoad(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');
+  s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej(new Error('load'));document.head.appendChild(s);});}
+// 방장 → 친구 gi (1부터)
+function roomSend(gi,d){const g=ROOM.guests.find(x=>x.gi===gi);if(g&&g.open)try{g.conn.send(d);}catch(e){}}
+function roomEach(fn){for(const g of ROOM.guests)if(g.open){const d=fn(g.gi);if(d)try{g.conn.send(d);}catch(e){}}}
+// 친구 → 방장
+function roomToHost(d){if(ROOM.conn&&ROOM.ok)try{ROOM.conn.send(d);}catch(e){}}
+const roomGuests=()=>ROOM.guests.filter(g=>g.open).map(g=>g.gi);
+function roomReset(){
+  try{ROOM.conn&&ROOM.conn.close();}catch(e){}for(const g of ROOM.guests)try{g.conn.close();}catch(e){}
+  try{ROOM.peer&&ROOM.peer.destroy();}catch(e){}
+  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';roomUI();}
+function roomUI(){
+  const $$=id=>document.getElementById(id);if(!$$('nrBox'))return;
+  $$('nrOff').hidden=ROOM.on;$$('nrBox').hidden=!ROOM.on;
+  $$('nrIdle').hidden=!!ROOM.peer;$$('nrLive').hidden=!ROOM.peer;
+  $$('nrCode').textContent=ROOM.code?ROOM.code.split('').join(' '):'';
+  const gs=roomGuests();
+  $$('nrShare').hidden=!ROOM.host||gs.length>=ROOM.cfg.max;
+  $$('nrStart').hidden=!ROOM.host||!gs.length;
+  $$('nrList').innerHTML=ROOM.peer?(ROOM.host?`<span class="nrp me">방장 (나)</span>`+gs.map(gi=>`<span class="nrp">친구 ${gi}</span>`).join('')
+    :(ROOM.ok?`<span class="nrp">방장</span><span class="nrp me">나</span>`:'')):'';
+}
+function roomHost(){
+  const cfg=ROOM.cfg;
+  roomLoad().then(()=>{
+    roomReset();ROOM.host=true;ROOM.seq=0;
+    const tryOpen=left=>{ROOM.code=String(1000+Math.floor(Math.random()*9000));
+      ROOM.peer=new Peer(ROOM_PREFIX+cfg.game+'-'+ROOM.code);
+      ROOM.peer.on('open',()=>{roomUI();ROOM.say(`방을 만들었어요. 친구에게 <b>방 코드 ${ROOM.code}</b>를 알려 주거나 초대 링크를 보내세요. 친구가 들어오면 <b>판 시작</b>을 누르세요.`);});
+      ROOM.peer.on('connection',c=>{
+        if(roomGuests().length>=cfg.max){c.on('open',()=>{try{c.send({t:'full'});}catch(e){}setTimeout(()=>c.close(),300);});return;}
+        const g={gi:0,conn:c,open:false};
+        c.on('open',()=>{const used=new Set(roomGuests());let gi=1;while(used.has(gi))gi++;g.gi=gi;g.open=true;ROOM.guests.push(g);
+          try{c.send({t:'welcome',gi});}catch(e){}
+          ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();cfg.join&&cfg.join(gi);});
+        c.on('data',d=>{if(g.open&&d&&d.t)cfg.msg(g.gi,d);});
+        c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();cfg.leave&&cfg.leave(g.gi);});
+        c.on('error',()=>{});});
+      ROOM.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){ROOM.peer.destroy();tryOpen(left-1);return;}
+        if(e.type==='peer-unavailable')return;
+        ROOM.say(e.type==='network'||e.type==='server-error'?'연결 서버에 닿지 못했어요. 회사망처럼 막힌 곳에서는 안 될 수 있어요.':'방을 만들지 못했어요 ('+e.type+')','bad');});};
+    tryOpen(3);roomUI();
+  }).catch(()=>ROOM.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad'));
+}
+function roomJoin(code){
+  const cfg=ROOM.cfg;code=String(code||'').replace(/\D/g,'');
+  if(code.length!==4){ROOM.say('방 코드 4자리를 넣어 주세요.','bad');return;}
+  roomLoad().then(()=>{
+    roomReset();ROOM.host=false;ROOM.code=code;
+    ROOM.peer=new Peer();
+    ROOM.peer.on('open',()=>{ROOM.say(`방 ${code}에 들어가는 중…`);
+      const c=ROOM.peer.connect(ROOM_PREFIX+cfg.game+'-'+code,{reliable:true});ROOM.conn=c;
+      c.on('open',()=>{ROOM.ok=true;roomUI();ROOM.say('연결됐어요. 방장이 판을 시작하면 자동으로 시작돼요.','ok');});
+      c.on('data',d=>{if(!d||!d.t)return;if(d.t==='full'){ROOM.say('방이 꽉 찼어요.','bad');return;}if(d.t==='welcome'){ROOM.gi=d.gi;roomUI();return;}cfg.msg(0,d);});
+      c.on('close',()=>{if(!ROOM.ok)return;ROOM.ok=false;ROOM.say('방장과 연결이 끊겼어요. 다시 들어가 주세요.','bad');roomUI();cfg.leave&&cfg.leave(0);});
+      c.on('error',()=>{});
+      setTimeout(()=>{if(!ROOM.ok&&ROOM.code===code)ROOM.say('방을 찾지 못했어요. 코드를 다시 확인해 주세요. (방장이 방을 만든 상태여야 해요)','bad');},9000);});
+    ROOM.peer.on('error',e=>{ROOM.say(e.type==='peer-unavailable'?'그 코드의 방이 없어요. 코드를 다시 확인해 주세요.':'연결하지 못했어요 ('+e.type+'). 회사망처럼 막힌 곳에서는 안 될 수 있어요.','bad');});
+    roomUI();
+  }).catch(()=>ROOM.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad'));
+}
+// 친구가 방에 있는 동안: 방장 쪽에서는 친구가 둘 차례를 기다리는 중인지 등은 게임이 알아서 처리
+const roomGuest=()=>ROOM.on&&!ROOM.host&&ROOM.ok;     // 나는 친구(손님) 기기
+const roomHosting=()=>ROOM.on&&ROOM.host&&!!ROOM.peer; // 나는 방장 기기
+function roomMount(el,cfg){
+  if(!el)return;ROOM.cfg=cfg;
+  el.innerHTML=`<button class="btn" id="nrOff" style="margin-top:12px">🌐 온라인으로 친구와 하기</button>
+    <div id="nrBox" class="netbox" hidden>
+      <div class="eyebrow">온라인 방 <button class="linkbtn" id="nrQuit" style="float:right">혼자 하기로 돌아가기</button></div>
+      <div id="nrIdle"><div class="row" style="margin-top:6px"><button class="btn primary" id="nrHost">방 만들기</button>
+        <input id="nrIn" class="netin" inputmode="numeric" maxlength="4" placeholder="방 코드 4자리" aria-label="방 코드"><button class="btn" id="nrJoin">들어가기</button></div></div>
+      <div id="nrLive" hidden><div class="netcode">방 코드 <b id="nrCode"></b></div><div class="nrlist" id="nrList"></div>
+        <div class="row"><button class="btn primary" id="nrStart">판 시작</button><button class="btn" id="nrShare">초대 링크 보내기</button><button class="btn" id="nrLeave">나가기</button></div></div>
+      <div id="nrMsg" class="netmsg">같은 앱을 쓰는 친구${cfg.max>1?` (최대 ${cfg.max}명)`:''}와 인터넷으로 할 수 있어요. 방장 기기가 카드를 섞고 나눠요. 빈자리는 컴퓨터가 채워요.</div>
+    </div>`;
+  const $$=id=>document.getElementById(id);
+  $$('nrOff').onclick=()=>{ROOM.on=true;roomUI();};
+  $$('nrQuit').onclick=()=>{roomReset();ROOM.on=false;roomUI();cfg.off&&cfg.off();};
+  $$('nrHost').onclick=roomHost;
+  $$('nrJoin').onclick=()=>roomJoin($$('nrIn').value);
+  $$('nrIn').addEventListener('keydown',e=>{if(e.key==='Enter')roomJoin($$('nrIn').value);});
+  $$('nrLeave').onclick=()=>{roomReset();ROOM.say('방에서 나왔어요.');roomUI();cfg.off&&cfg.off();};
+  $$('nrStart').onclick=()=>{if(roomGuests().length)cfg.start();};
+  $$('nrShare').onclick=async()=>{const url=location.href.split('#')[0]+'#join='+ROOM.code,text=`${document.title} 같이 해요! 방 코드 ${ROOM.code}`;
+    try{if(navigator.share){await navigator.share({title:document.title,text,url});return;}}catch(e){}
+    try{await navigator.clipboard.writeText(text+' '+url);ROOM.say('초대 링크를 복사했어요. 메신저에 붙여 넣어 보내세요.','ok');}catch(e){ROOM.say(`초대 링크: ${url}`);}};
+  roomUI();
+  const m=location.hash.match(/join=(\d{4})/);
+  if(m)setTimeout(()=>{cfg.showPlay&&cfg.showPlay();ROOM.on=true;$$('nrIn').value=m[1];roomUI();roomJoin(m[1]);},300);
+}
+// 받은 메시지를 차례로 처리 (연출이 끝난 뒤 다음 메시지)
+function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>console.error(e));};}
+
 /* ===== 섯다 · 도리짓고땡 화면 ===== */
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -868,7 +970,7 @@ const store={get(k,d){try{const v=localStorage.getItem('seotda-'+k);return v==nu
 const won=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
 const {mon}=SD;
 let showLabels=store.get('labels',true),seq=0,sqOn=store.get('squeeze',true);
-const face=(id)=>{const t='s'+(++seq)+'_';return HW.face(id,{labels:showLabels}).split(`h${id}_`).join(`${t}h${id}_`);};
+const face=(id)=>{if(id<0)return HW.back();const t='s'+(++seq)+'_';return HW.face(id,{labels:showLabels}).split(`h${id}_`).join(`${t}h${id}_`);};
 const SND={ctx:null,on:store.get('sound',true),
   tick(f=900,v=.2,d=.06){if(!this.on)return;try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
     const c=this.ctx,now=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(v,now);g.gain.exponentialRampToValueAtTime(0.0001,now+d);o.connect(g);g.connect(c.destination);o.start(now);o.stop(now+d+0.02);},
@@ -884,14 +986,38 @@ function saveMoney(){store.set('money',money);$('smoney').textContent=won(money)
 const SEATS={2:[[50,74],[50,18]],3:[[50,74],[17,32],[83,32]],4:[[50,75],[13,47],[50,16],[87,47]],5:[[50,75],[12,52],[26,16],[74,16],[88,52]]};
 const NAMES=['나','김 사장','이 여사','박 부장','최 선생','선(물주)'];
 
+/* ================= 온라인 공통 =================
+   방장 기기: NET.seats[p] = 0(방장) / 친구 번호 / -1(컴퓨터). 판은 방장 기기에서만 진행한다.
+   친구 기기: 방장이 보내 준 '내 자리가 0번이 되게 바꾼 판'으로 화면만 그리고, 차례가 오면 고른 것을 보낸다. */
+let NET=null;   // {game:'seotda'|'dori', seats, names} 또는 친구 기기 {guest:true, game, names}
+const NGUEST=()=>!!(NET&&NET.guest);
+const nremote=p=>!!(NET&&!NET.guest&&NET.seats[p]>0);
+const pend={};
+function netAsk(p,d,def){const gi=NET.seats[p];return new Promise(res=>{pend[gi]={res,def};roomSend(gi,d);});}
+const handId=()=>Date.now()+Math.random();
+
 /* ================= 섯다 ================= */
+const snm=p=>NET&&NET.game==='seotda'?NET.names[p]:NAMES[p];
+const schip=p=>NGUEST()||p!==0?S.aiMoney[p]:money;
+function sViewFor(v,dealing){
+  const s=S.s,n=s.n,R=a=>a.map((_,i)=>a[(i+v)%n]),rp=p=>(p-v+n)%n;
+  const t={...s,deck:[],log:[],hands:R(s.hands.map((h,q)=>q===v||(S.reveal&&!s.folded[q])?h.slice():h.map(()=>-1))),
+    folded:R(s.folded),bet:R(s.bet),stack:R(s.stack),acted:R(s.acted),turn:rp(s.turn),dealer:rp(s.dealer),
+    result:s.result?{...s.result,winners:s.result.winners.map(rp),hands:s.result.hands&&s.result.hands.map(x=>({...x,p:rp(x.p)}))}:null};
+  const last={};for(const p in S.last)last[rp(+p)]=S.last[p];
+  const names=[...Array(n)].map((_,i)=>{const q=(i+v)%n;return i===0?'나':q===0?'방장':NET.names[q];});
+  return{t:'sview',s:t,last,reveal:S.reveal,result:S.result?t.result:null,chips:R([money].concat(S.aiMoney.slice(1))),names,dealt:R(S.dealt),dealing:!!dealing,hand:S.hid,end:!!S.ended};
+}
+function sNetView(dealing){if(!NET||NET.guest||NET.game!=='seotda')return;const x=S.netx||{};S.netx=null;roomEach(gi=>({...sViewFor(NET.seats.indexOf(gi),dealing),...x}));}
+
 const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500)};
 let S=null;
 function seotdaNew(carry){
+  if(NGUEST())return;
   const n=sopt.players;
   const ai=S&&S.aiMoney&&S.aiMoney.length===n?S.aiMoney:Array(n).fill(100000);
   if(money<sopt.ante*4){money=100000;bigText('돈 충전!');}
-  S={s:SD.newSeotda({players:n,ante:sopt.ante,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false};
+  S={s:SD.newSeotda({players:n,ante:sopt.ante,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false,hid:handId()};
   for(let p=0;p<n;p++){if(p===0)money-=sopt.ante;else{if(S.aiMoney[p]<sopt.ante*4)S.aiMoney[p]=100000;S.aiMoney[p]-=sopt.ante;}}
   if(carry){S.s.pot+=carry;}
   S.s.stack=[money].concat(S.aiMoney.slice(1));   // 가진 돈만큼만 걸 수 있음
@@ -900,7 +1026,7 @@ function seotdaNew(carry){
 }
 async function seotdaDeal(){
   const gen=S.gen;SD.dealRound(S.s);
-  const mine=S.s.hands[0];
+  const mine=S.s.hands[0];if(S.s.round===2)S.netx={sq:1};
   if(sqOn&&S.s.round===2&&!S.s.folded[0]){S.hideId=mine[1];seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;
     await squeeze($('stable'),face(mine[1]),HW.back(),'60/97.5','두 번째 카드');if(gen!==S.gen)return;S.hideId=null;}
   else{seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;}
@@ -908,6 +1034,7 @@ async function seotdaDeal(){
   S.last={};seotdaRender();S.busy=false;seotdaStep();
 }
 function seotdaRender(dealing){
+  sNetView(dealing);
   const s=S.s,pos=SEATS[s.n],show=S.reveal;
   $('stable').querySelectorAll('.seat').forEach(e=>e.remove());
   for(let p=0;p<s.n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
@@ -921,7 +1048,7 @@ function seotdaRender(dealing){
   $('spot').innerHTML=`<div class="chips">${chipsHtml(s.pot)}</div><b>${won(s.pot)}</b><small>${s.round>=2?'두 번째 장':'첫 번째 장'} · ${s.over?'끝':'베팅 중'}</small>`;
   seotdaBar();
 }
-function plate(p){const s=S.s;return `<div class="splate${s.turn===p&&!s.over?' turn':''}${s.folded[p]?' out':''}">${avatar(p)}<span class="sn"><b>${NAMES[p]}${p&&!S.reveal?'':''}</b><small>${won(p===0?money:S.aiMoney[p])}</small></span></div>`;}
+function plate(p){const s=S.s;return `<div class="splate${s.turn===p&&!s.over?' turn':''}${s.folded[p]?' out':''}">${avatar(p)}<span class="sn"><b>${snm(p)}</b><small>${won(schip(p))}</small></span></div>`;}
 function seotdaBar(){
   const s=S.s,mine=!s.over&&!S.busy&&s.turn===0&&!s.folded[0];
   const acts=mine?SD.actions(s):[];
@@ -930,7 +1057,7 @@ function seotdaBar(){
     const name={die:'다이',check:'체크',call:'콜',bbing:'삥',half:'하프',ddadang:'따당'}[k];
     return `<button class="btn ${cls[k]}" data-k="${k}"${a?'':' disabled'}>${name}${a&&a.amt?`<small>${won(a.amt)}</small>`:'<small>&nbsp;</small>'}</button>`;}).join('');
 }
-$('sbar').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b||b.disabled||!S||S.busy)return;const a=SD.actions(S.s).find(x=>x.k===b.dataset.k);if(a)seotdaDo(a);});
+$('sbar').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b||b.disabled||!S||S.busy)return;if(S.waiter){const w=S.waiter;S.waiter=null;w(b.dataset.k);return;}if(NGUEST())return;const a=SD.actions(S.s).find(x=>x.k===b.dataset.k);if(a)seotdaDo(a);});
 function smsg(h){$('smsg').innerHTML=h;}
 async function seotdaDo(a){
   const s=S.s,p=s.turn,gen=S.gen;
@@ -946,7 +1073,9 @@ async function seotdaDo(a){
 async function seotdaStep(){
   const s=S.s,gen=S.gen;if(s.over)return;
   if(s.turn===0){const need=s.toCall-s.bet[0];smsg(`<b>내 차례</b>예요. ${s.hands[0].length===1?'첫 장만 보고':'두 장을 보고'} 베팅하세요.${need>0?` 따라가려면 ${won(need)}이 필요해요.`:''}`);seotdaRender();return;}
-  S.busy=true;seotdaRender();smsg(`${NAMES[s.turn]}이(가) 생각 중이에요`);await sleep(700+Math.random()*500);if(gen!==S.gen)return;
+  if(nremote(s.turn)){S.busy=true;seotdaRender();smsg(`<b>${snm(s.turn)}</b> 차례예요. 기다리는 중…`);const v=await netAsk(s.turn,{t:'ask',kind:'sbet'},null);if(gen!==S.gen)return;
+    S.busy=false;seotdaDo(SD.actions(s).find(x=>x.k===v)||SD.aiAct(s,sopt.level));return;}
+  S.busy=true;seotdaRender();smsg(`${snm(s.turn)}이(가) 생각 중이에요`);await sleep(700+Math.random()*500);if(gen!==S.gen)return;
   S.busy=false;seotdaDo(SD.aiAct(s,sopt.level));
 }
 function seotdaSettle(){
@@ -955,19 +1084,25 @@ function seotdaSettle(){
     setTimeout(()=>{S.result=null;S.reveal=false;seotdaNewKeep(carry);},1800);return;}
   const share=Math.floor(s.pot/res.winners.length);
   res.winners.forEach(p=>{if(p===0)money+=share;else S.aiMoney[p]+=share;});saveMoney();
-  const iWon=res.winners.includes(0);if(iWon){rec.sw++;SND.win();bigText('승리!');}else{rec.sl++;}store.set('rec',rec);
-  const hands=(res.hands||[]).map(x=>`${NAMES[x.p]}: <b>${x.h.name}</b>`).join(' · ');
-  smsg(`${iWon?'🎉 <b>내가 이겼어요!</b>':`<b>${res.winners.map(p=>NAMES[p]).join(', ')}</b> 승리.`} ${res.reason||''} 판돈 ${won(s.pot)}${res.winners.length>1?' 나눔':''}.${hands?'<br>'+hands:''}`);
+  const iWon=res.winners.includes(0);if(!NET){if(iWon)rec.sw++;else rec.sl++;store.set('rec',rec);}
+  S.ended=true;sSettleMsg(s,res);
   seotdaRender();$('snext').hidden=false;renderRec();
 }
+function sSettleMsg(s,res){const iWon=res.winners.includes(0);if(iWon){SND.win();bigText('승리!');}
+  const hands=(res.hands||[]).map(x=>`${snm(x.p)}: <b>${x.h.name}</b>`).join(' · ');
+  smsg(`${iWon?'🎉 <b>내가 이겼어요!</b>':`<b>${res.winners.map(p=>snm(p)).join(', ')}</b> 승리.`} ${res.reason||''} 판돈 ${won(s.pot)}${res.winners.length>1?' 나눔':''}.${hands?'<br>'+hands:''}${NGUEST()?'<br><small>다음 판은 방장이 시작해요.</small>':''}`);}
 // 재경기: 판돈을 남기고 같은 사람끼리 다시 (판돈은 다시 안 냄)
-function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,dealer:S.s.dealer,stacks:[money].concat(S.aiMoney.slice(1))});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
+function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,dealer:S.s.dealer,stacks:[money].concat(S.aiMoney.slice(1))});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.hid=handId();S.ended=false;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
 $('snext').onclick=()=>{$('snext').hidden=true;S.result=null;S.reveal=false;seotdaNew();};
 
 /* ================= 도리짓고땡 =================
-   기본 돈을 걸고 3장을 받은 뒤 한 번, 4번째 장을 받은 뒤 한 번 더 걸 수 있다. 5장째를 받으면 짓기. */
+   기본 돈을 걸고 3장을 받은 뒤 한 번, 4번째 장을 받은 뒤 한 번 더 걸 수 있다. 5장째를 받으면 짓기.
+   온라인: 친구들도 각자 선(물주)과 겨룬다. 거는 것과 짓기는 모두가 동시에 고르고, 다 고르면 다음으로 넘어간다. */
 const dopt={others:store.get('dothers',1),bet:store.get('dbet',5000)};
 let D=null;
+const dnm=p=>p===D.s.n-1?NAMES[5]:NET&&NET.game==='dori'?NET.names[p]:NAMES[p];
+const dchip=p=>NGUEST()||p!==0?D.chips[p]:money;
+const dHumans=()=>[...Array(D.s.n-1).keys()].filter(p=>p===0||nremote(p));
 // 지금까지 받은 카드로 선을 이길 확률 (남은 카드를 여러 번 채워 보며 계산)
 function doriWinProb(seen,dealerKnown){
   const rest=SD.DECK.filter(c=>!seen.includes(c)&&!(dealerKnown||[]).includes(c));let w=0,N=160;
@@ -975,63 +1110,95 @@ function doriWinProb(seen,dealerKnown){
     if(SD.doriBest(mine).h.v>SD.doriBest(dl).h.v)w++;}
   return w/N;
 }
+function dViewFor(v){
+  const s=D.s,n=s.n,m=i=>i===0?v:i===v?0:i,R=a=>a.map((_,i)=>a[m(i)]),remap=o=>{const r={};for(const k in o)r[m(+k)]=o[k];return r;};
+  const hands=R(s.hands.map((h,q)=>q===v||(D.reveal&&!D.folded[q])?h.slice():h.map(()=>-1)));
+  const names=[...Array(n)].map((_,i)=>i===0?'나':m(i)===0?'방장':m(i)===n-1?NAMES[5]:NET.names[m(i)]);
+  return{t:'dview',s:{n,hands,bets:R(s.bets)},base:R(D.base),vis:D.vis,folded:R(D.folded),acts:remap(D.acts),reveal:D.reveal,res:D.res?remap(D.res):null,
+    best:D.best?R(D.best):null,chips:R(D.chips.map((c,i)=>i===0?money:c)),names,hand:D.hid,end:!!D.ended,bet:dopt.bet};
+}
+function dNetView(){if(!NET||NET.guest||NET.game!=='dori'||!D)return;const x=D.netx||{};D.netx=null;roomEach(gi=>({...dViewFor(NET.seats.indexOf(gi)),...x}));}
 function doriNew(){
+  if(NGUEST())return;
   if(money<dopt.bet*5){money=100000;bigText('돈 충전!');}
-  const n=dopt.others+2;   // 나 + 다른 사람 + 선
-  const base=[dopt.bet];for(let i=0;i<dopt.others;i++)base.push([1000,5000,10000][Math.floor(Math.random()*3)]);base.push(0);
-  D={s:SD.newDori({players:n,bets:base}),base,vis:0,stage:'deal',chosen:[],done:false,reveal:false,folded:Array(n).fill(false),acts:{},gen:(D?D.gen:0)+1,res:null};
+  const online=NET&&NET.game==='dori',n=online?NET.seats.length+1:dopt.others+2;   // 나 + 다른 사람 + 선
+  const chips=D&&D.chips&&D.chips.length===n?D.chips:Array(n).fill(100000);
+  const base=[dopt.bet];for(let i=1;i<n-1;i++){if(nremote(i)){if(chips[i]<dopt.bet*5)chips[i]=100000;chips[i]-=dopt.bet;base.push(dopt.bet);}else base.push([1000,5000,10000][Math.floor(Math.random()*3)]);}base.push(0);
+  D={s:SD.newDori({players:n,bets:base}),base,vis:0,stage:'deal',chosen:[],done:false,reveal:false,folded:Array(n).fill(false),acts:{},gen:(D?D.gen:0)+1,res:null,chips,hid:handId(),made:{}};
   money-=dopt.bet;saveMoney();
   dmsg(`기본 돈 ${won(dopt.bet)}을 걸었어요. 카드 3장을 나눠 줄게요.`);
   $('dnext').hidden=true;doriDealTo(3);
 }
 async function doriDealTo(k){
   const gen=D.gen,from=D.vis;D.vis=k;D.stage='deal';
+  if(k===5)D.netx={sq:1};
   if(k===5&&sqOn&&!D.folded[0]){D.hideId=D.s.hands[0][4];doriRender(from);SND.card();await sleep(700);if(gen!==D.gen)return;
     await squeeze($('dtable'),face(D.hideId),HW.back(),'60/97.5','마지막 카드');if(gen!==D.gen)return;D.hideId=null;}
   else{doriRender(from);SND.card();await sleep(700+(k-from)*120);if(gen!==D.gen)return;}
+  const rem=()=>[...Array(D.s.n-1).keys()].filter(p=>nremote(p)&&!D.folded[p]);
   if(k<5){D.stage=k===3?'bet1':'bet2';D.acts={};
     // 다른 사람(컴퓨터)도 패를 보고 걸기
-    for(let p=1;p<D.s.n-1;p++){if(D.folded[p])continue;const pr=doriWinProb(D.s.hands[p].slice(0,k)),b=D.base[p];
+    for(let p=1;p<D.s.n-1;p++){if(D.folded[p]||nremote(p))continue;const pr=doriWinProb(D.s.hands[p].slice(0,k)),b=D.base[p];
       if(pr<0.22&&Math.random()<0.6){D.folded[p]=true;D.acts[p]='다이';}
       else if(pr>0.62){D.s.bets[p]+=b*2;D.acts[p]=`크게 +${won(b*2)}`;}
       else if(pr>0.48){D.s.bets[p]+=b;D.acts[p]=`더 +${won(b)}`;}
       else D.acts[p]='그대로';}
+    D.wait=Promise.all(rem().map(p=>netAsk(p,{t:'ask',kind:'dbet',k},'stay').then(v=>[p,v])));
+    if(D.folded[0]){dmsg('다이했어요. 다른 사람이 거는 걸 기다려요…');doriRender();doriAfterBets();return;}
     const pr=doriWinProb(D.s.hands[0].slice(0,k));
     dmsg(`카드 ${k}장을 받았어요. 더 걸까요? <span class="sub">(지금 패로 선을 이길 확률 약 ${Math.round(pr*100)}%)</span>`);
     doriRender();return;}
-  D.stage='make';dmsg('5장을 다 받았어요. <b>달 합이 10·20·30</b>이 되는 3장을 골라 짓고, 남은 2장으로 선과 겨뤄요. 카드를 누르거나 <b>자동 짓기</b>를 눌러 보세요.');doriRender();
+  D.stage='make';
+  D.wait=Promise.all(rem().map(p=>netAsk(p,{t:'ask',kind:'dmake'},null).then(v=>[p,v])));
+  if(D.folded[0]){doriFinish(null);return;}
+  dmsg('5장을 다 받았어요. <b>달 합이 10·20·30</b>이 되는 3장을 골라 짓고, 남은 2장으로 선과 겨뤄요. 카드를 누르거나 <b>자동 짓기</b>를 눌러 보세요.');doriRender();
+}
+function applyRemoteBet(p,v){const b=D.base[p];
+  if(v==='die'){D.folded[p]=true;D.acts[p]='다이';return;}
+  let add=v==='more'?b:v==='big'?b*2:0;if(add>D.chips[p])add=0;
+  if(add){D.chips[p]-=add;D.s.bets[p]+=add;D.acts[p]=`+${won(add)}`;}else D.acts[p]='그대로';}
+async function doriAfterBets(){
+  const gen=D.gen;if(D.wait){if(dHumans().some(p=>p!==0&&!D.folded[p]))dmsg((D.folded[0]?'다이했어요. ':'')+'친구들이 고르는 중이에요…');doriRender();
+    const got=await D.wait;if(gen!==D.gen)return;got.forEach(([p,v])=>applyRemoteBet(p,v));D.wait=null;}
+  if(!dHumans().some(p=>!D.folded[p])){   // 사람이 모두 다이: 이번 판 끝
+    D.stage='fold';D.ended=true;dmsg(`다이했어요. 건 돈 ${won(D.s.bets[0])}은 선이 가져가요.`);doriRender();$('dnext').hidden=false;renderRec();return;}
+  doriDealTo(D.vis+1);
 }
 function doriBet(kind){
   if(!D||(D.stage!=='bet1'&&D.stage!=='bet2'))return;const b=dopt.bet,s=D.s;
-  if(kind==='die'){D.folded[0]=true;D.stage='fold';SND.tick(400,.15,.08);
-    dmsg(`다이했어요. 건 돈 ${won(s.bets[0])}은 선이 가져가요.`);rec.dl++;store.set('rec',rec);doriRender();$('dnext').hidden=false;renderRec();return;}
+  if(NGUEST()){const add=kind==='more'?b:kind==='big'?b*2:0;if(add&&dchip(0)<add){dmsg('돈이 모자라요.');return;}
+    D.acts[0]=kind==='die'?'다이':add?`+${won(add)}`:'그대로';D.stage='wait';doriRender();dmsg('다른 사람을 기다리는 중…');const r=D.answer;D.answer=null;r&&r(kind);return;}
+  if(kind==='die'){D.folded[0]=true;SND.tick(400,.15,.08);if(!NET){rec.dl++;store.set('rec',rec);}
+    if(!NET){D.stage='fold';D.ended=true;dmsg(`다이했어요. 건 돈 ${won(s.bets[0])}은 선이 가져가요.`);doriRender();$('dnext').hidden=false;renderRec();return;}
+    D.acts[0]='다이';D.stage='deal';doriAfterBets();return;}
   const add=kind==='more'?b:kind==='big'?b*2:0;
   if(add&&money<add){dmsg('돈이 모자라요.');return;}
   if(add){money-=add;s.bets[0]+=add;saveMoney();SND.chip();if(kind==='big')bigText('크게!');}
-  D.acts[0]=add?`+${won(add)}`:'그대로';
-  doriDealTo(D.vis+1);
+  D.acts[0]=add?`+${won(add)}`:'그대로';D.stage='deal';
+  doriAfterBets();
 }
 const dpos=n=>{const m=n-2;return [[50,74]].concat(m===0?[]:m===1?[[18,46]]:[[16,50],[84,50]]).concat([[50,17]]);};
 function doriRender(dealFrom){
+  dNetView();
   const s=D.s,n=s.n,pos=dpos(n),dealer=n-1,dealing=dealFrom!=null;
   $('dtable').querySelectorAll('.seat').forEach(e=>e.remove());
   for(let p=0;p<n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat dori'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
     const r=D.res&&D.res[p],out=D.folded[p];
     let order=s.hands[p].slice(0,D.vis);const hideId=D.hideId;
-    if(p===0&&D.done)order=D.mine.three.concat(D.mine.two);
-    if(D.reveal&&p!==0&&!out)order=D.best[p].three.concat(D.best[p].two);
-    const cards=order.map((id,i)=>cardHtml(id,{down:(p!==0&&!(D.reveal&&!out))||(p===0&&id===hideId),deal:dealing&&i>=dealFrom,delay:dealing?((i-dealFrom)*260+p*90):0,
-      pick:p===0&&D.stage==='make'&&!D.done,chosen:p===0&&D.stage==='make'&&!D.done&&D.chosen.includes(id),reveal:D.reveal&&p!==0&&!out})).join('');
-    const name=p===dealer?NAMES[5]:NAMES[p];
-    const handTxt=out?'다이':(p===0&&D.done)?D.mine.h.name:(D.reveal?D.best[p].h.name:'');
+    if(p===0&&D.done&&D.mine)order=D.mine.three.concat(D.mine.two);
+    if(D.reveal&&p!==0&&!out&&D.best)order=D.best[p].three.concat(D.best[p].two);
+    const cards=order.map((id,i)=>cardHtml(id,{down:id<0||(p!==0&&!(D.reveal&&!out))||(p===0&&id===hideId),deal:dealing&&i>=dealFrom,delay:dealing?((i-dealFrom)*260+p*90):0,
+      pick:p===0&&D.stage==='make'&&!D.done,chosen:p===0&&D.stage==='make'&&!D.done&&D.chosen.includes(id),reveal:D.reveal&&p!==0&&!out&&id>=0})).join('');
+    const name=dnm(p);
+    const handTxt=out?'다이':(p===0&&D.done&&D.mine)?D.mine.h.name:(D.reveal&&D.best?D.best[p].h.name:'');
     const act=D.acts[p]&&!D.reveal?`<span class="sact ${D.acts[p]==='다이'?'die':D.acts[p]==='그대로'?'call':'raise'}">${D.acts[p]}</span>`:'';
     el.innerHTML=(p===0?'':`<div class="splate${out?' out':''}">${avatar(p===dealer?5:p)}<span class="sn"><b>${name}</b><small>${p===dealer?'물주':'건 돈 '+won(s.bets[p])}</small></span></div>`)+
       `<div class="scards">${cards}</div>`+(handTxt?`<span class="shand${r==='win'?' win':''}">${handTxt}${r?` · ${r==='win'?'이김':'짐'}`:''}</span>`:'')+act+
-      (p===0?`<div class="splate${out?' out':''}">${avatar(0)}<span class="sn"><b>나</b><small>${won(money)} · 건 돈 ${won(s.bets[0])}</small></span></div>`:'');
+      (p===0?`<div class="splate${out?' out':''}">${avatar(0)}<span class="sn"><b>나</b><small>${won(dchip(0))} · 건 돈 ${won(s.bets[0])}</small></span></div>`:'');
     $('dtable').appendChild(el);}
   const total=s.bets.reduce((a,b)=>a+b,0);
   const sum=D.chosen.reduce((a,c)=>a+mon(c),0),ok=D.chosen.length===3&&sum%10===0;
-  $('dpot').innerHTML=`<div class="chips">${chipsHtml(total)}</div><b>${won(total)}</b><small>${D.stage==='make'&&!D.done?'':`카드 ${D.vis}장`}</small>`+
+  $('dpot').innerHTML=`<div class="chips">${chipsHtml(total)}</div><b>${won(total)}</b><small>${D.stage==='make'&&!D.done?'':`카드 ${D.vis}장`}${NET&&NET.game==='dori'?' · 온라인':''}</small>`+
     (D.stage==='make'&&!D.done?`<span class="dsum${ok?' ok':''}" style="margin-top:4px">고른 3장 합: ${D.chosen.length?sum:'-'}${ok?' ✓ 짓기 가능':D.chosen.length===3?' (10·20·30이 아니에요)':''}</span>`:'');
   const betting=D.stage==='bet1'||D.stage==='bet2',making=D.stage==='make'&&!D.done,b=dopt.bet;
   $('dbetbar').hidden=!betting;$('dmakebar').hidden=!making;
@@ -1044,27 +1211,102 @@ $('dbetbar').addEventListener('click',e=>{const b=e.target.closest('[data-bet]')
 $('dauto').onclick=()=>{const b=SD.doriBest(D.s.hands[0]);if(b.h.v<0){dmsg('어떤 3장으로도 10·20·30을 만들 수 없어요. <b>노메이드</b>를 눌러 주세요.');return;}D.chosen=b.three.slice();doriRender();dmsg(`가장 좋은 짓기를 골랐어요: 남은 2장이 <b>${b.h.name}</b>이에요. <b>짓기</b>를 누르세요.`);};
 $('dmake').onclick=()=>{const three=D.chosen.slice();if(!SD.checkThree(three))return;const two=D.s.hands[0].filter(c=>!three.includes(c));doriFinish({three,two,h:SD.doriHand(two)});};
 $('dnomade').onclick=()=>{if(SD.doriBest(D.s.hands[0]).h.v>=0&&!confirm('지을 수 있는 3장이 있어요. 그래도 노메이드로 할까요?'))return;doriFinish({three:[],two:D.s.hands[0].slice(),h:{v:-1,name:'노메이드'}});};
+// 친구가 고른 짓기 확인 (틀리면 가장 좋은 짓기로)
+function madeOf(h,v){if(v&&Array.isArray(v.three)){const three=v.three.filter(c=>h.includes(c));
+    if(three.length===3&&SD.checkThree(three)){const two=h.filter(c=>!three.includes(c));return{three,two,h:SD.doriHand(two)};}
+    if(!v.three.length)return{three:[],two:h.slice(),h:{v:-1,name:'노메이드'}};}
+  return SD.doriBest(h);}
 async function doriFinish(mine){
-  const s=D.s,n=s.n,dealer=n-1,gen=D.gen;D.mine=mine;D.done=true;D.best=s.hands.map((h,p)=>p===0?mine:SD.doriBest(h));doriRender();SND.card();
+  if(NGUEST()){D.mine=mine;D.done=true;D.stage='wait';doriRender();dmsg('다른 사람을 기다리는 중…');const r=D.answer;D.answer=null;r&&r({three:mine.three});return;}
+  const s=D.s,n=s.n,dealer=n-1,gen=D.gen;D.mine=mine;D.done=true;D.stage='deal';doriRender();SND.card();
+  if(D.wait){dmsg('친구들이 짓는 중이에요…');const got=await D.wait;if(gen!==D.gen)return;D.wait=null;got.forEach(([p,v])=>D.made[p]=v);}
+  D.best=s.hands.map((h,p)=>p===0&&mine?mine:nremote(p)?madeOf(h,D.made[p]):SD.doriBest(h));doriRender();
   dmsg('선과 다른 사람들이 패를 펼쳐요…');await sleep(900);if(gen!==D.gen)return;
-  D.reveal=true;D.res={};const dv=D.best[dealer].h.v;let line='';
+  D.reveal=true;D.res={};const dv=D.best[dealer].h.v;
   for(let p=0;p<dealer;p++){if(D.folded[p]){D.res[p]='lose';continue;}const pv=D.best[p].h.v,win=pv>dv;D.res[p]=win?'win':'lose';
     const mult=win&&pv>=100?2:1;   // 땡으로 이기면 2배
-    if(p===0){if(win){money+=s.bets[0]*(1+mult);}
-      line=win?`🎉 <b>내가 이겼어요!</b> ${D.best[0].h.name} > 선의 ${D.best[dealer].h.name}${mult>1?' (땡이라 2배)':''} · +${won(s.bets[0]*mult)}`:`선의 ${D.best[dealer].h.name}에 졌어요 (내 패 ${D.best[0].h.name}${pv===dv?', 비기면 선이 이겨요':''}) · -${won(s.bets[0])}`;}}
-  saveMoney();if(D.res[0]==='win'){rec.dw++;SND.win();bigText('승리!');}else rec.dl++;store.set('rec',rec);
-  doriRender();dmsg(line);$('dnext').hidden=false;renderRec();
+    if(win){if(p===0)money+=s.bets[0]*(1+mult);else if(nremote(p))D.chips[p]+=s.bets[p]*(1+mult);}}
+  saveMoney();if(!NET){if(D.res[0]==='win')rec.dw++;else rec.dl++;store.set('rec',rec);}
+  D.ended=true;doriRender();doriResultMsg();$('dnext').hidden=!!NGUEST();renderRec();
+}
+function doriResultMsg(){
+  const dealer=D.s.n-1,me=D.best[0],dl=D.best[dealer],win=D.res[0]==='win',mult=win&&me.h.v>=100?2:1;
+  if(win){SND.win();bigText('승리!');}
+  const line=D.folded[0]?`다이했어요. 선의 패는 <b>${dl.h.name}</b>였어요.`:win?`🎉 <b>내가 이겼어요!</b> ${me.h.name} > 선의 ${dl.h.name}${mult>1?' (땡이라 2배)':''} · +${won(D.s.bets[0]*mult)}`:`선의 ${dl.h.name}에 졌어요 (내 패 ${me.h.name}${me.h.v===dl.h.v?', 비기면 선이 이겨요':''}) · -${won(D.s.bets[0])}`;
+  dmsg(line+(NGUEST()?'<br><small>다음 판은 방장이 시작해요.</small>':''));
 }
 function dmsg(h){$('dmsg').innerHTML=h;}
 $('dnext').onclick=doriNew;
 
+/* ================= 온라인: 방 연결 ================= */
+function startOnline(){
+  const gs=roomGuests();if(!gs.length)return;
+  const game=!$('dori').hidden?'dori':'seotda';
+  if(game==='seotda'){
+    if(gs.length+1>sopt.players){sopt.players=Math.min(5,gs.length+1);$('sPlayers').value=String(sopt.players);}
+    const n=sopt.players,seats=[0];for(let q=1;q<n;q++)seats.push(gs[q-1]!=null?gs[q-1]:-1);
+    NET={game,seats,names:seats.map((g,q)=>q===0?'나':g>0?'친구 '+g:NAMES[q])};
+    showTab('seotda');S=null;seotdaNew();
+  }else{
+    const others=Math.max(dopt.others,Math.min(2,gs.length)),seats=[0];for(let q=1;q<=others;q++)seats.push(gs[q-1]!=null?gs[q-1]:-1);
+    NET={game,seats,names:seats.map((g,q)=>q===0?'나':g>0?'친구 '+g:NAMES[q])};
+    if(gs.length>2)roomSend(gs[2],{t:'note',h:'도리짓고땡은 친구 2명까지만 같이 해요. 이번 판은 구경만 해요.'});
+    showTab('dori');D=null;doriNew();
+  }
+}
+function stopOnline(){NET=null;for(const k in pend){pend[k].res(pend[k].def);delete pend[k];}$('sPlayers').disabled=false;$('dOthers').disabled=false;
+  const t=!$('dori').hidden?'dori':'seotda';S=null;D=null;showTab(t);}
+const nq=roomQueue();
+function guestNet(game,names){if(!NGUEST()){NET={guest:true,game,names};$('sPlayers').disabled=true;$('dOthers').disabled=true;}NET.game=game;NET.names=names;if($(game).hidden)showTab(game);}
+function onNet(gi,d){
+  if(ROOM.host){if(!NET)return;if(d.t==='ans'&&pend[gi]){const r=pend[gi].res;delete pend[gi];r(d.v);}return;}
+  nq(async()=>{
+    if(d.t==='note'){dmsg(d.h);smsg(d.h);return;}
+    if(d.t==='sview'){guestNet('seotda',d.names);
+      if(!S||S.hid!==d.hand){S={hid:d.hand,s:d.s,aiMoney:d.chips,dealt:d.dealt,last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false};$('snext').hidden=true;}
+      const prevPot=S.s.pot;S.s=d.s;S.last=d.last;S.reveal=d.reveal;S.result=d.result;S.aiMoney=d.chips;S.dealt=d.dealt;if(!S.waiter)S.busy=true;
+      if(d.s.pot>prevPot)SND.chip();if(d.dealing)SND.card();
+      seotdaRender(d.dealing);
+      if(d.sq&&sqOn&&!d.s.folded[0]&&d.s.hands[0][1]!=null){S.hideId=d.s.hands[0][1];seotdaRender(true);await sleep(650);
+        await squeeze($('stable'),face(S.hideId),HW.back(),'60/97.5','두 번째 카드');S.hideId=null;seotdaRender();}
+      if(d.end){if(!S.settled){S.settled=true;sSettleMsg(d.s,d.result);}return;}
+      if(d.result&&d.result.rematch){bigText('재경기!');smsg(`<b>${d.result.reason.replace(/\(\d\)/,'')}</b>. 판돈을 그대로 두고 다시 해요.`);return;}
+      if(!d.s.over)smsg(d.s.turn===0?'<b>내 차례</b>예요.':`<b>${snm(d.s.turn)}</b> 차례예요.`);return;}
+    if(d.t==='dview'){guestNet('dori',d.names);dopt.bet=d.bet;
+      if(!D||D.hid!==d.hand){D={hid:d.hand,s:d.s,base:d.base,vis:0,stage:'wait',chosen:[],done:false,reveal:false,folded:d.folded,acts:{},gen:(D?D.gen:0)+1,res:null,chips:d.chips};$('dnext').hidden=true;}
+      const from=D.vis;D.s=d.s;D.base=d.base;D.vis=d.vis;D.folded=d.folded;D.acts=d.acts;D.reveal=d.reveal;D.res=d.res;D.best=d.best;D.chips=d.chips;
+      if(D.best&&!D.mine)D.mine=null;
+      doriRender(d.vis>from?from:undefined);if(d.vis>from)SND.card();
+      if(d.sq&&sqOn&&!D.folded[0]&&D.s.hands[0][4]!=null){D.hideId=D.s.hands[0][4];doriRender(from);await sleep(700);
+        await squeeze($('dtable'),face(D.hideId),HW.back(),'60/97.5','마지막 카드');D.hideId=null;doriRender();}
+      if(d.end&&!D.settled){D.settled=true;if(D.res)doriResultMsg();else dmsg(`다이했어요. 건 돈 ${won(D.s.bets[0])}은 선이 가져가요.`);}
+      return;}
+    if(d.t==='ask'&&NGUEST()){
+      if(d.kind==='sbet'&&S){S.busy=false;seotdaRender();const need=S.s.toCall-S.s.bet[0];smsg(`<b>내 차례</b>예요. ${S.s.hands[0].length===1?'첫 장만 보고':'두 장을 보고'} 베팅하세요.${need>0?` 따라가려면 ${won(need)}이 필요해요.`:''}`);
+        const k=await new Promise(r=>S.waiter=r);S.busy=true;seotdaRender();roomToHost({t:'ans',v:k});return;}
+      if(d.kind==='dbet'&&D){D.stage=d.k===3?'bet1':'bet2';const pr=doriWinProb(D.s.hands[0].slice(0,d.k));
+        dmsg(`카드 ${d.k}장을 받았어요. 더 걸까요? <span class="sub">(지금 패로 선을 이길 확률 약 ${Math.round(pr*100)}%)</span>`);doriRender();
+        const v=await new Promise(r=>D.answer=r);roomToHost({t:'ans',v});return;}
+      if(d.kind==='dmake'&&D){D.stage='make';D.chosen=[];D.done=false;dmsg('5장을 다 받았어요. <b>달 합이 10·20·30</b>이 되는 3장을 골라 짓고, 남은 2장으로 선과 겨뤄요. 카드를 누르거나 <b>자동 짓기</b>를 눌러 보세요.');doriRender();
+        const v=await new Promise(r=>D.answer=r);roomToHost({t:'ans',v});return;}
+    }
+  });
+}
+function onLeave(gi){
+  if(!ROOM.host){if(NGUEST()){NET=null;$('sPlayers').disabled=false;$('dOthers').disabled=false;smsg('방장과 연결이 끊겼어요.');dmsg('방장과 연결이 끊겼어요.');if(S)S.waiter=null;if(D)D.answer=null;}return;}
+  if(!NET)return;const p=NET.seats.indexOf(gi);if(p<0)return;
+  NET.seats[p]=-1;NET.names[p]=NAMES[p];
+  if(pend[gi]){const r=pend[gi].res,def=pend[gi].def;delete pend[gi];r(def);}
+}
+roomMount($('netroom'),{game:'seotda',max:4,start:startOnline,msg:onNet,leave:onLeave,off:stopOnline,showPlay:()=>{}});
+
 /* ================= 설정·탭 ================= */
 function renderRec(){$('srec').textContent=`섯다 ${rec.sw}승 ${rec.sl}패 · 도리짓고땡 ${rec.dw}승 ${rec.dl}패`;}
 function renderLevels(){$('slevels').innerHTML=SD.SLV.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===sopt.level}" data-k="${k}">${l.name}<span>${['막 걸기','조심','계산','노련함'][k]}</span></button>`).join('');}
-$('slevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b)return;sopt.level=+b.dataset.k;store.set('level',sopt.level);renderLevels();});
-$('sPlayers').value=String(sopt.players);$('sPlayers').onchange=e=>{sopt.players=+e.target.value;store.set('players',sopt.players);S=null;seotdaNew();};
+$('slevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b||NGUEST())return;sopt.level=+b.dataset.k;store.set('level',sopt.level);renderLevels();});
+$('sPlayers').value=String(sopt.players);$('sPlayers').onchange=e=>{sopt.players=+e.target.value;store.set('players',sopt.players);if(NET&&!NET.guest){startOnline();return;}S=null;seotdaNew();};
 $('sAnte').value=String(sopt.ante);$('sAnte').onchange=e=>{sopt.ante=+e.target.value;store.set('ante',sopt.ante);};
-$('dOthers').value=String(dopt.others);$('dOthers').onchange=e=>{dopt.others=+e.target.value;store.set('dothers',dopt.others);doriNew();};
+$('dOthers').value=String(dopt.others);$('dOthers').onchange=e=>{dopt.others=+e.target.value;store.set('dothers',dopt.others);if(NET&&!NET.guest){startOnline();return;}D=null;doriNew();};
 $('dBet').innerHTML=[1000,5000,10000].map(v=>`<button style="background:${v===1000?'#2e7d32':v===5000?'#1565c0':'#c62828'}" data-v="${v}" aria-pressed="${v===dopt.bet}">${v/1000}천원`.replace('10천원','1만원')+'</button>').join('');
 $('dBet').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;dopt.bet=+b.dataset.v;store.set('dbet',dopt.bet);$('dBet').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));});
 $('sLabels').checked=showLabels;$('sLabels').onchange=e=>{showLabels=e.target.checked;store.set('labels',showLabels);if(S)seotdaRender();if(D)doriRender();};
@@ -1078,6 +1320,8 @@ $('sReset').onclick=()=>{money=100000;rec={sw:0,sl:0,dw:0,dl:0};store.set('rec',
   ['구사',[id(4,0),id(9,0)],'4·9월: 가장 높은 패가 알리 이하면 재경기']];
   $('jokbo').innerHTML=rows.map(([n,c,d])=>`<span class="jc">${c.map(x=>face(x)).join('')}</span><span><b>${n}</b> · ${d}</span>`).join('');})();
 function showTab(t){for(const k of ['seotda','dori','rules']){$(k).hidden=t!==k;$('tab_'+k).setAttribute('aria-selected',t===k);}
+  if(t!=='rules'){const nr=$('netroom'),at=$(t==='dori'?'dnext':'snext').parentNode;if(nr&&nr.previousElementSibling!==at)at.after(nr);}
+  if(NET&&!NET.guest&&t!=='rules'&&t!==NET.game){startOnline();return;}if(NGUEST())return;
   if(t==='seotda'&&!S)seotdaNew();if(t==='dori'&&!D)doriNew();}
 $('tab_seotda').onclick=()=>showTab('seotda');$('tab_dori').onclick=()=>showTab('dori');$('tab_rules').onclick=()=>showTab('rules');
 saveMoney();renderRec();renderLevels();showTab(location.hash==='#dori'?'dori':location.hash==='#rules'?'rules':'seotda');
