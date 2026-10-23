@@ -480,7 +480,7 @@ function studShowdown(s){
   const hi=p=>bestHigh(all(s,p)),lo=p=>bestLow(all(s,p));
   const bestOf=(cands,side)=>{let w=[],b=null;for(const p of cands){const h=side==='hi'?hi(p):lo(p);if(!h)continue;
     const c=!b?1:side==='hi'?cmp(h.score,b.score):cmp(b.score,h.score);if(c>0){b=h;w=[p];}else if(c===0)w.push(p);}return w;};
-  for(let guard=0;guard<4;guard++){
+  for(let guard=0;guard<12;guard++){
     const hc=players.filter(p=>s.declare[p]==='hi'||s.declare[p]==='swing'),lc=players.filter(p=>s.declare[p]==='lo'||s.declare[p]==='swing');
     const hw=bestOf(hc,'hi'),lw=bestOf(lc,'lo');
     const failed=players.filter(p=>s.declare[p]==='swing'&&!(hw.includes(p)&&lw.includes(p)));
@@ -491,6 +491,8 @@ function studShowdown(s){
     else if(hw.length)give(hw,s.pot,'하이');else if(lw.length)give(lw,s.pot,'로우');else give(players,s.pot,'나눔');
     s.result={winners,hands:al.map(p=>({p,name:highName(hi(p))+(lo(p)?' / '+lo(p).name:''),declare:s.declare[p]})),failed:al.filter(p=>!players.includes(p))};
     return s.result;}
+  // 혹시 끝까지 못 정하면 남은 사람이 판돈을 나눔 (판이 멈추지 않게)
+  const sh=Math.floor(s.pot/al.length);s.result={winners:al.map(q=>({p:q,share:sh,why:'나눔'})),hands:al.map(q=>({p:q,name:highName(hi(q))})),failed:[]};return s.result;
 }
 
 /* ---------- 바둑이 진행 ---------- */
