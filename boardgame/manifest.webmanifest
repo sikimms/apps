@@ -1,7 +1,7 @@
 {
   "name": "보드게임 교실",
   "short_name": "보드게임",
-  "description": "초보를 위한 바둑·체스·장기·오목·오델로·고누·윷놀이·고스톱·섯다·포커 교실과 사다리타기",
+  "description": "초보를 위한 바둑·체스·장기·오목·오델로·고누·윷놀이·고스톱·섯다·포커·사천성 교실과 사다리타기",
   "lang": "ko",
   "start_url": "./index.html",
   "scope": "./",
@@ -133,6 +133,17 @@
       "icons": [
         {
           "src": "icons/poker.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "사천성",
+      "url": "./shisen.html",
+      "icons": [
+        {
+          "src": "icons/shisen.png",
           "sizes": "256x256",
           "type": "image/png"
         }
