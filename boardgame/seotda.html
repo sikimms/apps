@@ -204,7 +204,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .cvs{margin-top:10px;padding-top:8px;border-top:1px solid var(--rule);font-size:14px}
 
 /* 섯다 · 도리짓고땡 */
-.stable{position:relative;width:100%;aspect-ratio:1/1.05;border-radius:50%/42%;overflow:hidden;user-select:none;-webkit-user-select:none;
+.stable{position:relative;width:100%;aspect-ratio:1/1.05;border-radius:50%/42%;overflow:visible;user-select:none;-webkit-user-select:none;
   background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,.10),rgba(0,0,0,0) 55%),radial-gradient(ellipse at 50% 50%,#2c8053 0%,#1d5e3b 58%,#123a25 100%);
   box-shadow:inset 0 0 0 9px #6b3d1c,inset 0 0 0 11px #a8723f,inset 0 0 0 15px #4a2810,inset 0 0 70px rgba(0,0,0,.55),0 16px 36px -18px rgba(0,0,0,.75)}
 @media (min-width:700px){.stable{aspect-ratio:1.35/1}}
@@ -256,6 +256,22 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 .betchips{display:flex;gap:6px;flex-wrap:wrap}
 .betchips button{border:0;border-radius:50%;width:56px;height:56px;font:800 12px var(--f-body);color:#fff;cursor:pointer;box-shadow:inset 0 0 0 4px rgba(255,255,255,.6),0 3px 6px rgba(0,0,0,.4)}
 .betchips button[aria-pressed="true"]{outline:3px solid #ffd34d;outline-offset:2px}
+/* 히든 카드 쪼아 보기 */
+.sq{position:absolute;inset:0;z-index:70;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(ellipse at center,rgba(0,0,0,.45),rgba(0,0,0,.7));transition:opacity .25s}
+.sq.gone{opacity:0}
+.sqt{font:900 18px var(--f-display);color:#ffd34d;text-shadow:0 2px 3px #000}
+.sqcard{position:relative;width:min(42%,170px);aspect-ratio:var(--ar);border-radius:9px;overflow:hidden;touch-action:none;cursor:grab;box-shadow:0 14px 30px -8px rgba(0,0,0,.8)}
+.sqcard:active{cursor:grabbing}
+.sqface,.sqback{position:absolute;inset:0}
+.sqface svg,.sqback svg{display:block;width:100%;height:100%}
+.sqback{transform-origin:50% 100%;box-shadow:0 8px 14px rgba(0,0,0,.55)}
+.sqcurl{position:absolute;left:0;right:0;bottom:0;height:16%;background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.35) 60%,rgba(0,0,0,.25));pointer-events:none}
+.sqh{color:#fff;font-size:14px;text-shadow:0 1px 2px #000}.sqh b{color:#ffd34d}
+.sqbtn{background:rgba(255,255,255,.9)}
+
+/* 판 밖으로 나온 카드도 다 보이게: 판 위·아래에 여유 */
+.boardcol .stable{margin:18px 0 8px}
+.seat{max-width:46%}.seat.me{max-width:96%}
 
 .card.reveal .ci{animation:sflip .55s ease both}@keyframes sflip{from{transform:rotateY(180deg)}to{transform:none}}
 </style>
@@ -309,7 +325,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <h2>섯다 족보 (높은 순)</h2>
       <div class="jokbo" id="jokbo"></div>
       <p class="sub" style="margin-top:12px">같은 족보끼리면 판돈을 나눠요. 멍텅구리구사(4·9월 열끗)는 가장 높은 패가 9땡 이하면 재경기예요.</p>
-      <div class="opts"><label><input type="checkbox" id="sLabels"> 카드에 달·종류 표시</label><label><input type="checkbox" id="sSound"> 소리</label></div>
+      <div class="opts"><label><input type="checkbox" id="sLabels"> 카드에 달·종류 표시</label><label><input type="checkbox" id="sSound"> 소리</label><label><input type="checkbox" id="sSq"> 히든 카드 쪼아 보기</label></div>
       <div class="sub" id="srec" style="margin-top:8px"></div>
       <button class="linkbtn" id="sReset">돈·기록 처음으로</button>
     </div>
@@ -670,6 +686,26 @@ const cache={};
 return{face:(id,o)=>{const k=id+(o&&o.labels===false?'n':'');return cache[k]||(cache[k]=face(id,o));},back:()=>cache.b||(cache.b=back()),W,H};
 })();
 
+/* ===== 히든 카드 쪼아 보기: 뒷면을 위로 밀어 올리면 앞면이 조금씩 보인다 =====
+   squeeze(판 요소, 앞면 svg, 뒷면 svg, 가로세로 비율) → 다 보면 끝나는 Promise */
+function squeeze(host,faceSvg,backSvg,ratio,title){
+  return new Promise(res=>{
+    const ov=document.createElement('div');ov.className='sq';
+    ov.innerHTML=`<div class="sqt">${title||'히든 카드'}</div><div class="sqcard" style="--ar:${ratio}"><div class="sqface">${faceSvg}</div><div class="sqback">${backSvg}<span class="sqcurl"></span></div></div>
+      <div class="sqh">카드를 <b>위로 밀어 올려</b> 확인하세요 ☝</div><button class="btn sqbtn" type="button">바로 보기</button>`;
+    host.appendChild(ov);
+    const card=ov.querySelector('.sqcard'),back=ov.querySelector('.sqback');let p=0,y0=null,done=false;
+    const set=v=>{p=Math.max(0,Math.min(1,v));back.style.transform=`translateY(${-p*100}%) rotate(${-p*4}deg)`;back.style.transition='none';};
+    const finish=()=>{if(done)return;done=true;back.style.transition='transform .35s ease';back.style.transform='translateY(-112%) rotate(-6deg)';
+      setTimeout(()=>{ov.classList.add('gone');setTimeout(()=>{ov.remove();res();},250);},650);};
+    card.addEventListener("pointerdown",e=>{y0=e.clientY;try{card.setPointerCapture(e.pointerId);}catch(err){}e.preventDefault();});
+    card.addEventListener('pointermove',e=>{if(y0==null||done)return;set((y0-e.clientY)/card.clientHeight);});
+    const up=()=>{if(y0==null||done)return;y0=null;if(p>0.55)finish();else{back.style.transition='transform .3s ease';back.style.transform='none';p=0;}};
+    card.addEventListener('pointerup',up);card.addEventListener('pointercancel',up);
+    ov.querySelector('.sqbtn').onclick=finish;
+  });
+}
+
 /* ===== 섯다 · 도리짓고땡 규칙 =====
    패: 1~10월 화투 2장씩, 모두 20장. 달마다 '특별한 패'(1·3·8월은 광, 나머지는 열끗)와 '보통 패'(피).
    카드 번호는 고스톱과 같은 id를 써서 같은 그림을 쓴다: 특별 = (달-1)*4, 보통 = (달-1)*4+2 */
@@ -720,7 +756,7 @@ function strength1(a){let s=0,n=0;for(const b of DECK){if(b===a)continue;s+=stre
 // 베팅: 기본 판돈(ante)을 모두 내고 시작. 한 바퀴마다 다이·체크·삥·콜·하프·따당
 function newSeotda(o){
   const n=o.players,deck=shuffle(DECK);
-  return{n,deck,hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),pot:o.ante*n,ante:o.ante,
+  return{n,deck,stack:(o.stacks||Array(n).fill(1e12)).slice(),hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),pot:o.ante*n,ante:o.ante,
     round:0,cur:0,toCall:0,lastRaise:0,acted:Array(n).fill(false),raises:0,dealer:o.dealer||0,turn:(o.dealer||0)%n,over:false,log:[]};
 }
 function dealRound(s){for(let k=0;k<s.n;k++){const p=(s.dealer+k)%s.n;if(!s.folded[p])s.hands[p].push(s.deck.shift());}
@@ -729,25 +765,28 @@ function nextActive(s,from){for(let k=1;k<=s.n;k++){const q=((from+k)%s.n+s.n)%s
 const alive=s=>s.folded.map((f,i)=>f?-1:i).filter(i=>i>=0);
 // 지금 사람이 할 수 있는 행동과 그 금액
 function actions(s){
-  const p=s.turn,need=s.toCall-s.bet[p],out=[{k:'die',amt:0,name:'다이'}];
-  if(need<=0)out.push({k:'check',amt:0,name:'체크'});else out.push({k:'call',amt:need,name:'콜'});
-  if(s.raises<3){
+  const p=s.turn,need=s.toCall-s.bet[p],st=s.stack[p];
+  if(st<=0)return[{k:'check',amt:0,name:'올인'}];
+  const out=[{k:'die',amt:0,name:'다이'}];
+  if(need<=0)out.push({k:'check',amt:0,name:'체크'});else out.push(need>=st?{k:'call',amt:st,name:'올인'}:{k:'call',amt:need,name:'콜'});
+  if(s.raises<2&&st>need){
     if(s.toCall===0)out.push({k:'bbing',amt:s.ante,name:'삥'});
     const half=Math.max(s.ante,Math.round((s.pot+need)/2/100)*100);out.push({k:'half',amt:need+half,raise:half,name:'하프'});
     if(s.lastRaise>0)out.push({k:'ddadang',amt:need+s.lastRaise*2,raise:s.lastRaise*2,name:'따당'});
+    for(const a of out)if(a.amt>=st&&a.k!=='die'){a.amt=st;if(a.raise)a.raise=Math.max(0,st-need);if(!/올인/.test(a.name))a.name+='(올인)';}
   }
   return out;
 }
 function act(s,a){
   const p=s.turn;s.acted[p]=true;
   if(a.k==='die'){s.folded[p]=true;}
-  else{s.bet[p]+=a.amt;s.pot+=a.amt;
+  else{s.bet[p]+=a.amt;s.pot+=a.amt;s.stack[p]-=a.amt;
     if(a.k==='bbing'){s.toCall=s.bet[p];s.lastRaise=a.amt;s.raises++;s.acted=s.acted.map((x,i)=>i===p);}
     if(a.raise){s.toCall=s.bet[p];s.lastRaise=a.raise;s.raises++;s.acted=s.acted.map((x,i)=>i===p);}}
   s.log.push({p,k:a.k,amt:a.amt});
   const al=alive(s);
   if(al.length===1){s.over=true;s.result={winners:al,reason:'다른 사람이 모두 다이했어요'};return'end';}
-  const done=al.every(q=>s.acted[q]&&s.bet[q]===s.toCall);
+  const done=al.every(q=>s.acted[q]&&(s.bet[q]===s.toCall||s.stack[q]<=0));
   if(done)return s.round<2?'deal':'show';
   s.turn=nextActive(s,p);return'next';
 }
@@ -804,7 +843,7 @@ const store={get(k,d){try{const v=localStorage.getItem('seotda-'+k);return v==nu
   set(k,v){try{localStorage.setItem('seotda-'+k,JSON.stringify(v));}catch(e){}}};
 const won=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
 const {mon}=SD;
-let showLabels=store.get('labels',true),seq=0;
+let showLabels=store.get('labels',true),seq=0,sqOn=store.get('squeeze',true);
 const face=(id)=>{const t='s'+(++seq)+'_';return HW.face(id,{labels:showLabels}).split(`h${id}_`).join(`${t}h${id}_`);};
 const SND={ctx:null,on:store.get('sound',true),
   tick(f=900,v=.2,d=.06){if(!this.on)return;try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}
@@ -831,11 +870,16 @@ function seotdaNew(carry){
   S={s:SD.newSeotda({players:n,ante:sopt.ante,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false};
   for(let p=0;p<n;p++){if(p===0)money-=sopt.ante;else{if(S.aiMoney[p]<sopt.ante*4)S.aiMoney[p]=100000;S.aiMoney[p]-=sopt.ante;}}
   if(carry){S.s.pot+=carry;}
+  S.s.stack=[money].concat(S.aiMoney.slice(1));   // 가진 돈만큼만 걸 수 있음
   saveMoney();smsg(`판돈 ${won(sopt.ante)}씩 내고 시작해요. 한 장씩 나눠 줄게요.`);
   seotdaRender();seotdaDeal();
 }
 async function seotdaDeal(){
-  const gen=S.gen;SD.dealRound(S.s);seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;
+  const gen=S.gen;SD.dealRound(S.s);
+  const mine=S.s.hands[0];
+  if(sqOn&&S.s.round===2&&!S.s.folded[0]){S.hideId=mine[1];seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;
+    await squeeze($('stable'),face(mine[1]),HW.back(),'60/92','두 번째 카드');if(gen!==S.gen)return;S.hideId=null;}
+  else{seotdaRender(true);SND.card();await sleep(650);if(gen!==S.gen)return;}
   for(let p=0;p<S.s.n;p++)S.dealt[p]=S.s.hands[p].length;
   S.last={};seotdaRender();S.busy=false;seotdaStep();
 }
@@ -844,7 +888,7 @@ function seotdaRender(dealing){
   $('stable').querySelectorAll('.seat').forEach(e=>e.remove());
   for(let p=0;p<s.n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
     const hand=s.hands[p],h2=hand.length===2?SD.seotdaHand(hand[0],hand[1]):null,isWin=S.result&&S.result.winners.includes(p);
-    const cards=hand.map((id,i)=>cardHtml(id,{down:p!==0&&!(show&&!s.folded[p]),deal:dealing&&i>=S.dealt[p],delay:dealing?(p*90+i*40):0,reveal:show&&p!==0&&!s.folded[p]})).join('');
+    const cards=hand.map((id,i)=>cardHtml(id,{down:(p!==0&&!(show&&!s.folded[p]))||(p===0&&id===S.hideId),deal:dealing&&i>=S.dealt[p],delay:dealing?(p*90+i*40):0,reveal:show&&p!==0&&!s.folded[p]})).join('');
     const la=S.last[p];
     el.innerHTML=(p===0?'':plate(p))+`<div class="scards">${cards}</div>`+
       ((p===0||show)&&h2&&!s.folded[p]?`<span class="shand${isWin?' win':''}">${h2.name}</span>`:'')+
@@ -893,7 +937,7 @@ function seotdaSettle(){
   seotdaRender();$('snext').hidden=false;renderRec();
 }
 // 재경기: 판돈을 남기고 같은 사람끼리 다시 (판돈은 다시 안 냄)
-function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,dealer:S.s.dealer});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
+function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,dealer:S.s.dealer,stacks:[money].concat(S.aiMoney.slice(1))});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
 $('snext').onclick=()=>{$('snext').hidden=true;S.result=null;S.reveal=false;seotdaNew();};
 
 /* ================= 도리짓고땡 =================
@@ -917,8 +961,10 @@ function doriNew(){
   $('dnext').hidden=true;doriDealTo(3);
 }
 async function doriDealTo(k){
-  const gen=D.gen,from=D.vis;D.vis=k;D.stage='deal';doriRender(from);SND.card();
-  await sleep(700+(k-from)*120);if(gen!==D.gen)return;
+  const gen=D.gen,from=D.vis;D.vis=k;D.stage='deal';
+  if(k===5&&sqOn&&!D.folded[0]){D.hideId=D.s.hands[0][4];doriRender(from);SND.card();await sleep(700);if(gen!==D.gen)return;
+    await squeeze($('dtable'),face(D.hideId),HW.back(),'60/92','마지막 카드');if(gen!==D.gen)return;D.hideId=null;}
+  else{doriRender(from);SND.card();await sleep(700+(k-from)*120);if(gen!==D.gen)return;}
   if(k<5){D.stage=k===3?'bet1':'bet2';D.acts={};
     // 다른 사람(컴퓨터)도 패를 보고 걸기
     for(let p=1;p<D.s.n-1;p++){if(D.folded[p])continue;const pr=doriWinProb(D.s.hands[p].slice(0,k)),b=D.base[p];
@@ -947,10 +993,10 @@ function doriRender(dealFrom){
   $('dtable').querySelectorAll('.seat').forEach(e=>e.remove());
   for(let p=0;p<n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat dori'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
     const r=D.res&&D.res[p],out=D.folded[p];
-    let order=s.hands[p].slice(0,D.vis);
+    let order=s.hands[p].slice(0,D.vis);const hideId=D.hideId;
     if(p===0&&D.done)order=D.mine.three.concat(D.mine.two);
     if(D.reveal&&p!==0&&!out)order=D.best[p].three.concat(D.best[p].two);
-    const cards=order.map((id,i)=>cardHtml(id,{down:p!==0&&!(D.reveal&&!out),deal:dealing&&i>=dealFrom,delay:dealing?((i-dealFrom)*260+p*90):0,
+    const cards=order.map((id,i)=>cardHtml(id,{down:(p!==0&&!(D.reveal&&!out))||(p===0&&id===hideId),deal:dealing&&i>=dealFrom,delay:dealing?((i-dealFrom)*260+p*90):0,
       pick:p===0&&D.stage==='make'&&!D.done,chosen:p===0&&D.stage==='make'&&!D.done&&D.chosen.includes(id),reveal:D.reveal&&p!==0&&!out})).join('');
     const name=p===dealer?NAMES[5]:NAMES[p];
     const handTxt=out?'다이':(p===0&&D.done)?D.mine.h.name:(D.reveal?D.best[p].h.name:'');
@@ -998,6 +1044,7 @@ $('dOthers').value=String(dopt.others);$('dOthers').onchange=e=>{dopt.others=+e.
 $('dBet').innerHTML=[1000,5000,10000].map(v=>`<button style="background:${v===1000?'#2e7d32':v===5000?'#1565c0':'#c62828'}" data-v="${v}" aria-pressed="${v===dopt.bet}">${v/1000}천원`.replace('10천원','1만원')+'</button>').join('');
 $('dBet').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;dopt.bet=+b.dataset.v;store.set('dbet',dopt.bet);$('dBet').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));});
 $('sLabels').checked=showLabels;$('sLabels').onchange=e=>{showLabels=e.target.checked;store.set('labels',showLabels);if(S)seotdaRender();if(D)doriRender();};
+$('sSq').checked=sqOn;$('sSq').onchange=e=>{sqOn=e.target.checked;store.set('squeeze',sqOn);};
 $('sSound').checked=SND.on;$('sSound').onchange=e=>{SND.on=e.target.checked;store.set('sound',SND.on);};
 $('sReset').onclick=()=>{money=100000;rec={sw:0,sl:0,dw:0,dl:0};store.set('rec',rec);saveMoney();renderRec();};
 // 족보 표
