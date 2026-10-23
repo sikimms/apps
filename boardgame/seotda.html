@@ -306,6 +306,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
       <div class="levels" id="slevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="opts">
+        <label><input type="checkbox" id="sTtaeng"> 땡값 (땡 2배·장땡 3배·광땡 5배)</label>
         <label>방식 <select id="sCards"><option value="2">2장 섯다</option><option value="3">3장 섯다</option></select></label>
         <label>인원 <select id="sPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
         <label>판돈 <select id="sAnte"><option value="100">100원</option><option value="500">500원</option><option value="1000">1,000원</option></select></label>
@@ -340,6 +341,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <h2>섯다 족보 (높은 순)</h2>
       <div class="jokbo" id="jokbo"></div>
       <p class="sub" style="margin-top:10px"><b>3장 섯다</b>: 처음에 2장을 받고 베팅, 3번째 장을 받고 한 번 더 베팅한 뒤, 3장 중 가장 좋은 2장을 골라 겨뤄요. 설정의 <b>방식</b>에서 2장·3장을 고를 수 있어요.</p>
+      <p class="sub"><b>땡값</b>: 혼자 이긴 패가 땡이면 끝까지 남은 사람(다이한 사람은 빼고)이 판돈의 2배, 장땡은 3배, 광땡(13·18·38광땡)은 5배를 판돈과 따로 내요. 설정에서 끌 수 있어요.</p>
       <p class="sub" style="margin-top:12px">같은 족보끼리면 판돈을 나눠요. 멍텅구리구사(4·9월 열끗)는 가장 높은 패가 9땡 이하면 재경기예요.</p>
       <div class="opts"><label><input type="checkbox" id="sLabels"> 카드에 달·종류 표시</label><label><input type="checkbox" id="sSound"> 소리</label><label><input type="checkbox" id="sSq"> 히든 카드 쪼아 보기</label></div>
       <div class="sub" id="srec" style="margin-top:8px"></div>
@@ -1021,14 +1023,16 @@ function sViewFor(v,dealing){
   const s=S.s,n=s.n,R=a=>a.map((_,i)=>a[(i+v)%n]),rp=p=>(p-v+n)%n;
   const t={...s,deck:[],log:[],pick:[],hands:R(s.hands.map((h,q)=>q===v||(S.reveal&&!s.folded[q])?h.slice():h.map(()=>-1))),
     folded:R(s.folded),bet:R(s.bet),stack:R(s.stack),acted:R(s.acted),turn:rp(s.turn),dealer:rp(s.dealer),
-    result:s.result?{...s.result,winners:s.result.winners.map(rp),hands:s.result.hands&&s.result.hands.map(x=>({...x,p:rp(x.p)}))}:null};
+    result:s.result?{...s.result,winners:s.result.winners.map(rp),hands:s.result.hands&&s.result.hands.map(x=>({...x,p:rp(x.p)})),ttaengPay:s.result.ttaengPay?{...s.result.ttaengPay,p:rp(s.result.ttaengPay.p)}:null}:null};
   const last={};for(const p in S.last)last[rp(+p)]=S.last[p];
   const names=[...Array(n)].map((_,i)=>{const q=(i+v)%n;return i===0?'나':q===0?'방장':NET.names[q];});
   return{t:'sview',s:t,last,reveal:S.reveal,result:S.result?t.result:null,chips:R([money].concat(S.aiMoney.slice(1))),names,dealt:R(S.dealt),dealing:!!dealing,hand:S.hid,end:!!S.ended};
 }
 function sNetView(dealing){if(!NET||NET.guest||NET.game!=='seotda')return;const x=S.netx||{};S.netx=null;roomEach(gi=>({...sViewFor(NET.seats.indexOf(gi),dealing),...x}));}
 
-const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500),cards:store.get('cards',2)};
+const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500),cards:store.get('cards',2),ttaeng:store.get('ttaeng',true)};
+// 땡값 배수: 광땡 5배, 장땡 3배, 1~9땡 2배 (판돈 기준, 끝까지 남은 사람이 각자 냄 · 다이한 사람은 안 냄)
+const ttaengMult=h=>!h?0:h.v>=900?5:h.ttaeng===10?3:h.ttaeng?2:0;
 let S=null;
 function seotdaNew(carry){
   if(NGUEST())return;
@@ -1116,14 +1120,22 @@ function seotdaSettle(){
   if(res.rematch){bigText('재경기!');smsg(`<b>${res.reason.replace(/\(\d\)/,'')}</b>. 판돈을 그대로 두고 다시 해요.`);const carry=s.pot;
     setTimeout(()=>{S.result=null;S.reveal=false;seotdaNewKeep(carry);},1800);return;}
   const share=Math.floor(s.pot/res.winners.length);
-  res.winners.forEach(p=>{if(p===0)money+=share;else S.aiMoney[p]+=share;});saveMoney();
+  res.winners.forEach(p=>{if(p===0)money+=share;else S.aiMoney[p]+=share;});
+  // 땡값: 혼자 이겼고 그 패가 땡·광땡이면 나머지 모두에게서 따로 받음
+  if(sopt.ttaeng&&res.winners.length===1){const w=res.winners[0],wh=(res.hands||[]).find(x=>x.p===w),mult=ttaengMult(wh&&wh.h);
+    if(mult){const each=sopt.ante*mult;let total=0;for(let q=0;q<s.n;q++){if(q===w||s.folded[q])continue;   // 다이한 사람은 안 냄
+        if(q===0)money-=each;else S.aiMoney[q]-=each;total+=each;}
+      if(w===0)money+=total;else S.aiMoney[w]+=total;res.ttaengPay={p:w,name:wh.h.name,mult,each,total};}}
+  saveMoney();
   const iWon=res.winners.includes(0);if(!NET){if(iWon)rec.sw++;else rec.sl++;store.set('rec',rec);}
   S.ended=true;sSettleMsg(s,res);
   seotdaRender();$('snext').hidden=false;renderRec();
 }
 function sSettleMsg(s,res){const iWon=res.winners.includes(0);if(iWon){SND.win();bigText('승리!');}
   const hands=(res.hands||[]).map(x=>`${snm(x.p)}: <b>${x.h.name}</b>`).join(' · ');
-  smsg(`${iWon?'🎉 <b>내가 이겼어요!</b>':`<b>${res.winners.map(p=>snm(p)).join(', ')}</b> 승리.`} ${res.reason||''} 판돈 ${won(s.pot)}${res.winners.length>1?' 나눔':''}.${hands?'<br>'+hands:''}${NGUEST()?'<br><small>다음 판은 방장이 시작해요.</small>':''}`);}
+  const tp=res.ttaengPay,tl=tp?`<br>💰 <b>땡값</b> (${tp.name}, 판돈 ×${tp.mult}): ${tp.p===0?`다른 사람들에게서 각 ${won(tp.each)}씩, 모두 <b>+${won(tp.total)}</b>`:`${snm(tp.p)}에게 각 ${won(tp.each)}씩 냈어요 (나 <b>-${won(tp.each)}</b>)`}`:'';
+  if(tp)setTimeout(()=>bigText('땡값!'),900);
+  smsg(`${iWon?'🎉 <b>내가 이겼어요!</b>':`<b>${res.winners.map(p=>snm(p)).join(', ')}</b> 승리.`} ${res.reason||''} 판돈 ${won(s.pot)}${res.winners.length>1?' 나눔':''}.${tl}${hands?'<br>'+hands:''}${NGUEST()?'<br><small>다음 판은 방장이 시작해요.</small>':''}`);}
 // 재경기: 판돈을 남기고 같은 사람끼리 다시 (판돈은 다시 안 냄)
 function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,three:sopt.cards===3,dealer:S.s.dealer,stacks:[money].concat(S.aiMoney.slice(1))});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.hid=handId();S.ended=false;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
 $('snext').onclick=()=>{$('snext').hidden=true;S.result=null;S.reveal=false;seotdaNew();};
@@ -1339,6 +1351,7 @@ function renderRec(){$('srec').textContent=`섯다 ${rec.sw}승 ${rec.sl}패 · 
 function renderLevels(){$('slevels').innerHTML=SD.SLV.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===sopt.level}" data-k="${k}">${l.name}<span>${['막 걸기','조심','계산','노련함'][k]}</span></button>`).join('');}
 $('slevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b||NGUEST())return;sopt.level=+b.dataset.k;store.set('level',sopt.level);renderLevels();});
 $('sPlayers').value=String(sopt.players);$('sPlayers').onchange=e=>{sopt.players=+e.target.value;store.set('players',sopt.players);if(NET&&!NET.guest){startOnline();return;}S=null;seotdaNew();};
+$('sTtaeng').checked=sopt.ttaeng;$('sTtaeng').onchange=e=>{sopt.ttaeng=e.target.checked;store.set('ttaeng',sopt.ttaeng);};
 $('sCards').value=String(sopt.cards);$('sCards').onchange=e=>{sopt.cards=+e.target.value;store.set('cards',sopt.cards);if(NET&&!NET.guest){startOnline();return;}S=null;seotdaNew();};
 $('sAnte').value=String(sopt.ante);$('sAnte').onchange=e=>{sopt.ante=+e.target.value;store.set('ante',sopt.ante);};
 $('dOthers').value=String(dopt.others);$('dOthers').onchange=e=>{dopt.others=+e.target.value;store.set('dothers',dopt.others);if(NET&&!NET.guest){startOnline();return;}D=null;doriNew();};
