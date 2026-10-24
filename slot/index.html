@@ -64,6 +64,27 @@ body{margin:0;background-color:var(--bg);color:var(--ink);font-family:var(--f);m
 .tcoins{position:absolute;inset:8px 10px 4px}
 .tcoins i{position:absolute;bottom:0;width:20px;height:9px;border-radius:50%;background:radial-gradient(ellipse at 40% 35%,#fff59d,#f9a825 55%,#9a6400);box-shadow:0 1px 0 #5a3a00;animation:tc .5s ease-in both}
 @keyframes tc{from{transform:translateY(-60px)}70%{transform:translateY(2px)}to{transform:none}}
+/* 카지노 */
+.modes{display:flex;gap:8px;justify-content:center;margin-bottom:10px}.modes button{border:2px solid #c9a23a;background:#1d1736;color:#ffe9a8;border-radius:999px;padding:8px 16px;font:700 14px var(--f);cursor:pointer}.modes button.on{background:linear-gradient(#ffe082,#c9a23a);color:#3a2600}
+.casinfo{display:flex;justify-content:space-between;align-items:center;margin:12px 4px 8px;font:10px var(--px);color:#ffe082}.casinfo b{font-size:16px;color:#ffd740;margin-left:6px}
+.felt{margin-top:4px;border-radius:120px 120px 18px 18px/60px 60px 18px 18px;padding:18px 16px 14px;background:radial-gradient(ellipse at 50% 0%,#2e8b57,#0d4d2b 75%);box-shadow:inset 0 0 0 6px #6b4a2b,inset 0 0 0 9px #3d2a17,0 6px 16px #0008;color:#fff}
+.ctitle{text-align:center;font:14px var(--px);color:#ffe082;margin-bottom:10px}.ctitle small{display:block;font:500 12px var(--f);color:#c8e6c9;margin-top:6px}
+.crow{display:flex;align-items:center;gap:10px;margin:8px 0;padding:6px;border-radius:12px}.crow.cur{background:#ffffff14;box-shadow:inset 0 0 0 2px #ffd54f}
+.clbl{min-width:76px;font:700 14px var(--f);color:#ffe082}.clbl small{color:#c8e6c9;font-weight:500}.clbl b{color:#fff}
+.ccards{display:flex;gap:4px;min-height:84px;flex-wrap:wrap}.cc{width:56px;height:78px;filter:drop-shadow(0 3px 3px #0007);animation:cdeal .3s ease-out}
+@keyframes cdeal{from{transform:translateY(-30px) rotate(-8deg);opacity:0}}
+.cmsg{text-align:center;min-height:24px;margin:8px 0;font:600 15px var(--f)}
+.cbar{display:flex;flex-direction:column;gap:10px;align-items:center}
+.cchips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.cchip{width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;font:800 13px var(--f);color:#fff;text-shadow:0 1px 2px #000;background:radial-gradient(circle,var(--c) 52%,#fff 53%,#fff 60%,var(--c) 61%);box-shadow:0 3px 0 #0008,inset 0 0 0 3px #ffffff55;outline-offset:2px}
+.cchip[data-chip="1"]{color:#333;text-shadow:none}.cchip.on{outline:3px solid #ffd54f;transform:translateY(-3px)}
+.cbtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}.cbet{font:700 14px var(--f)}.cbet b{color:#ffd740;font-size:18px}
+.cb{border:0;border-radius:12px;padding:10px 14px;font:800 13px var(--f);cursor:pointer;background:linear-gradient(#eceff1,#b0bec5);color:#263238;box-shadow:0 4px 0 #0008}.cb.go{background:linear-gradient(#ff8a80,#d50000);color:#fff}.cb:disabled{opacity:.4;cursor:default}
+.bacrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}.bacside{padding:8px;border-radius:12px;background:#00000026}.bacside.p .clbl{color:#90caf9}.bacside.b .clbl{color:#ef9a9a}
+.baczones{display:grid;grid-template-columns:1fr .8fr 1fr;gap:8px;margin:10px 0}.bz{position:relative;border:2px solid #ffffff66;border-radius:14px;padding:10px 4px;background:#ffffff10;color:#fff;cursor:pointer;font:700 15px var(--f)}
+.bz small{display:block;font-weight:500;font-size:11px;opacity:.8}.bz i{position:absolute;right:6px;top:4px;font-style:normal;color:#ffd740;font-size:13px}.bz.P{border-color:#64b5f6}.bz.B{border-color:#e57373}.bz.T{border-color:#81c784}.bz.on{background:#ffffff2e;box-shadow:0 0 0 3px #ffd54f}
+.road{display:flex;flex-wrap:wrap;gap:3px;min-height:18px;justify-content:center}.road i{width:14px;height:14px;border-radius:50%;font:700 8px var(--f);font-style:normal;display:flex;align-items:center;justify-content:center}.road i.P{background:#1e88e5}.road i.B{background:#e53935}.road i.T{background:#43a047;color:#fff}
+@media (max-width:600px){.cc{width:44px;height:62px}.ccards{min-height:62px}.clbl{min-width:60px;font-size:12px}}
 .help{margin-top:14px;font-size:13px;color:var(--muted);line-height:1.7}.help b{color:#ddd}
 #stat{font-size:12.5px;color:var(--muted);margin-top:6px}
 .ov{position:fixed;inset:0;background:#000c;display:flex;align-items:center;justify-content:center;z-index:30;padding:16px}
@@ -86,10 +107,12 @@ body{margin:0;background-color:var(--bg);color:var(--ink);font-family:var(--f);m
 
 <div class="wrap">
   <div class="top"><button class="ibtn" id="bPay">배당표</button><button class="ibtn" id="bSound" aria-label="소리">🔊</button><button class="ibtn" id="bReset">처음으로</button></div>
+  <div class="modes" id="modes"><button data-mode="slot" class="on">🎰 슬롯</button><button data-mode="bj">🂡 블랙잭</button><button data-mode="bac">🎴 바카라</button></div>
   <div class="cab" id="cab">
     <div class="marquee"><div class="bulbs" id="bulbs"></div><div class="mq"><b>★ 황금별 ★</b><small>GOLDEN STAR</small></div></div>
-    <div class="bezel"><div class="crt" id="crt"><canvas id="scr" width="960" height="720" aria-label="슬롯머신 화면"></canvas></div></div>
-    <div class="panel">
+    <div class="bezel" id="crtBox"><div class="crt" id="crt"><canvas id="scr" width="960" height="720" aria-label="슬롯머신 화면"></canvas></div></div>
+    <div id="casWrap" hidden><div class="casinfo">CREDIT <b id="casCredit">0</b><button class="ibtn" id="casCoin">🪙 동전 넣기 (+100)</button></div><div id="casino"></div></div>
+    <div class="panel" id="slotPanel">
       <div class="btns">
         <button class="ab" id="bBet" style="--c:#ffd600;--d:#5a4a00"><i></i>BET<small>1씩 걸기</small></button>
         <button class="ab" id="bMax" style="--c:#2979ff;--d:#0a2a66"><i></i>MAX<small>최대로</small></button>
@@ -210,6 +233,76 @@ let seq=0;
 return{sym:(i)=>S[i]('a'+(++seq)+'_'),count:S.length};
 })();
 
+window.FUN_NO_DAILY=true;
+/* ===== 보드게임 교실 공통: 지갑 · 매일 용돈 · 목소리 · 업적 배지 · 알림 =====
+   휴대폰 앱(같은 주소)에서는 모든 게임이 이 지갑과 배지를 함께 쓴다. */
+const FUNLS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const dayKey=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+// 화면 위쪽 알림
+function funToast(html,ms=2600){let box=document.getElementById('funToasts');
+  if(!box){box=document.createElement('div');box.id='funToasts';box.style.cssText='position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92vw,420px)';document.body.appendChild(box);}
+  const t=document.createElement('div');t.innerHTML=html;t.style.cssText='background:#1f2a24;color:#fff;border:2px solid #ffd54f;border-radius:14px;padding:9px 16px;font:600 14px "Noto Sans KR",sans-serif;box-shadow:0 6px 18px #0007;opacity:0;transform:translateY(-10px);transition:all .3s;text-align:center';
+  box.appendChild(t);requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='none';});setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(-10px)';setTimeout(()=>t.remove(),350);},ms);}
+const wonF=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
+
+/* ---------- 지갑: 처음 만들 때 각 게임에 있던 돈을 모두 합쳐 옮김 ---------- */
+const WALLET=(()=>{
+  const K='bgc-wallet',KD='bgc-daily';
+  function init(){let w=FUNLS.get(K,null);
+    if(typeof w!=='number'){let sum=0,any=false;for(const g of ['gostop','seotda','poker']){const v=FUNLS.get(g+'-money',null);if(typeof v==='number'){sum+=Math.max(0,v);any=true;}}
+      w=any?sum:300000;FUNLS.set(K,w);if(any)setTimeout(()=>funToast(`💰 게임마다 따로 있던 돈을 한 지갑에 합쳤어요: <b>${wonF(w)}</b>`,4200),600);}
+    return w;}
+  let bal=init();
+  const get=()=>{const v=FUNLS.get(K,null);if(typeof v==='number')bal=v;return bal;};
+  function set(v){bal=Math.round(v);FUNLS.set(K,bal);
+    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');if(bal>=100000000)ACH.unlock('rich_100m');}}
+  // 돈이 모자라면 다시 채워 줌 (가짜 돈이라 멈추지 않게)
+  function rescue(min){const b=get();if(b>=min)return b;const v=Math.max(100000,min*4);set(v);funToast(`💸 돈이 모자라서 <b>${wonF(v)}</b>으로 채워 드렸어요`);return v;}
+  // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
+  function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
+  // 매일 한 번 용돈
+  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=100000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
+    setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
+  function reset(){set(300000);}
+  return{get,set,rescue,today,daily,reset};
+})();
+
+/* ---------- 목소리: 휴대폰·PC에 들어 있는 한국어 음성으로 외침 ---------- */
+const VOICE={on:FUNLS.get('bgc-voice',true),
+  say(t){if(!this.on||!window.speechSynthesis)return;const s=String(t).replace(/<[^>]+>/g,'').replace(/[!~★]/g,'').trim();if(!s)return;
+    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s);u.lang='ko-KR';u.rate=1.08;u.pitch=1.15;u.volume=1;
+      const v=speechSynthesis.getVoices().find(x=>/^ko/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u);}catch(e){}},
+  set(on){this.on=on;FUNLS.set('bgc-voice',on);}};
+if(window.speechSynthesis)try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{};}catch(e){}
+
+/* ---------- 업적 배지 ---------- */
+const ACH=(()=>{
+  const K='bgc-ach';
+  const L={
+    gs_win:['🎴','고스톱 첫 승리','고스톱에서 처음 이기기','고스톱'],gs_3go:['🔥','3고 성공','3고 이상 불러서 이기기','고스톱'],gs_chongtong:['👑','총통','처음부터 같은 달 4장','고스톱'],
+    gs_5gwang:['🌟','오광','광 5장 모으기','고스톱'],gs_big:['💵','큰 판','고스톱 한 판에 2만원 넘게 따기','고스톱'],
+    sd_win:['🀄','섯다 첫 승리','섯다에서 처음 이기기','섯다'],sd_38:['🌕','38광땡','38광땡으로 이기기','섯다'],sd_gwang:['✨','광땡','13·18광땡으로 이기기','섯다'],
+    sd_jang:['🔟','장땡','장땡으로 이기기','섯다'],sd_ttaeng:['💰','땡값','땡값 받기','섯다'],sd_jabi:['🗡️','땡잡이','땡잡이로 땡 잡기','섯다'],dori_win:['🏮','도리짓고땡 승리','선을 이기기','섯다'],
+    pk_win:['♠️','포커 첫 승리','포커에서 처음 이기기','포커'],pk_full:['🏠','풀하우스','풀하우스 이상으로 이기기','포커'],pk_four:['4️⃣','포카드','포카드 이상으로 이기기','포커'],
+    pk_sf:['🌈','스트레이트 플러시','스트레이트 플러시 이상으로 이기기','포커'],pk_royal:['👑','로열 스트레이트 플러시','로열로 이기기','포커'],pk_swing:['🎯','스윙 성공','하이로우 스윙으로 다 가져가기','포커'],bd_golf:['⛳','골프','바둑이 골프(A·2·3·4)로 이기기','포커'],
+    mj_win:['🀅','마작 첫 화료','마작에서 처음 화료','마작'],mj_riichi:['🎌','리치 화료','리치하고 화료','마작'],mj_mangan:['💮','만관','만관 이상으로 화료','마작'],mj_yakuman:['🐉','역만','역만으로 화료','마작'],mj_top:['🥇','대국 1등','마작 대국 1등','마작'],
+    ss_clear:['🧩','사천성 완성','사천성 다 없애기','사천성'],ss_fast:['⏱️','번개 손','보통 판을 5분 안에','사천성'],ss_big:['🏯','큰 판 완성','144장 판 다 없애기','사천성'],
+    yut_win:['🐎','윷놀이 승리','윷놀이에서 이기기','윷놀이'],
+    baduk_win:['⚫','바둑 승리','컴퓨터를 이기기','판 게임'],chess_win:['♟️','체스 승리','컴퓨터를 이기기','판 게임'],janggi_win:['🐘','장기 승리','컴퓨터를 이기기','판 게임'],
+    omok_win:['⭕','오목 승리','컴퓨터를 이기기','판 게임'],othello_win:['⚪','오델로 승리','컴퓨터를 이기기','판 게임'],gonu_win:['🔷','고누 승리','컴퓨터를 이기기','판 게임'],
+    oc_win:['🃏','원카드 승리','원카드에서 이기기','카드'],hula_win:['🂡','훌라 승리','훌라에서 이기기','카드'],hula_hula:['💥','훌라!','한 번에 다 내고 이기기','카드'],
+    online_win:['🌐','온라인 승리','친구와 온라인으로 이기기','온라인'],
+    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],rich_100m:['👑','억만장자','지갑 1억원 넘기기','지갑'],
+    slot_star:['⭐','골든스타','황금별 슬롯 별 3개','카지노'],bj_bj:['🂱','블랙잭','블랙잭 나오기','카지노'],bac_tie:['🤝','타이 적중','바카라 타이 맞히기','카지노']};
+  const got=()=>FUNLS.get(K,{});
+  function unlock(id){if(!L[id])return;const g=got();if(g[id])return;g[id]=Date.now();FUNLS.set(K,g);
+    funToast(`${L[id][0]} 배지 획득! <b>${L[id][1]}</b><br><small>${L[id][2]}</small>`,3600);VOICE.say('배지 획득');}
+  return{L,got,unlock};
+})();
+// 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
+document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
+setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
+if(!window.FUN_NO_DAILY)WALLET.daily();
 
 /* ===== 황금별 슬롯: 오락실 기계 (브라운관 화면은 320×240 도트 캔버스) ===== */
 const $=id=>document.getElementById(id);
@@ -403,7 +496,8 @@ async function settle(res,tb){
     SL.BONUS.forEach((B,i)=>{const n=hits.filter(w=>w.sym===B.sym).length;for(let j=0;j<n;j++){counters[i]--;if(counters[i]<=0){const amt=B.pay*Math.floor(tb/8);bonusTotal+=amt;notes.push(B.name);counters[i]=B.count;}}});}
   const total=res.total+bonusTotal;
   if(total>0){const jack=res.wins.some(w=>w.three&&w.sym>=6)||bonusTotal>0,big=jack||total>=tb*20;
-    if(jack){SND.jackpot();flash();party=40;}else SND.win(big);
+    if(jack){SND.jackpot();flash();party=40;if(typeof VOICE!=='undefined')VOICE.say('잭팟');}else SND.win(big);
+    if(res.wins.some(w=>w.three&&w.sym===7)&&typeof ACH!=='undefined')ACH.unlock('slot_star');
     note=bonusTotal?'BONUS!!':res.wins.some(w=>w.three&&w.sym===7)?'GOLDEN STAR!!':big?'BIG WIN!':'YOU WIN!';
     const steps=Math.min(40,total),inc=total/steps;for(let j=1;j<=steps;j++){win=Math.round(inc*j);if(j%2)SND.coin();await sleep(big?45:28);}
     win=total;stat.best=Math.max(stat.best,total);note='TAKE OR DOUBLE';
@@ -461,16 +555,118 @@ tap('bTake',()=>{if(wake())return;if(mode==='double'&&DBL.state==='flip')return;
 tap('bDouble',openDouble);tap('bBig',()=>dblPick('big'));tap('bSmall',()=>dblPick('small'));tap('bHalf',half);
 tap('bAuto',()=>{wake();auto=!auto;if(auto&&!busy&&mode==='game'){if(win>0)take();start();}});
 const coin=()=>{wake();credit+=100;stat.coins+=100;SND.coin();setTimeout(()=>SND.coin(),120);dropCoins(10);note='PUSH START';save();lights();};
-$('bCoin').onclick=coin;$('bCoin').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();coin();}};
+$('bCoin').onclick=coin;$('casCoin').onclick=()=>{coin();if(typeof CAS!=='undefined')CAS.render();};$('bCoin').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();coin();}};
 $('bPay').onclick=()=>{renderPay();$('pay').hidden=false;};$('payClose').onclick=()=>$('pay').hidden=true;$('pay').onclick=e=>{if(e.target.id==='pay')$('pay').hidden=true;};
 $('bSound').onclick=()=>{SND.on=!SND.on;store.set('sound',SND.on);$('bSound').textContent=SND.on?'🔊':'🔇';};$('bSound').textContent=SND.on?'🔊':'🔇';
 $('bReset').onclick=()=>{if(!confirm('크레딧과 기록을 처음으로 돌릴까요?'))return;credit=100;counters=SL.BONUS.map(b=>b.count);stat={bet:0,won:0,spins:0,best:0,coins:0};win=0;DBL.hist=[];mode='game';save();lights();};
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(typeof CAS!=='undefined'&&CAS.mode!=='slot')return;const k=e.key.toLowerCase();
   if(e.code==='Space'||e.key==='Enter'){e.preventDefault();start();}else if(k==='b'){mode==='double'?dblPick('big'):pushBet();}else if(k==='s'){dblPick('small');}
   else if(k==='m')maxBet();else if(k==='t')take();else if(k==='d')openDouble();else if(k==='h')half();lights();});
 addEventListener('resize',buildBulbs);
 buildBulbs();lights();requestAnimationFrame(loop);
 (document.fonts&&document.fonts.load?document.fonts.load('8px "Press Start 2P"'):Promise.resolve()).catch(()=>{});
+
+/* ===== 황금별 카지노: 블랙잭 · 바카라 (슬롯과 같은 크레딧) ===== */
+const CAS=(()=>{
+const SU=['♠','♥','♦','♣'],RK=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const red=s=>s===1||s===2;
+function cardSvg(c,down){
+  if(down)return `<svg viewBox="0 0 60 84" class="cc"><rect x=".5" y=".5" width="59" height="83" rx="6" fill="#fff" stroke="#999"/><rect x="4" y="4" width="52" height="76" rx="4" fill="#b71c1c"/><path d="M4 4 L56 80 M56 4 L4 80" stroke="#ffcdd2" stroke-width="1" opacity=".5"/><circle cx="30" cy="42" r="10" fill="none" stroke="#ffd54f" stroke-width="2"/><text x="30" y="47" text-anchor="middle" font-size="13" fill="#ffd54f">★</text></svg>`;
+  const col=red(c.s)?'#d32f2f':'#1a1a1a',r=RK[c.r],su=SU[c.s];
+  return `<svg viewBox="0 0 60 84" class="cc"><rect x=".5" y=".5" width="59" height="83" rx="6" fill="#fffdf7" stroke="#aaa"/>
+    <text x="6" y="17" font-family="Georgia,serif" font-weight="700" font-size="${r.length>1?13:15}" fill="${col}">${r}</text><text x="7" y="30" font-size="12" fill="${col}">${su}</text>
+    <text x="30" y="56" text-anchor="middle" font-size="30" fill="${col}">${su}</text>
+    <g transform="rotate(180 30 42)"><text x="6" y="17" font-family="Georgia,serif" font-weight="700" font-size="${r.length>1?13:15}" fill="${col}">${r}</text><text x="7" y="30" font-size="12" fill="${col}">${su}</text></g></svg>`;}
+// 카드 묶음 6벌
+let shoe=[];
+function draw(){if(shoe.length<60){shoe=[];for(let d=0;d<6;d++)for(let s=0;s<4;s++)for(let r=0;r<13;r++)shoe.push({r,s});for(let i=shoe.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[shoe[i],shoe[j]]=[shoe[j],shoe[i]];}}return shoe.pop();}
+/* ---------- 블랙잭 ---------- */
+const bjVal=h=>{let t=0,a=0;for(const c of h){const v=c.r===0?11:Math.min(10,c.r+1);t+=v;if(c.r===0)a++;}while(t>21&&a){t-=10;a--;}return t;};
+const isBJ=h=>h.length===2&&bjVal(h)===21;
+const BJ={bet:0,hands:[],cur:0,dealer:[],state:'bet',msg:'칩을 눌러 걸고 DEAL을 누르세요.',hide:true};
+/* ---------- 바카라 ---------- */
+const bacVal=h=>h.reduce((a,c)=>a+(c.r>=9?0:c.r+1),0)%10;
+const BAC={bets:{P:0,B:0,T:0},pick:'P',p:[],b:[],state:'bet',msg:'걸 곳(플레이어·뱅커·타이)을 고르고 칩을 누르세요.',road:(typeof FUNLS!=='undefined'?FUNLS.get('slot-road',[]):[])};
+let mode='slot',chip=5;
+const $=id=>document.getElementById(id);
+function setMode(m){mode=m;document.querySelectorAll('#modes [data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+  $('crtBox').hidden=m!=='slot';$('slotPanel').hidden=m!=='slot';$('casWrap').hidden=m==='slot';if(m!=='slot')render();}
+const cr=()=>credit;
+function pay(n){credit+=n;stat.won+=n;save();}
+function take(n){credit-=n;stat.bet+=n;save();}
+const chipsBar=sel=>`<div class="cchips">${[1,5,10,25,50,100].map(v=>`<button class="cchip${chip===v?' on':''}" data-chip="${v}" style="--c:${({1:'#eceff1',5:'#e53935',10:'#1e88e5',25:'#43a047',50:'#8e24aa',100:'#212121'})[v]}">${v}</button>`).join('')}</div>`;
+function render(){
+  const box=$('casino');if(mode==='bj'){
+    const B=BJ,showD=B.state==='done'||B.state==='dealer';
+    box.innerHTML=`<div class="felt"><div class="ctitle">BLACKJACK <small>블랙잭이면 3:2 · 딜러는 17에서 멈춤</small></div>
+      <div class="crow"><span class="clbl">딜러 ${showD?bjVal(B.dealer):B.dealer.length?'?':''}</span><div class="ccards">${B.dealer.map((c,i)=>cardSvg(c,i===1&&!showD)).join('')}</div></div>
+      ${B.hands.length?B.hands.map((h,i)=>`<div class="crow${i===B.cur&&B.state==='play'?' cur':''}"><span class="clbl">나${B.hands.length>1?' '+(i+1):''} ${bjVal(h.cards)}${h.res?` · <b>${h.res}</b>`:''}<br><small>건 ${h.bet}</small></span><div class="ccards">${h.cards.map(c=>cardSvg(c)).join('')}</div></div>`).join(''):'<div class="crow"><span class="clbl">나</span><div class="ccards"></div></div>'}
+      <div class="cmsg">${B.msg}</div>
+      <div class="cbar">${B.state==='bet'||B.state==='done'?`${chipsBar()}<div class="cbtns"><span class="cbet">걸기 <b>${B.bet}</b></span><button class="cb" data-bj="clear">지우기</button><button class="cb go" data-bj="deal"${B.bet&&B.bet<=cr()?'':' disabled'}>DEAL</button></div>`:
+        B.state==='play'?`<div class="cbtns"><button class="cb go" data-bj="hit">HIT 한 장 더</button><button class="cb" data-bj="stand">STAND 멈춤</button><button class="cb" data-bj="double"${B.hands[B.cur].cards.length===2&&cr()>=B.hands[B.cur].bet?'':' disabled'}>DOUBLE 두 배</button><button class="cb" data-bj="split"${B.hands.length===1&&B.hands[0].cards.length===2&&B.hands[0].cards[0].r===B.hands[0].cards[1].r&&cr()>=B.hands[0].bet?'':' disabled'}>SPLIT 나누기</button></div>`:''}</div></div>`;}
+  else if(mode==='bac'){
+    const A=BAC,tot=A.bets.P+A.bets.B+A.bets.T;
+    box.innerHTML=`<div class="felt bac"><div class="ctitle">BACCARAT <small>플레이어 1:1 · 뱅커 0.95:1 · 타이 8:1</small></div>
+      <div class="bacrow"><div class="bacside p"><span class="clbl">PLAYER ${A.p.length?bacVal(A.p):''}</span><div class="ccards">${A.p.map(c=>cardSvg(c)).join('')}</div></div>
+        <div class="bacside b"><span class="clbl">BANKER ${A.b.length?bacVal(A.b):''}</span><div class="ccards">${A.b.map(c=>cardSvg(c)).join('')}</div></div></div>
+      <div class="baczones">${[['P','플레이어','1:1'],['T','타이','8:1'],['B','뱅커','0.95:1']].map(([k,n,o])=>`<button class="bz ${k}${A.pick===k?' on':''}" data-bz="${k}"><b>${n}</b><small>${o}</small><i>${A.bets[k]||''}</i></button>`).join('')}</div>
+      <div class="road">${A.road.slice(-30).map(r=>`<i class="${r}">${r==='T'?'T':''}</i>`).join('')}</div>
+      <div class="cmsg">${A.msg}</div>
+      <div class="cbar">${A.state!=='deal'?`${chipsBar()}<div class="cbtns"><span class="cbet">걸기 <b>${tot}</b></span><button class="cb" data-bac="clear">지우기</button><button class="cb go" data-bac="deal"${tot&&tot<=cr()?'':' disabled'}>DEAL</button></div>`:''}</div></div>`;}
+  const m=$('casCredit');if(m)m.textContent=credit;}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+// 블랙잭 진행
+async function bjDeal(){const B=BJ;if(!B.bet||B.bet>cr())return;take(B.bet);B.hands=[{cards:[],bet:B.bet,res:''}];B.dealer=[];B.cur=0;B.state='deal';B.msg='카드를 나눠요…';
+  for(let k=0;k<2;k++){B.hands[0].cards.push(draw());render();SND.flip();await wait(260);B.dealer.push(draw());render();SND.flip();await wait(260);}
+  if(isBJ(B.dealer[0]?B.dealer:[])||isBJ(B.hands[0].cards)){return bjFinish();}
+  B.state='play';B.msg='HIT(한 장 더) 또는 STAND(멈춤)를 고르세요.';render();}
+async function bjAct(a){const B=BJ,h=B.hands[B.cur];if(B.state!=='play')return;
+  if(a==='hit'){h.cards.push(draw());SND.flip();if(bjVal(h.cards)>21){h.res='버스트';SND.lose();return bjNext();}if(bjVal(h.cards)===21)return bjNext();}
+  else if(a==='stand')return bjNext();
+  else if(a==='double'&&h.cards.length===2&&cr()>=h.bet){take(h.bet);h.bet*=2;h.cards.push(draw());SND.flip();if(bjVal(h.cards)>21){h.res='버스트';SND.lose();}return bjNext();}
+  else if(a==='split'&&B.hands.length===1&&h.cards.length===2&&h.cards[0].r===h.cards[1].r&&cr()>=h.bet){take(h.bet);const c2=h.cards.pop();B.hands.push({cards:[c2,draw()],bet:h.bet,res:''});h.cards.push(draw());SND.flip();}
+  render();}
+function bjNext(){const B=BJ;if(B.cur<B.hands.length-1){B.cur++;render();return;}bjFinish();}
+async function bjFinish(){const B=BJ;B.state='dealer';render();
+  const alive=B.hands.some(h=>!h.res);
+  if(alive&&!isBJ(B.hands[0].cards)){while(bjVal(B.dealer)<17){await wait(450);B.dealer.push(draw());SND.flip();render();}}
+  const d=bjVal(B.dealer),dBJ=isBJ(B.dealer);let got=0;
+  for(const h of B.hands){if(h.res==='버스트')continue;const v=bjVal(h.cards),pBJ=isBJ(h.cards)&&B.hands.length===1;
+    if(pBJ&&!dBJ){h.res='블랙잭!';got+=h.bet+Math.floor(h.bet*1.5);if(typeof ACH!=='undefined')ACH.unlock('bj_bj');}
+    else if(dBJ&&!pBJ)h.res='딜러 블랙잭';else if(pBJ&&dBJ){h.res='무승부';got+=h.bet;}
+    else if(d>21||v>d){h.res='승리';got+=h.bet*2;}else if(v===d){h.res='무승부';got+=h.bet;}else h.res='패배';}
+  if(got)pay(got);const spent=B.hands.reduce((a,h)=>a+h.bet,0);
+  B.msg=got>spent?`🎉 <b>+${got-spent}</b> 크레딧!`:got===spent?'무승부, 건 크레딧을 돌려받았어요.':`아쉬워요. -${spent-got}`;if(got>spent){SND.win(got-spent>=50);if(typeof VOICE!=='undefined')VOICE.say(B.hands.some(h=>h.res==='블랙잭!')?'블랙잭':'승리');}
+  B.state='done';if(B.bet>cr())B.bet=Math.min(B.bet,cr());render();if(typeof lights==='function')lights();}
+// 바카라 진행 (표준 세 번째 카드 규칙)
+async function bacDeal(){const A=BAC,tot=A.bets.P+A.bets.B+A.bets.T;if(!tot||tot>cr())return;take(tot);A.state='deal';A.p=[];A.b=[];A.msg='카드를 나눠요…';render();
+  const add=async(side)=>{A[side].push(draw());SND.flip();render();await wait(380);};
+  await add('p');await add('b');await add('p');await add('b');
+  let pv=bacVal(A.p),bv=bacVal(A.b);
+  if(pv<8&&bv<8){let p3=null;if(pv<=5){await add('p');p3=A.p[2];}
+    const t=p3==null?-1:(p3.r>=9?0:p3.r+1);bv=bacVal(A.b);
+    const bDraw=p3==null?bv<=5:bv<=2||(bv===3&&t!==8)||(bv===4&&t>=2&&t<=7)||(bv===5&&t>=4&&t<=7)||(bv===6&&(t===6||t===7));
+    if(bDraw)await add('b');}
+  pv=bacVal(A.p);bv=bacVal(A.b);const w=pv>bv?'P':bv>pv?'B':'T';let got=0;
+  if(w==='T'){got+=A.bets.T*9+A.bets.P+A.bets.B;if(A.bets.T&&typeof ACH!=='undefined')ACH.unlock('bac_tie');}
+  else if(w==='P')got+=A.bets.P*2;else got+=A.bets.B+Math.floor(A.bets.B*0.95);
+  if(got)pay(got);A.road.push(w);A.road=A.road.slice(-60);if(typeof FUNLS!=='undefined')FUNLS.set('slot-road',A.road);
+  const nm={P:'플레이어',B:'뱅커',T:'타이'}[w];A.msg=`${nm} ${w==='T'?'':'승 '}(${pv} : ${bv}) · ${got>tot?`🎉 <b>+${got-tot}</b> 크레딧`:got===tot?'본전':`-${tot-got}`}`;
+  if(got>tot){SND.win(got-tot>=50);}else if(got<tot)SND.lose();if(typeof VOICE!=='undefined')VOICE.say(nm+(w==='T'?'':' 승'));
+  A.state='done';render();if(typeof lights==='function')lights();}
+document.addEventListener('click',e=>{
+  const md=e.target.closest('#modes [data-mode]');if(md){setMode(md.dataset.mode);return;}
+  if(!$('casWrap')||$('casWrap').hidden||!e.target.closest('#casWrap'))return;
+  const ch=e.target.closest('[data-chip]');if(ch){chip=+ch.dataset.chip;SND.bet();
+    if(mode==='bj'&&(BJ.state==='bet'||BJ.state==='done')){if(BJ.state==='done'){BJ.state='bet';BJ.hands=[];BJ.dealer=[];BJ.bet=0;}if(BJ.bet+chip<=cr())BJ.bet+=chip;BJ.msg='DEAL을 누르면 시작해요.';}
+    if(mode==='bac'&&BAC.state!=='deal'){if(BAC.state==='done'){BAC.state='bet';BAC.p=[];BAC.b=[];BAC.bets={P:0,B:0,T:0};}const tot=BAC.bets.P+BAC.bets.B+BAC.bets.T;if(tot+chip<=cr())BAC.bets[BAC.pick]+=chip;BAC.msg='DEAL을 누르면 시작해요.';}
+    render();return;}
+  const bj=e.target.closest('[data-bj]');if(bj){const a=bj.dataset.bj;if(a==='deal')bjDeal();else if(a==='clear'){BJ.bet=0;BJ.state='bet';BJ.hands=[];BJ.dealer=[];render();}else bjAct(a);return;}
+  const bz=e.target.closest('[data-bz]');if(bz&&BAC.state!=='deal'){BAC.pick=bz.dataset.bz;render();return;}
+  const bc=e.target.closest('[data-bac]');if(bc){if(bc.dataset.bac==='deal')bacDeal();else{BAC.bets={P:0,B:0,T:0};BAC.state='bet';BAC.p=[];BAC.b=[];render();}}
+});
+return{setMode,render,get mode(){return mode;}};
+})();
 
 </script>
 

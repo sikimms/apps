@@ -1,5 +1,5 @@
-// 오프라인 저장 (버전 51ef2e7fb1)
-const CACHE='slot-51ef2e7fb1',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html"];
+// 오프라인 저장 (버전 ca54f6ea22)
+const CACHE='slot-ca54f6ea22',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html"];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})))));});
 self.addEventListener('message',e=>{if(e.data==='SKIP')self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('slot-')&&k!==CACHE&&k!=='slot-font').map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
