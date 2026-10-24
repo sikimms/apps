@@ -253,7 +253,7 @@ const ACH=(()=>{
 // 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
 setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
-WALLET.daily();
+if(!window.FUN_NO_DAILY)WALLET.daily();
 
 /* ===== 사천성 규칙 =====
    W×H 판에 같은 패가 4장씩. 같은 그림 두 장을 '두 번 이하로 꺾이는 선'으로 이을 수 있으면 없앤다.

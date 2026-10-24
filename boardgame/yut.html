@@ -300,7 +300,7 @@ const ACH=(()=>{
 // 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
 setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
-WALLET.daily();
+if(!window.FUN_NO_DAILY)WALLET.daily();
 
 /* ===== 윷놀이 규칙 =====
    말판 점 29개: 0 참먹이(출발·도착, 오른쪽 아래) → 1~4 오른쪽 변 → 5 오른쪽 위 귀(모) → 6~9 → 10 왼쪽 위 귀(뒷모)

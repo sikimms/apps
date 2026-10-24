@@ -416,7 +416,7 @@ const ACH=(()=>{
 // 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
 setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
-WALLET.daily();
+if(!window.FUN_NO_DAILY)WALLET.daily();
 
 /* ===== 히든 카드 쪼아 보기: 뒷면을 위로 밀어 올리면 앞면이 조금씩 보인다 =====
    squeeze(판 요소, 앞면 svg, 뒷면 svg, 가로세로 비율) → 다 보면 끝나는 Promise */

@@ -437,7 +437,7 @@ const ACH=(()=>{
 // 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
 setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
-WALLET.daily();
+if(!window.FUN_NO_DAILY)WALLET.daily();
 
 /* ===== 고스톱 규칙 (맞고 2명 / 3명) =====
    2명: 10장씩, 바닥 8장, 7점부터 고/스톱.  3명: 7장씩, 바닥 6장, 3점부터 고/스톱.

@@ -139,6 +139,17 @@
       ]
     },
     {
+      "name": "원카드·훌라",
+      "url": "./onecard.html",
+      "icons": [
+        {
+          "src": "icons/onecard.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "마작",
       "url": "./mahjong.html",
       "icons": [
