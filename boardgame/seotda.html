@@ -963,6 +963,52 @@ return{DECK,mon,special,isGwang,seotdaHand,seotdaShowdown,strength1,strength2,ne
   doriBest,doriHand,checkThree,newDori,shuffle,bestPair};
 })();
 
+/* ===== 로비 (지금 열린 방 목록) =====
+   따로 서버 없이: 같은 게임 화면을 연 기기 중 하나가 '안내 데스크'(peer id: sikimms-lobby-<게임>)를 맡는다.
+   공개 방을 만든 기기는 데스크에 방을 등록하고, 다른 기기는 데스크에서 목록을 받는다.
+   데스크 기기가 나가면 남은 기기 중 하나가 자동으로 이어받는다. */
+const LOBBY=(()=>{
+  const PFX='sikimms-lobby-';
+  let game='',peer=null,desk=false,deskConn=null,clients=[],rooms={},list=[],mine=null,onList=null,started=false,retryT=null,dead=false;
+  const load=()=>new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej();document.head.appendChild(s);});
+  function emit(){if(onList)onList(list.slice());}
+  // 데스크: 목록 다시 모아 모두에게 보냄
+  function deskList(){list=Object.values(rooms).concat(mine?[{...mine,self:true}]:[]).sort((a,b)=>a.at-b.at);for(const c of clients)try{c.send({t:'list',rooms:list});}catch(e){}emit();}
+  function becomeDesk(){desk=true;deskConn=null;clients=[];rooms={};
+    peer.on('connection',c=>{clients.push(c);
+      c.on('data',d=>{if(!d||!d.t)return;if(d.t==='reg'&&d.room){rooms[c.peer]={...d.room,at:rooms[c.peer]?rooms[c.peer].at:Date.now()};deskList();}
+        else if(d.t==='unreg'){delete rooms[c.peer];deskList();}else if(d.t==='list')try{c.send({t:'list',rooms:list});}catch(e){}});
+      c.on('open',()=>{try{c.send({t:'list',rooms:list});}catch(e){}});
+      c.on('close',()=>{clients=clients.filter(x=>x!==c);if(rooms[c.peer]){delete rooms[c.peer];deskList();}});c.on('error',()=>{});});
+    deskList();}
+  function asClient(){desk=false;try{peer&&peer.destroy();}catch(e){}
+    peer=new Peer();peer.on('open',()=>{const c=peer.connect(PFX+game,{reliable:true});deskConn=c;
+      c.on('open',()=>{try{c.send({t:'list'});if(mine)c.send({t:'reg',room:mine});}catch(e){}});
+      c.on('data',d=>{if(d&&d.t==='list'){list=d.rooms||[];emit();}});
+      c.on('close',()=>{deskConn=null;reElect();});c.on('error',()=>{});
+      setTimeout(()=>{if(deskConn&&!deskConn.open&&!dead)reElect();},8000);});
+    peer.on('error',e=>{if(e.type==='peer-unavailable')reElect();});}
+  function reElect(){if(dead)return;clearTimeout(retryT);retryT=setTimeout(claim,300+Math.random()*1500);}
+  // 데스크 자리를 차지해 보고, 이미 누가 있으면 손님으로 붙음
+  function claim(){if(dead)return;try{peer&&peer.destroy();}catch(e){}desk=false;
+    peer=new Peer(PFX+game);peer.on('open',()=>becomeDesk());
+    peer.on('error',e=>{if(e.type==='unavailable-id')asClient();else if(e.type==='network'||e.type==='server-error'){list=[];emit();}});}
+  async function start(g,cb){game=g;onList=cb||onList;if(started){emit();return;}started=true;dead=false;try{await load();}catch(e){return;}claim();}
+  // 내 공개 방 알리기 (null 이면 내림)
+  function publish(room){mine=room?{...room,at:mine?mine.at:Date.now()}:null;
+    if(desk)deskList();else if(deskConn&&deskConn.open)try{deskConn.send(mine?{t:'reg',room:mine}:{t:'unreg'});}catch(e){}}
+  function stop(){dead=true;started=false;clearTimeout(retryT);try{peer&&peer.destroy();}catch(e){}peer=null;deskConn=null;list=[];}
+  const nick=()=>{try{return localStorage.getItem('bgc-nick')||'';}catch(e){return'';}};
+  const setNick=v=>{try{localStorage.setItem('bgc-nick',v);}catch(e){}};
+  // 목록 그리기 (공통)
+  function listHtml(rs,myCode){const open=rs.filter(r=>r.code!==myCode);
+    if(!open.length)return '<div class="lbempty">지금 열린 공개 방이 없어요. 공개 방을 만들면 여기에 보여요.</div>';
+    return open.map(r=>`<div class="lbroom"><span><b>${esc(r.title||'방장')}</b><small>${esc(r.kind||'')} · ${r.players}/${r.max}명${r.playing?' · 게임 중':''}</small></span>${r.players>=r.max?'<button class="btn" disabled>꽉 참</button>':`<button class="btn primary" data-lbjoin="${r.code}">같이하기</button>`}</div>`).join('');}
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+  const CSS='<style>.lbbox{margin-top:10px;padding-top:8px;border-top:1px dashed var(--rule,#ccc)}.lbhead{display:flex;justify-content:space-between;align-items:center;font:700 13px var(--f-body,sans-serif)}.lbroom{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;margin-top:6px;border-radius:10px;background:var(--surface,#fff);border:1px solid var(--rule,#ddd)}.lbroom b{display:block;font-size:14px}.lbroom small{color:var(--muted,#777);font-size:12px}.lbempty{font-size:12.5px;color:var(--muted,#777);margin-top:6px}.lbopts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;font-size:13px}.lbopts input[type=text]{width:9em;padding:5px 8px;border:1px solid var(--rule,#ccc);border-radius:8px;background:var(--surface,#fff);color:var(--ink,#222)}</style>';
+  return{start,publish,stop,listHtml,nick,setNick,CSS,get list(){return list;}};
+})();
+
 /* ===== 온라인 방 (2~5명): 방 코드로 여러 기기를 연결 (PeerJS, WebRTC) =====
    방장 기기가 판을 진행(딜러)하고, 친구 기기에는 각자 볼 수 있는 것만 보낸다.
    친구는 행동(낼 패, 베팅 등)만 방장에게 보낸다.
@@ -992,7 +1038,10 @@ const roomGuests=()=>ROOM.guests.filter(g=>g.open).map(g=>g.gi);
 function roomReset(){
   try{ROOM.conn&&ROOM.conn.close();}catch(e){}for(const g of ROOM.guests)try{g.conn.close();}catch(e){}
   try{ROOM.peer&&ROOM.peer.destroy();}catch(e){}
-  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';roomUI();}
+  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';ROOM.playing=false;roomUI();roomLobby();}
+function roomLobby(){if(typeof LOBBY==='undefined'||!ROOM.cfg)return;const pub=document.getElementById('nrPub');
+  if(ROOM.host&&ROOM.peer&&ROOM.code&&pub&&pub.checked)LOBBY.publish({code:ROOM.code,game:ROOM.cfg.game,title:LOBBY.nick()||'방장',kind:(ROOM.cfg.kind&&ROOM.cfg.kind())||document.title,players:roomGuests().length+1,max:ROOM.cfg.max+1,playing:!!ROOM.playing});
+  else LOBBY.publish(null);}
 function roomUI(){
   const $$=id=>document.getElementById(id);if(!$$('nrBox'))return;
   $$('nrOff').hidden=ROOM.on;$$('nrBox').hidden=!ROOM.on;
@@ -1011,15 +1060,15 @@ function roomHost(){
     roomReset();ROOM.host=true;ROOM.seq=0;
     const tryOpen=left=>{ROOM.code=String(1000+Math.floor(Math.random()*9000));
       ROOM.peer=new Peer(ROOM_PREFIX+cfg.game+'-'+ROOM.code);
-      ROOM.peer.on('open',()=>{roomUI();ROOM.say(`방을 만들었어요. 친구에게 <b>방 코드 ${ROOM.code}</b>를 알려 주거나 초대 링크를 보내세요. 친구가 들어오면 <b>판 시작</b>을 누르세요.`);});
+      ROOM.peer.on('open',()=>{roomUI();roomLobby();ROOM.say(`방을 만들었어요. 친구에게 <b>방 코드 ${ROOM.code}</b>를 알려 주거나 초대 링크를 보내세요. 친구가 들어오면 <b>판 시작</b>을 누르세요.`);});
       ROOM.peer.on('connection',c=>{
         if(roomGuests().length>=cfg.max){c.on('open',()=>{try{c.send({t:'full'});}catch(e){}setTimeout(()=>c.close(),300);});return;}
         const g={gi:0,conn:c,open:false};
         c.on('open',()=>{const used=new Set(roomGuests());let gi=1;while(used.has(gi))gi++;g.gi=gi;g.open=true;ROOM.guests.push(g);
           try{c.send({t:'welcome',gi});}catch(e){}
-          ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();cfg.join&&cfg.join(gi);});
+          ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();roomLobby();cfg.join&&cfg.join(gi);});
         c.on('data',d=>{if(!g.open||!d||!d.t)return;if(d.t==='emo'){const who='친구 '+g.gi;emoShow(who,d.e);for(const o of ROOM.guests)if(o.open&&o!==g)try{o.conn.send({t:'emo',from:who,e:d.e});}catch(_){}return;}cfg.msg(g.gi,d);});
-        c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();cfg.leave&&cfg.leave(g.gi);});
+        c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();roomLobby();cfg.leave&&cfg.leave(g.gi);});
         c.on('error',()=>{});});
       ROOM.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){ROOM.peer.destroy();tryOpen(left-1);return;}
         if(e.type==='peer-unavailable')return;
@@ -1053,26 +1102,32 @@ function roomMount(el,cfg){
     <div id="nrBox" class="netbox" hidden>
       <div class="eyebrow">온라인 방 <button class="linkbtn" id="nrQuit" style="float:right">혼자 하기로 돌아가기</button></div>
       <div id="nrIdle"><div class="row" style="margin-top:6px"><button class="btn primary" id="nrHost">방 만들기</button>
-        <input id="nrIn" class="netin" inputmode="numeric" maxlength="4" placeholder="방 코드 4자리" aria-label="방 코드"><button class="btn" id="nrJoin">들어가기</button></div></div>
+        <input id="nrIn" class="netin" inputmode="numeric" maxlength="4" placeholder="방 코드 4자리" aria-label="방 코드"><button class="btn" id="nrJoin">들어가기</button></div>
+        <div class="lbopts"><label>별명 <input type="text" id="nrNick" maxlength="10" placeholder="방장"></label><label><input type="checkbox" id="nrPub"> 공개 방 (목록에 보이기)</label></div>
+        <div class="lbbox"><div class="lbhead"><span>🌐 지금 열린 방</span><button class="linkbtn" id="nrRef">새로고침</button></div><div id="nrLobby"><div class="lbempty">목록을 불러오는 중…</div></div></div>${LOBBY.CSS}</div>
       <div id="nrLive" hidden><div class="netcode">방 코드 <b id="nrCode"></b></div><div class="nrlist" id="nrList"></div>${emoBar('nrEmo')}${emoCss}
         <div class="row"><button class="btn primary" id="nrStart">판 시작</button><button class="btn" id="nrShare">초대 링크 보내기</button><button class="btn" id="nrLeave">나가기</button></div></div>
       <div id="nrMsg" class="netmsg">같은 앱을 쓰는 친구${cfg.max>1?` (최대 ${cfg.max}명)`:''}와 인터넷으로 할 수 있어요. 방장 기기가 카드를 섞고 나눠요. 빈자리는 컴퓨터가 채워요.</div>
     </div>`;
   const $$=id=>document.getElementById(id);
-  $$('nrOff').onclick=()=>{ROOM.on=true;roomUI();};
+  const lbDraw=rs=>{const el=$$('nrLobby');if(el)el.innerHTML=LOBBY.listHtml(rs,ROOM.code);};
+  $$('nrOff').onclick=()=>{ROOM.on=true;roomUI();LOBBY.start(cfg.game,lbDraw);};
+  $$('nrNick').value=LOBBY.nick();$$('nrNick').onchange=e=>{LOBBY.setNick(e.target.value.trim());roomLobby();};
+  $$('nrPub').onchange=()=>roomLobby();$$('nrRef').onclick=()=>lbDraw(LOBBY.list);
+  $$('nrLobby').addEventListener('click',e=>{const b=e.target.closest('[data-lbjoin]');if(b){$$('nrIn').value=b.dataset.lbjoin;roomJoin(b.dataset.lbjoin);}});
   $$('nrEmo').addEventListener('click',e=>{const b=e.target.closest('[data-emo]');if(b)roomEmote(b.dataset.emo);});
   $$('nrQuit').onclick=()=>{roomReset();ROOM.on=false;roomUI();cfg.off&&cfg.off();};
   $$('nrHost').onclick=roomHost;
   $$('nrJoin').onclick=()=>roomJoin($$('nrIn').value);
   $$('nrIn').addEventListener('keydown',e=>{if(e.key==='Enter')roomJoin($$('nrIn').value);});
   $$('nrLeave').onclick=()=>{roomReset();ROOM.say('방에서 나왔어요.');roomUI();cfg.off&&cfg.off();};
-  $$('nrStart').onclick=()=>{if(roomGuests().length)cfg.start();};
+  $$('nrStart').onclick=()=>{if(roomGuests().length){ROOM.playing=true;roomLobby();cfg.start();}};
   $$('nrShare').onclick=async()=>{const url=location.href.split('#')[0]+'#join='+ROOM.code,text=`${document.title} 같이 해요! 방 코드 ${ROOM.code}`;
     try{if(navigator.share){await navigator.share({title:document.title,text,url});return;}}catch(e){}
     try{await navigator.clipboard.writeText(text+' '+url);ROOM.say('초대 링크를 복사했어요. 메신저에 붙여 넣어 보내세요.','ok');}catch(e){ROOM.say(`초대 링크: ${url}`);}};
   roomUI();
   const m=location.hash.match(/join=(\d{4})/);
-  if(m)setTimeout(()=>{cfg.showPlay&&cfg.showPlay();ROOM.on=true;$$('nrIn').value=m[1];roomUI();roomJoin(m[1]);},300);
+  if(m)setTimeout(()=>{cfg.showPlay&&cfg.showPlay();ROOM.on=true;LOBBY.start(cfg.game,lbDraw);$$('nrIn').value=m[1];roomUI();roomJoin(m[1]);},300);
 }
 // 받은 메시지를 차례로 처리 (연출이 끝난 뒤 다음 메시지)
 function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>console.error(e));};}

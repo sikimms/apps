@@ -626,6 +626,52 @@ function woodGrain(ctx,w,h,base,dark){ctx.fillStyle=base;ctx.fillRect(0,0,w,h);
   for(let i=0;i<70;i++){const y=Math.random()*h;ctx.strokeStyle=dark;ctx.globalAlpha=0.03+Math.random()*0.05;ctx.lineWidth=1+Math.random()*3;
     ctx.beginPath();ctx.moveTo(0,y);for(let x=0;x<=w;x+=w/8)ctx.lineTo(x,y+Math.sin(x/w*6+i)*6);ctx.stroke();}ctx.globalAlpha=1;}
 
+/* ===== 로비 (지금 열린 방 목록) =====
+   따로 서버 없이: 같은 게임 화면을 연 기기 중 하나가 '안내 데스크'(peer id: sikimms-lobby-<게임>)를 맡는다.
+   공개 방을 만든 기기는 데스크에 방을 등록하고, 다른 기기는 데스크에서 목록을 받는다.
+   데스크 기기가 나가면 남은 기기 중 하나가 자동으로 이어받는다. */
+const LOBBY=(()=>{
+  const PFX='sikimms-lobby-';
+  let game='',peer=null,desk=false,deskConn=null,clients=[],rooms={},list=[],mine=null,onList=null,started=false,retryT=null,dead=false;
+  const load=()=>new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej();document.head.appendChild(s);});
+  function emit(){if(onList)onList(list.slice());}
+  // 데스크: 목록 다시 모아 모두에게 보냄
+  function deskList(){list=Object.values(rooms).concat(mine?[{...mine,self:true}]:[]).sort((a,b)=>a.at-b.at);for(const c of clients)try{c.send({t:'list',rooms:list});}catch(e){}emit();}
+  function becomeDesk(){desk=true;deskConn=null;clients=[];rooms={};
+    peer.on('connection',c=>{clients.push(c);
+      c.on('data',d=>{if(!d||!d.t)return;if(d.t==='reg'&&d.room){rooms[c.peer]={...d.room,at:rooms[c.peer]?rooms[c.peer].at:Date.now()};deskList();}
+        else if(d.t==='unreg'){delete rooms[c.peer];deskList();}else if(d.t==='list')try{c.send({t:'list',rooms:list});}catch(e){}});
+      c.on('open',()=>{try{c.send({t:'list',rooms:list});}catch(e){}});
+      c.on('close',()=>{clients=clients.filter(x=>x!==c);if(rooms[c.peer]){delete rooms[c.peer];deskList();}});c.on('error',()=>{});});
+    deskList();}
+  function asClient(){desk=false;try{peer&&peer.destroy();}catch(e){}
+    peer=new Peer();peer.on('open',()=>{const c=peer.connect(PFX+game,{reliable:true});deskConn=c;
+      c.on('open',()=>{try{c.send({t:'list'});if(mine)c.send({t:'reg',room:mine});}catch(e){}});
+      c.on('data',d=>{if(d&&d.t==='list'){list=d.rooms||[];emit();}});
+      c.on('close',()=>{deskConn=null;reElect();});c.on('error',()=>{});
+      setTimeout(()=>{if(deskConn&&!deskConn.open&&!dead)reElect();},8000);});
+    peer.on('error',e=>{if(e.type==='peer-unavailable')reElect();});}
+  function reElect(){if(dead)return;clearTimeout(retryT);retryT=setTimeout(claim,300+Math.random()*1500);}
+  // 데스크 자리를 차지해 보고, 이미 누가 있으면 손님으로 붙음
+  function claim(){if(dead)return;try{peer&&peer.destroy();}catch(e){}desk=false;
+    peer=new Peer(PFX+game);peer.on('open',()=>becomeDesk());
+    peer.on('error',e=>{if(e.type==='unavailable-id')asClient();else if(e.type==='network'||e.type==='server-error'){list=[];emit();}});}
+  async function start(g,cb){game=g;onList=cb||onList;if(started){emit();return;}started=true;dead=false;try{await load();}catch(e){return;}claim();}
+  // 내 공개 방 알리기 (null 이면 내림)
+  function publish(room){mine=room?{...room,at:mine?mine.at:Date.now()}:null;
+    if(desk)deskList();else if(deskConn&&deskConn.open)try{deskConn.send(mine?{t:'reg',room:mine}:{t:'unreg'});}catch(e){}}
+  function stop(){dead=true;started=false;clearTimeout(retryT);try{peer&&peer.destroy();}catch(e){}peer=null;deskConn=null;list=[];}
+  const nick=()=>{try{return localStorage.getItem('bgc-nick')||'';}catch(e){return'';}};
+  const setNick=v=>{try{localStorage.setItem('bgc-nick',v);}catch(e){}};
+  // 목록 그리기 (공통)
+  function listHtml(rs,myCode){const open=rs.filter(r=>r.code!==myCode);
+    if(!open.length)return '<div class="lbempty">지금 열린 공개 방이 없어요. 공개 방을 만들면 여기에 보여요.</div>';
+    return open.map(r=>`<div class="lbroom"><span><b>${esc(r.title||'방장')}</b><small>${esc(r.kind||'')} · ${r.players}/${r.max}명${r.playing?' · 게임 중':''}</small></span>${r.players>=r.max?'<button class="btn" disabled>꽉 참</button>':`<button class="btn primary" data-lbjoin="${r.code}">같이하기</button>`}</div>`).join('');}
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+  const CSS='<style>.lbbox{margin-top:10px;padding-top:8px;border-top:1px dashed var(--rule,#ccc)}.lbhead{display:flex;justify-content:space-between;align-items:center;font:700 13px var(--f-body,sans-serif)}.lbroom{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;margin-top:6px;border-radius:10px;background:var(--surface,#fff);border:1px solid var(--rule,#ddd)}.lbroom b{display:block;font-size:14px}.lbroom small{color:var(--muted,#777);font-size:12px}.lbempty{font-size:12.5px;color:var(--muted,#777);margin-top:6px}.lbopts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;font-size:13px}.lbopts input[type=text]{width:9em;padding:5px 8px;border:1px solid var(--rule,#ccc);border-radius:8px;background:var(--surface,#fff);color:var(--ink,#222)}</style>';
+  return{start,publish,stop,listHtml,nick,setNick,CSS,get list(){return list;}};
+})();
+
 /* ===== 온라인 대국: 방 코드로 두 기기를 직접 연결 (PeerJS, WebRTC) =====
    방장(먼저 두는 쪽)이 방을 만들면 4자리 코드가 나오고, 친구가 코드를 넣으면 연결된다.
    주고받는 것: hello(설정), new(새 판), move(수), pass, resign. 수는 받은 쪽에서도 규칙으로 다시 확인한다. */
@@ -648,9 +694,12 @@ function netLoad(){return new Promise((res,rej)=>{if(window.Peer)return res();co
   s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej(new Error('load'));document.head.appendChild(s);});}
 function netSettings(){const o={};document.querySelectorAll('[data-newgame]').forEach(el=>{o[el.id]=el.type==='checkbox'?el.checked:el.value;});return o;}
 function netApplySettings(o){for(const id in o){const el=document.getElementById(id);if(!el)continue;if(el.type==='checkbox')el.checked=o[id];else el.value=o[id];}}
-function netReset(){try{NET.conn&&NET.conn.close();}catch(e){}try{NET.peer&&NET.peer.destroy();}catch(e){}NET.peer=null;NET.conn=null;NET.ok=false;netUI();}
+function netLobby(){if(typeof LOBBY==='undefined')return;const pub=document.getElementById('netPub');
+  if(NET.host&&NET.peer&&NET.code&&pub&&pub.checked)LOBBY.publish({code:NET.code,game:GAME.id,title:LOBBY.nick()||'방장',kind:document.title,players:NET.ok?2:1,max:2,playing:NET.ok});else LOBBY.publish(null);}
+function netReset(){try{NET.conn&&NET.conn.close();}catch(e){}try{NET.peer&&NET.peer.destroy();}catch(e){}NET.peer=null;NET.conn=null;NET.ok=false;netUI();netLobby();}
 function netUI(){
   const on=mode()==='online',box=document.getElementById('netbox');if(!box)return;box.hidden=!on;
+  if(on&&typeof LOBBY!=='undefined'&&!NET.lbOn){NET.lbOn=true;LOBBY.start(GAME.id,rs=>{const el=document.getElementById('netLobby');if(el)el.innerHTML=LOBBY.listHtml(rs,NET.code);});}
   document.getElementById('netIdle').hidden=!!NET.peer;document.getElementById('netLive').hidden=!NET.peer;
   document.getElementById('netCode').textContent=NET.code?NET.code.split('').join(' '):'';
   document.getElementById('netShare').hidden=!(NET.host&&!NET.ok);
@@ -658,11 +707,11 @@ function netUI(){
 }
 function netSetup(c){
   NET.conn=c;
-  c.on('open',()=>{NET.ok=true;netUI();
+  c.on('open',()=>{NET.ok=true;netUI();netLobby();
     if(NET.host){NET.send({t:'hello',opts:netSettings()});netStart();NET.say(`친구가 들어왔어요! 당신은 <b>${GAME.sideName(NET.side)}</b>이에요.`,'ok');}
     else NET.say('연결됐어요. 방장이 판을 시작해요.','ok');});
   c.on('data',d=>netOnData(d));
-  c.on('close',()=>{NET.ok=false;NET.say('친구와 연결이 끊겼어요. 다시 방을 만들거나 들어가 주세요.','bad');netUI();if(G){G.coach='연결이 끊겼어요.';G.kind='no';renderPlay();}});
+  c.on('close',()=>{NET.ok=false;NET.say('친구와 연결이 끊겼어요. 다시 방을 만들거나 들어가 주세요.','bad');netUI();netLobby();if(G){G.coach='연결이 끊겼어요.';G.kind='no';renderPlay();}});
   c.on('error',()=>{});
 }
 async function netHost(){
@@ -670,7 +719,7 @@ async function netHost(){
   netReset();NET.host=true;NET.side=US;
   const tryOpen=(left)=>{NET.code=String(1000+Math.floor(Math.random()*9000));
     NET.peer=new Peer(NET_PREFIX+GAME.id+'-'+NET.code);
-    NET.peer.on('open',()=>{netUI();NET.say(`방을 만들었어요. 친구에게 <b>방 코드 ${NET.code}</b>를 알려 주거나 초대 링크를 보내세요. 기다리는 중…`);});
+    NET.peer.on('open',()=>{netUI();netLobby();NET.say(`방을 만들었어요. 친구에게 <b>방 코드 ${NET.code}</b>를 알려 주거나 초대 링크를 보내세요. 기다리는 중…`);});
     NET.peer.on('connection',c=>{if(NET.conn&&NET.ok){c.close();return;}netSetup(c);});
     NET.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){NET.peer.destroy();tryOpen(left-1);return;}
       NET.say(e.type==='network'||e.type==='server-error'?'연결 서버에 닿지 못했어요. 회사망처럼 막힌 곳에서는 안 될 수 있어요.':'방을 만들지 못했어요 ('+e.type+')','bad');});};
@@ -700,6 +749,10 @@ function netOnData(d){
 // 버튼
 (()=>{const $$=id=>document.getElementById(id);
   if(!$$('netbox'))return;
+  {const idle=$$('netIdle');if(idle&&!$$('netLobby')&&typeof LOBBY!=='undefined'){idle.insertAdjacentHTML('beforeend',"<div class=\"lbopts\"><label>별명 <input type=\"text\" id=\"netNick\" maxlength=\"10\" placeholder=\"방장\"></label><label><input type=\"checkbox\" id=\"netPub\"> 공개 방 (목록에 보이기)</label></div>\n        <div class=\"lbbox\"><div class=\"lbhead\"><span>🌐 지금 열린 방</span><button class=\"linkbtn\" id=\"netRef\">새로고침</button></div><div id=\"netLobby\"><div class=\"lbempty\">목록을 불러오는 중…</div></div></div>"+LOBBY.CSS);
+    $$('netNick').value=LOBBY.nick();$$('netNick').onchange=e=>{LOBBY.setNick(e.target.value.trim());netLobby();};$$('netPub').onchange=()=>netLobby();
+    $$('netRef').onclick=()=>{const el=$$('netLobby');if(el)el.innerHTML=LOBBY.listHtml(LOBBY.list,NET.code);};
+    $$('netLobby').addEventListener('click',e=>{const b=e.target.closest('[data-lbjoin]');if(b){$$('netIn').value=b.dataset.lbjoin;netJoin(b.dataset.lbjoin);}});}}
   {const live=$$('netLive');if(live&&!$$('netEmo')){live.insertAdjacentHTML('beforeend',emoBar('netEmo')+emoCss);$$('netEmo').hidden=true;$$('netEmo').addEventListener('click',e=>{const b=e.target.closest('[data-emo]');if(!b)return;emoShow('나',b.dataset.emo);NET.send({t:'emo',e:b.dataset.emo});});}}
   $$('netHost').onclick=netHost;
   $$('netJoin').onclick=()=>netJoin($$('netIn').value);
