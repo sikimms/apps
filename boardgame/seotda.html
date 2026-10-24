@@ -323,6 +323,8 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="eyebrow" style="margin:16px 0 6px">컴퓨터 등급</div>
       <div class="levels" id="slevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="opts">
+        <label><input type="checkbox" id="sGusa"> 구사(9·4)는 장땡까지 재경기</label>
+        <label><input type="checkbox" id="sRejoin"> 재경기 때 다이한 사람은 판돈 50% 내고 참가</label>
         <label><input type="checkbox" id="sTtaeng"> 땡값 (낸 돈의 땡 2배·장땡 3배·광땡 5배)</label>
         <label>방식 <select id="sCards"><option value="2">2장 섯다</option><option value="3">3장 섯다</option></select></label>
         <label>인원 <select id="sPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
@@ -359,6 +361,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <h2>섯다 족보 (높은 순)</h2>
       <div class="jokbo" id="jokbo"></div>
       <p class="sub" style="margin-top:10px"><b>3장 섯다</b>: 처음에 2장을 받고 베팅, 3번째 장을 받고 한 번 더 베팅한 뒤, 3장 중 가장 좋은 2장을 골라 겨뤄요. 설정의 <b>방식</b>에서 2장·3장을 고를 수 있어요.</p>
+      <p class="sub"><b>구사 장땡까지</b>(선택): 9·4가 나오면 다른 사람 패가 장땡 이하일 때 재경기, 광땡만 못 잡아요. <b>재경기 참가비</b>(선택): 다이했던 사람은 판돈의 절반을 내야 재경기에 들어와요.</p>
       <p class="sub"><b>땡값</b>: 혼자 이긴 패가 땡이면 끝까지 남은 사람(다이한 사람은 빼고)이 각자 이번 판에 낸 돈의 2배, 장땡은 3배, 광땡(13·18·38광땡)은 5배를 판돈과 따로 내요. 설정에서 끌 수 있어요.</p>
       <p class="sub" style="margin-top:12px">같은 족보끼리면 판돈을 나눠요. 멍텅구리구사(4·9월 열끗)는 가장 높은 패가 9땡 이하면 재경기예요.</p>
       <div class="opts"><label><input type="checkbox" id="sLabels"> 카드에 달·종류 표시</label><label><input type="checkbox" id="sSound"> 소리</label><label><input type="checkbox" id="vVoice"> 목소리</label><label><input type="checkbox" id="sSq"> 히든 카드 쪼아 보기</label></div>
@@ -852,11 +855,12 @@ function seotdaHand(a,b){
   return h;
 }
 // 이긴 사람 정하기: hands = [{p, h}] (다이하지 않은 사람). 결과 {winners:[p], rematch:bool, reason}
-function seotdaShowdown(hands){
+function seotdaShowdown(hands,o={}){
   const best=hands.reduce((a,x)=>x.h.v>a.h.v?x:a,hands[0]);
   // 재경기: 구사는 가장 높은 패가 알리 이하일 때, 멍텅구리구사는 9땡 이하일 때
   const others=x=>hands.filter(y=>y!==x);
   for(const x of hands){const top=Math.max(...others(x).map(y=>y.h.v),-1);
+    if(o.gusaJang&&(x.h.mungGusa||x.h.gusa)&&top<=200)return{winners:[],rematch:true,reason:`${x.h.mungGusa?'멍텅구리구사':'구사'}(${x.p})가 나와서 다시 해요 (장땡까지)`};
     if(x.h.mungGusa&&top<=190)return{winners:[],rematch:true,reason:`멍텅구리구사(${x.p})가 나와서 다시 해요`};
     if(x.h.gusa&&top<=90)return{winners:[],rematch:true,reason:`구사(${x.p})가 나와서 다시 해요`};}
   // 땡잡이: 1~9땡을 잡음 / 암행어사: 13·18광땡을 잡음
@@ -875,7 +879,7 @@ function strength1(a){let s=0,n=0;for(const b of DECK){if(b===a)continue;s+=stre
 // 베팅: 기본 판돈(ante)을 모두 내고 시작. 한 바퀴마다 다이·체크·삥·콜·하프·따당
 function newSeotda(o){
   const n=o.players,deck=shuffle(DECK);
-  return{n,deck,three:!!o.three,pick:Array(n).fill(null),stack:(o.stacks||Array(n).fill(1e12)).slice(),hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),paid:Array(n).fill(o.ante),pot:o.ante*n,ante:o.ante,
+  return{n,deck,three:!!o.three,gusaJang:!!o.gusaJang,pick:Array(n).fill(null),stack:(o.stacks||Array(n).fill(1e12)).slice(),hands:Array.from({length:n},()=>[]),folded:Array(n).fill(false),bet:Array(n).fill(0),paid:Array(n).fill(o.ante),pot:o.ante*n,ante:o.ante,
     round:0,cur:0,toCall:0,lastRaise:0,acted:Array(n).fill(false),raises:0,dealer:o.dealer||0,turn:(o.dealer||0)%n,over:false,log:[]};
 }
 function dealRound(s){const times=s.three&&s.round===0?2:1;for(let t=0;t<times;t++)for(let k=0;k<s.n;k++){const p=(s.dealer+k)%s.n;if(!s.folded[p])s.hands[p].push(s.deck.shift());}
@@ -913,7 +917,7 @@ function act(s,a){
 function bestPair(h){if(h.length<3)return h.slice(0,2);let best=null,bv=-1;for(let i=0;i<h.length;i++)for(let j=i+1;j<h.length;j++){const x=seotdaHand(h[i],h[j]),v=x.v+(x.ttaengjabi||x.amhaeng?0.5:0);if(v>bv){bv=v;best=[h[i],h[j]];}}return best;}
 function showdown(s){
   const hands=alive(s).map(p=>{const pr=s.pick&&s.pick[p]&&s.pick[p].every(x=>s.hands[p].includes(x))?s.pick[p]:bestPair(s.hands[p]);return{p,pair:pr,h:seotdaHand(pr[0],pr[1])};});
-  s.result=seotdaShowdown(hands);s.result.hands=hands;s.over=true;return s.result;
+  s.result=seotdaShowdown(hands,{gusaJang:!!s.gusaJang});s.result.hands=hands;s.over=true;return s.result;
 }
 // 컴퓨터: 패 세기 + 성격(등급)으로 결정
 const SLV=[
@@ -1181,7 +1185,7 @@ function sViewFor(v,dealing){
 }
 function sNetView(dealing){if(!NET||NET.guest||NET.game!=='seotda')return;const x=S.netx||{};S.netx=null;roomEach(gi=>({...sViewFor(NET.seats.indexOf(gi),dealing),...x}));}
 
-const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500),cards:store.get('cards',2),ttaeng:store.get('ttaeng',true)};
+const sopt={players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',500),cards:store.get('cards',2),ttaeng:store.get('ttaeng',true),gusaJang:store.get('gusaJang',true),rejoin:store.get('rejoin',true)};
 // 땡값 배수: 광땡 5배, 장땡 3배, 1~9땡 2배 — 끝까지 남은 사람이 각자 이번 판에 낸 돈 × 배수를 냄 (다이한 사람은 안 냄)
 const paidOf=(s,q)=>Math.max(s.paid?s.paid[q]:0,s.ante||sopt.ante);
 const ttaengMult=h=>!h?0:h.v>=900?5:h.ttaeng===10?3:h.ttaeng?2:0;
@@ -1191,7 +1195,7 @@ function seotdaNew(carry){
   const n=sopt.players;
   const ai=S&&S.aiMoney&&S.aiMoney.length===n?S.aiMoney:Array(n).fill(100000);
   money=WALLET.get();if(money<sopt.ante*4)money=WALLET.rescue(sopt.ante*4);
-  S={s:SD.newSeotda({players:n,ante:sopt.ante,three:sopt.cards===3,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false,hid:handId()};
+  S={s:SD.newSeotda({players:n,ante:sopt.ante,three:sopt.cards===3,gusaJang:sopt.gusaJang,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false,hid:handId()};
   const left=[];
   for(let p=0;p<n;p++){if(p===0)money-=sopt.ante;else{if(S.aiMoney[p]<sopt.ante*4){if(!NET){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,5));left.push([o,NAMES[p]]);}S.aiMoney[p]=100000;}S.aiMoney[p]-=sopt.ante;}}
   if(carry){S.s.pot+=carry;}
@@ -1227,6 +1231,7 @@ function seotdaRender(dealing){
 }
 function plate(p){const s=S.s;return `<div class="splate${s.turn===p&&!s.over?' turn':''}${s.folded[p]?' out':''}">${avatar(p)}<span class="sn"><b>${snm(p)}</b><small>${won(schip(p))}</small></span></div>`;}
 function seotdaBar(){
+  if(S.rejoinAsk)return;
   if(S.picking){const ok=S.sel.length===2;$('sbar').innerHTML=`<button class="btn call" data-pk="go"${ok?'':' disabled'}>이 두 장으로<small>${ok?SD.seotdaHand(S.sel[0],S.sel[1]).name:'2장을 누르세요'}</small></button><button class="btn raise" data-pk="auto">자동<small>가장 좋은 2장</small></button>`;return;}
   const s=S.s,mine=!s.over&&!S.busy&&s.turn===0&&!s.folded[0];
   const acts=mine?SD.actions(s):[];
@@ -1248,6 +1253,10 @@ async function pickPhase(){const s=S.s,gen=S.gen,jobs=[];
   await Promise.all(jobs);return gen===S.gen;}
 $('sbar').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b||b.disabled||!S||S.busy)return;if(S.waiter){const w=S.waiter;S.waiter=null;w(b.dataset.k);return;}if(NGUEST())return;const a=SD.actions(S.s).find(x=>x.k===b.dataset.k);if(a)seotdaDo(a);});
 function smsg(h){$('smsg').innerHTML=h;}
+function askRejoin(cost){return new Promise(res=>{S.rejoinAsk=res;S.busy=false;
+  $('sbar').innerHTML=`<button class="btn call" data-rj="1">참가<small>판돈 절반 ${won(cost)}</small></button><button class="btn die" data-rj="0">구경<small>이번 판 안 함</small></button>`;
+  smsg(`<b>재경기</b>예요. 나는 다이했으니 판돈의 절반 <b>${won(cost)}</b>을 내야 참가할 수 있어요.`);});}
+$('sbar').addEventListener('click',e=>{const b=e.target.closest('[data-rj]');if(!b||!S||!S.rejoinAsk)return;const r=S.rejoinAsk;S.rejoinAsk=null;r(b.dataset.rj==='1');});
 async function seotdaDo(a){
   const s=S.s,p=s.turn,gen=S.gen;
   if(a.amt){if(p===0)money-=a.amt;else S.aiMoney[p]-=a.amt;SND.chip();}else SND.tick(500,.12,.05);
@@ -1270,7 +1279,19 @@ async function seotdaStep(){
 function seotdaSettle(){
   const s=S.s,res=s.result;S.busy=true;
   if(res.rematch){bigText('재경기!');smsg(`<b>${res.reason.replace(/\(\d\)/,'')}</b>. 판돈을 그대로 두고 다시 해요.`);const carry=s.pot;
-    setTimeout(()=>{S.result=null;S.reveal=false;seotdaNewKeep(carry);},1800);return;}
+    const folded=s.folded.slice(),gen=S.gen;
+    setTimeout(async()=>{if(gen!==S.gen)return;S.result=null;S.reveal=false;
+      // 다이했던 사람은 판돈의 절반을 내야 다시 참가 (설정에서 끌 수 있음)
+      let pot=carry;const skip=[];
+      if(sopt.rejoin&&folded.some(Boolean)){const cost=Math.max(100,Math.floor(carry*0.5/100)*100),notes=[];
+        for(let p=0;p<s.n;p++){if(!folded[p])continue;let join;
+          if(p===0&&!NGUEST())join=await askRejoin(cost);
+          else if(nremote(p))join=!!(await netAsk(p,{t:'ask',kind:'srejoin',cost},false));
+          else join=S.aiMoney[p]>=cost*2&&Math.random()<0.55;
+          if(gen!==S.gen)return;
+          if(join){if(p===0)money-=cost;else S.aiMoney[p]-=cost;pot+=cost;notes.push(`<b>${snm(p)}</b> 참가 (+${won(cost)})`);}else{skip.push(p);notes.push(`${snm(p)} 구경`);}}
+        saveMoney();smsg(`재경기: 다이했던 사람은 판돈의 절반 <b>${won(cost)}</b>을 내야 들어와요.<br>${notes.join(' · ')}`);await sleep(900);}
+      if(gen!==S.gen)return;seotdaNewKeep(pot,skip);},1800);return;}
   const share=Math.floor(s.pot/res.winners.length);
   res.winners.forEach(p=>{if(p===0)money+=share;else S.aiMoney[p]+=share;});
   // 땡값: 혼자 이겼고 그 패가 땡·광땡이면 나머지 모두에게서 따로 받음
@@ -1294,7 +1315,7 @@ function sSettleMsg(s,res){const iWon=res.winners.includes(0);
   if(tp)setTimeout(()=>bigText('땡값!'),900);
   smsg(`${iWon?'🎉 <b>내가 이겼어요!</b>':`<b>${res.winners.map(p=>snm(p)).join(', ')}</b> 승리.`} ${res.reason||''} 판돈 ${won(s.pot)}${res.winners.length>1?' 나눔':''}.${tl}${hands?'<br>'+hands:''}${NGUEST()?'<br><small>다음 판은 방장이 시작해요.</small>':''}`);}
 // 재경기: 판돈을 남기고 같은 사람끼리 다시 (판돈은 다시 안 냄)
-function seotdaNewKeep(carry){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,three:sopt.cards===3,dealer:S.s.dealer,stacks:[money].concat(S.aiMoney.slice(1))});S.s.ante=sopt.ante;S.s.pot=carry;S.dealt=Array(n).fill(0);S.last={};S.gen++;S.hid=handId();S.ended=false;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
+function seotdaNewKeep(carry,skip=[]){const n=sopt.players;S.s=SD.newSeotda({players:n,ante:0,three:sopt.cards===3,gusaJang:sopt.gusaJang,dealer:S.s.dealer,stacks:[money].concat(S.aiMoney.slice(1))});S.s.ante=sopt.ante;S.s.pot=carry;skip.forEach(p=>S.s.folded[p]=true);S.dealt=Array(n).fill(0);S.last={};S.gen++;S.hid=handId();S.ended=false;S.busy=true;S.reveal=false;S.result=null;seotdaRender();seotdaDeal();}
 $('snext').onclick=()=>{$('snext').hidden=true;S.result=null;S.reveal=false;seotdaNew();};
 
 /* ================= 도리짓고땡 =================
@@ -1484,6 +1505,7 @@ function onNet(gi,d){
       if(d.end&&!D.settled){D.settled=true;if(D.res)doriResultMsg();else dmsg(`다이했어요. 건 돈 ${won(D.s.bets[0])}은 선이 가져가요.`);}
       return;}
     if(d.t==='ask'&&NGUEST()){
+      if(d.kind==='srejoin'&&S){const v=await askRejoin(d.cost);roomToHost({t:'ans',v});return;}
       if(d.kind==='spick'&&S){const v=await askPick();roomToHost({t:'ans',v});return;}
       if(d.kind==='sbet'&&S){S.busy=false;seotdaRender();const need=S.s.toCall-S.s.bet[0];smsg(`<b>내 차례</b>예요. ${S.s.hands[0].length===1?'첫 장만 보고':'두 장을 보고'} 베팅하세요.${need>0?` 따라가려면 ${won(need)}이 필요해요.`:''}`);
         const k=await new Promise(r=>S.waiter=r);S.busy=true;seotdaRender();roomToHost({t:'ans',v:k});return;}
@@ -1508,6 +1530,8 @@ function renderRec(){$('srec').textContent=`섯다 ${rec.sw}승 ${rec.sl}패 · 
 function renderLevels(){$('slevels').innerHTML=SD.SLV.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===sopt.level}" data-k="${k}">${l.name}<span>${['막 걸기','조심','계산','노련함'][k]}</span></button>`).join('');}
 $('slevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b||NGUEST())return;sopt.level=+b.dataset.k;store.set('level',sopt.level);renderLevels();});
 $('sPlayers').value=String(sopt.players);$('sPlayers').onchange=e=>{sopt.players=+e.target.value;store.set('players',sopt.players);if(NET&&!NET.guest){startOnline();return;}S=null;seotdaNew();};
+$('sGusa').checked=sopt.gusaJang;$('sGusa').onchange=e=>{sopt.gusaJang=e.target.checked;store.set('gusaJang',sopt.gusaJang);};
+$('sRejoin').checked=sopt.rejoin;$('sRejoin').onchange=e=>{sopt.rejoin=e.target.checked;store.set('rejoin',sopt.rejoin);};
 $('sTtaeng').checked=sopt.ttaeng;$('sTtaeng').onchange=e=>{sopt.ttaeng=e.target.checked;store.set('ttaeng',sopt.ttaeng);};
 $('sCards').value=String(sopt.cards);$('sCards').onchange=e=>{sopt.cards=+e.target.value;store.set('cards',sopt.cards);if(NET&&!NET.guest){startOnline();return;}S=null;seotdaNew();};
 $('sAnte').value=String(sopt.ante);$('sAnte').onchange=e=>{sopt.ante=+e.target.value;store.set('ante',sopt.ante);};
