@@ -328,6 +328,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
         <label>인원 <select id="pPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
         <label>판돈 <select id="pAnte"><option value="500">500원</option><option value="1000">1,000원</option><option value="5000">5,000원</option></select></label>
         <label><input type="checkbox" id="pSound"> 소리</label>
+        <label><input type="checkbox" id="vVoice"> 목소리</label>
         <label><input type="checkbox" id="pSq"> 히든 카드 쪼아 보기</label>
       </div>
       <div class="tips"><strong>하는 법</strong><ul id="phow"></ul>
@@ -346,6 +347,76 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
   </section>
 </div>
 <script>
+/* ===== 보드게임 교실 공통: 지갑 · 매일 용돈 · 목소리 · 업적 배지 · 알림 =====
+   휴대폰 앱(같은 주소)에서는 모든 게임이 이 지갑과 배지를 함께 쓴다. */
+const FUNLS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const dayKey=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+// 화면 위쪽 알림
+function funToast(html,ms=2600){let box=document.getElementById('funToasts');
+  if(!box){box=document.createElement('div');box.id='funToasts';box.style.cssText='position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92vw,420px)';document.body.appendChild(box);}
+  const t=document.createElement('div');t.innerHTML=html;t.style.cssText='background:#1f2a24;color:#fff;border:2px solid #ffd54f;border-radius:14px;padding:9px 16px;font:600 14px "Noto Sans KR",sans-serif;box-shadow:0 6px 18px #0007;opacity:0;transform:translateY(-10px);transition:all .3s;text-align:center';
+  box.appendChild(t);requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='none';});setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(-10px)';setTimeout(()=>t.remove(),350);},ms);}
+const wonF=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
+
+/* ---------- 지갑: 처음 만들 때 각 게임에 있던 돈을 모두 합쳐 옮김 ---------- */
+const WALLET=(()=>{
+  const K='bgc-wallet',KD='bgc-daily';
+  function init(){let w=FUNLS.get(K,null);
+    if(typeof w!=='number'){let sum=0,any=false;for(const g of ['gostop','seotda','poker']){const v=FUNLS.get(g+'-money',null);if(typeof v==='number'){sum+=Math.max(0,v);any=true;}}
+      w=any?sum:300000;FUNLS.set(K,w);if(any)setTimeout(()=>funToast(`💰 게임마다 따로 있던 돈을 한 지갑에 합쳤어요: <b>${wonF(w)}</b>`,4200),600);}
+    return w;}
+  let bal=init();
+  const get=()=>{const v=FUNLS.get(K,null);if(typeof v==='number')bal=v;return bal;};
+  function set(v){bal=Math.round(v);FUNLS.set(K,bal);
+    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');}}
+  // 돈이 모자라면 다시 채워 줌 (가짜 돈이라 멈추지 않게)
+  function rescue(min){const b=get();if(b>=min)return b;const v=Math.max(100000,min*4);set(v);funToast(`💸 돈이 모자라서 <b>${wonF(v)}</b>으로 채워 드렸어요`);return v;}
+  // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
+  function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
+  // 매일 한 번 용돈
+  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=30000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
+    setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
+  function reset(){set(300000);}
+  return{get,set,rescue,today,daily,reset};
+})();
+
+/* ---------- 목소리: 휴대폰·PC에 들어 있는 한국어 음성으로 외침 ---------- */
+const VOICE={on:FUNLS.get('bgc-voice',true),
+  say(t){if(!this.on||!window.speechSynthesis)return;const s=String(t).replace(/<[^>]+>/g,'').replace(/[!~★]/g,'').trim();if(!s)return;
+    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s);u.lang='ko-KR';u.rate=1.08;u.pitch=1.15;u.volume=1;
+      const v=speechSynthesis.getVoices().find(x=>/^ko/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u);}catch(e){}},
+  set(on){this.on=on;FUNLS.set('bgc-voice',on);}};
+if(window.speechSynthesis)try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{};}catch(e){}
+
+/* ---------- 업적 배지 ---------- */
+const ACH=(()=>{
+  const K='bgc-ach';
+  const L={
+    gs_win:['🎴','고스톱 첫 승리','고스톱에서 처음 이기기','고스톱'],gs_3go:['🔥','3고 성공','3고 이상 불러서 이기기','고스톱'],gs_chongtong:['👑','총통','처음부터 같은 달 4장','고스톱'],
+    gs_5gwang:['🌟','오광','광 5장 모으기','고스톱'],gs_big:['💵','큰 판','고스톱 한 판에 2만원 넘게 따기','고스톱'],
+    sd_win:['🀄','섯다 첫 승리','섯다에서 처음 이기기','섯다'],sd_38:['🌕','38광땡','38광땡으로 이기기','섯다'],sd_gwang:['✨','광땡','13·18광땡으로 이기기','섯다'],
+    sd_jang:['🔟','장땡','장땡으로 이기기','섯다'],sd_ttaeng:['💰','땡값','땡값 받기','섯다'],sd_jabi:['🗡️','땡잡이','땡잡이로 땡 잡기','섯다'],dori_win:['🏮','도리짓고땡 승리','선을 이기기','섯다'],
+    pk_win:['♠️','포커 첫 승리','포커에서 처음 이기기','포커'],pk_full:['🏠','풀하우스','풀하우스 이상으로 이기기','포커'],pk_four:['4️⃣','포카드','포카드 이상으로 이기기','포커'],
+    pk_sf:['🌈','스트레이트 플러시','스트레이트 플러시 이상으로 이기기','포커'],pk_royal:['👑','로열 스트레이트 플러시','로열로 이기기','포커'],pk_swing:['🎯','스윙 성공','하이로우 스윙으로 다 가져가기','포커'],bd_golf:['⛳','골프','바둑이 골프(A·2·3·4)로 이기기','포커'],
+    mj_win:['🀅','마작 첫 화료','마작에서 처음 화료','마작'],mj_riichi:['🎌','리치 화료','리치하고 화료','마작'],mj_mangan:['💮','만관','만관 이상으로 화료','마작'],mj_yakuman:['🐉','역만','역만으로 화료','마작'],mj_top:['🥇','대국 1등','마작 대국 1등','마작'],
+    ss_clear:['🧩','사천성 완성','사천성 다 없애기','사천성'],ss_fast:['⏱️','번개 손','보통 판을 5분 안에','사천성'],ss_big:['🏯','큰 판 완성','144장 판 다 없애기','사천성'],
+    yut_win:['🐎','윷놀이 승리','윷놀이에서 이기기','윷놀이'],
+    baduk_win:['⚫','바둑 승리','컴퓨터를 이기기','판 게임'],chess_win:['♟️','체스 승리','컴퓨터를 이기기','판 게임'],janggi_win:['🐘','장기 승리','컴퓨터를 이기기','판 게임'],
+    omok_win:['⭕','오목 승리','컴퓨터를 이기기','판 게임'],othello_win:['⚪','오델로 승리','컴퓨터를 이기기','판 게임'],gonu_win:['🔷','고누 승리','컴퓨터를 이기기','판 게임'],
+    oc_win:['🃏','원카드 승리','원카드에서 이기기','카드'],hula_win:['🂡','훌라 승리','훌라에서 이기기','카드'],hula_hula:['💥','훌라!','한 번에 다 내고 이기기','카드'],
+    online_win:['🌐','온라인 승리','친구와 온라인으로 이기기','온라인'],
+    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],
+    slot_star:['⭐','골든스타','황금별 슬롯 별 3개','카지노'],bj_bj:['🂱','블랙잭','블랙잭 나오기','카지노'],bac_tie:['🤝','타이 적중','바카라 타이 맞히기','카지노']};
+  const got=()=>FUNLS.get(K,{});
+  function unlock(id){if(!L[id])return;const g=got();if(g[id])return;g[id]=Date.now();FUNLS.set(K,g);
+    funToast(`${L[id][0]} 배지 획득! <b>${L[id][1]}</b><br><small>${L[id][2]}</small>`,3600);VOICE.say('배지 획득');}
+  return{L,got,unlock};
+})();
+// 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
+document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
+setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
+WALLET.daily();
+
 /* ===== 히든 카드 쪼아 보기: 뒷면을 위로 밀어 올리면 앞면이 조금씩 보인다 =====
    squeeze(판 요소, 앞면 svg, 뒷면 svg, 가로세로 비율) → 다 보면 끝나는 Promise */
 function squeeze(host,faceSvg,backSvg,ratio,title){
@@ -638,6 +709,17 @@ return{face:id=>cache[id]||(cache[id]=face(id)),back:()=>cache.b||(cache.b=back(
 const ROOM={peer:null,host:false,ok:false,on:false,code:'',cfg:null,guests:[],conn:null,seq:0,
   say(h,kind){const el=document.getElementById('nrMsg');if(el){el.innerHTML=h;el.className='netmsg '+(kind||'');}}};
 const ROOM_PREFIX='sikimms-bgr-';
+/* ---------- 이모티콘·한마디 ---------- */
+const EMOS=['👍','😂','😱','😭','💢','🙏','🔥','🎉'],PHRASES=['빨리 해!','한 판 더?','잘했어!','아깝다!','고마워','봐주세요 ㅠ'];
+function emoShow(who,e){let box=document.getElementById('emoBox');
+  if(!box){box=document.createElement('div');box.id='emoBox';box.style.cssText='position:fixed;right:14px;bottom:18px;z-index:9998;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none';document.body.appendChild(box);}
+  const big=EMOS.includes(e),t=document.createElement('div');t.innerHTML=`<small style="display:block;font-size:11px;opacity:.8">${who}</small><span style="font-size:${big?34:16}px">${e}</span>`;
+  t.style.cssText='background:#fff;color:#222;border-radius:16px 16px 4px 16px;padding:6px 12px;box-shadow:0 4px 14px #0006;font:700 15px "Noto Sans KR",sans-serif;transform:scale(.4);opacity:0;transition:all .25s cubic-bezier(.3,1.6,.5,1)';
+  box.appendChild(t);requestAnimationFrame(()=>{t.style.transform='none';t.style.opacity='1';});setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},2800);
+  if(!big&&typeof VOICE!=='undefined')VOICE.say(e);}
+const emoBar=id=>`<div class="emobar" id="${id}">${EMOS.map(e=>`<button data-emo="${e}">${e}</button>`).join('')}${PHRASES.map(e=>`<button class="ph" data-emo="${e}">${e}</button>`).join('')}</div>`;
+const emoCss='<style>.emobar{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 2px}.emobar button{border:1px solid var(--rule,#ccc);background:var(--surface,#fff);border-radius:999px;padding:3px 8px;font-size:18px;cursor:pointer;line-height:1.2}.emobar button.ph{font:600 12px var(--f-body,sans-serif);padding:5px 9px}.emobar button:active{transform:scale(.9)}</style>';
+function roomEmote(e){if(ROOM.host){emoShow('나',e);roomEach(()=>({t:'emo',from:'방장',e}));}else if(ROOM.ok){emoShow('나',e);roomToHost({t:'emo',e});}}
 function roomLoad(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');
   s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej(new Error('load'));document.head.appendChild(s);});}
 // 방장 → 친구 gi (1부터)
@@ -658,6 +740,7 @@ function roomUI(){
   const gs=roomGuests();
   $$('nrShare').hidden=!ROOM.host||gs.length>=ROOM.cfg.max;
   $$('nrStart').hidden=!ROOM.host||!gs.length;
+  const em=$$('nrEmo');if(em)em.hidden=!(ROOM.host?gs.length:ROOM.ok);
   $$('nrList').innerHTML=ROOM.peer?(ROOM.host?`<span class="nrp me">방장 (나)</span>`+gs.map(gi=>`<span class="nrp">친구 ${gi}</span>`).join('')
     :(ROOM.ok?`<span class="nrp">방장</span><span class="nrp me">나</span>`:'')):'';
 }
@@ -674,7 +757,7 @@ function roomHost(){
         c.on('open',()=>{const used=new Set(roomGuests());let gi=1;while(used.has(gi))gi++;g.gi=gi;g.open=true;ROOM.guests.push(g);
           try{c.send({t:'welcome',gi});}catch(e){}
           ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();cfg.join&&cfg.join(gi);});
-        c.on('data',d=>{if(g.open&&d&&d.t)cfg.msg(g.gi,d);});
+        c.on('data',d=>{if(!g.open||!d||!d.t)return;if(d.t==='emo'){const who='친구 '+g.gi;emoShow(who,d.e);for(const o of ROOM.guests)if(o.open&&o!==g)try{o.conn.send({t:'emo',from:who,e:d.e});}catch(_){}return;}cfg.msg(g.gi,d);});
         c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();cfg.leave&&cfg.leave(g.gi);});
         c.on('error',()=>{});});
       ROOM.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){ROOM.peer.destroy();tryOpen(left-1);return;}
@@ -692,7 +775,7 @@ function roomJoin(code){
     ROOM.peer.on('open',()=>{ROOM.say(`방 ${code}에 들어가는 중…`);
       const c=ROOM.peer.connect(ROOM_PREFIX+cfg.game+'-'+code,{reliable:true});ROOM.conn=c;
       c.on('open',()=>{ROOM.ok=true;roomUI();ROOM.say('연결됐어요. 방장이 판을 시작하면 자동으로 시작돼요.','ok');});
-      c.on('data',d=>{if(!d||!d.t)return;if(d.t==='full'){ROOM.say('방이 꽉 찼어요.','bad');return;}if(d.t==='welcome'){ROOM.gi=d.gi;roomUI();return;}cfg.msg(0,d);});
+      c.on('data',d=>{if(!d||!d.t)return;if(d.t==='full'){ROOM.say('방이 꽉 찼어요.','bad');return;}if(d.t==='welcome'){ROOM.gi=d.gi;roomUI();return;}if(d.t==='emo'){emoShow(d.from==='친구 '+ROOM.gi?'나':d.from,d.e);return;}cfg.msg(0,d);});
       c.on('close',()=>{if(!ROOM.ok)return;ROOM.ok=false;ROOM.say('방장과 연결이 끊겼어요. 다시 들어가 주세요.','bad');roomUI();cfg.leave&&cfg.leave(0);});
       c.on('error',()=>{});
       setTimeout(()=>{if(!ROOM.ok&&ROOM.code===code)ROOM.say('방을 찾지 못했어요. 코드를 다시 확인해 주세요. (방장이 방을 만든 상태여야 해요)','bad');},9000);});
@@ -710,12 +793,13 @@ function roomMount(el,cfg){
       <div class="eyebrow">온라인 방 <button class="linkbtn" id="nrQuit" style="float:right">혼자 하기로 돌아가기</button></div>
       <div id="nrIdle"><div class="row" style="margin-top:6px"><button class="btn primary" id="nrHost">방 만들기</button>
         <input id="nrIn" class="netin" inputmode="numeric" maxlength="4" placeholder="방 코드 4자리" aria-label="방 코드"><button class="btn" id="nrJoin">들어가기</button></div></div>
-      <div id="nrLive" hidden><div class="netcode">방 코드 <b id="nrCode"></b></div><div class="nrlist" id="nrList"></div>
+      <div id="nrLive" hidden><div class="netcode">방 코드 <b id="nrCode"></b></div><div class="nrlist" id="nrList"></div>${emoBar('nrEmo')}${emoCss}
         <div class="row"><button class="btn primary" id="nrStart">판 시작</button><button class="btn" id="nrShare">초대 링크 보내기</button><button class="btn" id="nrLeave">나가기</button></div></div>
       <div id="nrMsg" class="netmsg">같은 앱을 쓰는 친구${cfg.max>1?` (최대 ${cfg.max}명)`:''}와 인터넷으로 할 수 있어요. 방장 기기가 카드를 섞고 나눠요. 빈자리는 컴퓨터가 채워요.</div>
     </div>`;
   const $$=id=>document.getElementById(id);
   $$('nrOff').onclick=()=>{ROOM.on=true;roomUI();};
+  $$('nrEmo').addEventListener('click',e=>{const b=e.target.closest('[data-emo]');if(b)roomEmote(b.dataset.emo);});
   $$('nrQuit').onclick=()=>{roomReset();ROOM.on=false;roomUI();cfg.off&&cfg.off();};
   $$('nrHost').onclick=roomHost;
   $$('nrJoin').onclick=()=>roomJoin($$('nrIn').value);
@@ -809,12 +893,12 @@ const NAMES=['나','김 사장','이 여사','박 부장','최 선생'];
 const SEATS={2:[[50,75],[50,18]],3:[[50,75],[17,33],[83,33]],4:[[50,76],[13,47],[50,16],[87,47]],5:[[50,76],[12,52],[27,16],[73,16],[88,52]]};
 const chipsHtml=amt=>{const cols=[['#c62828',100000],['#1565c0',10000],['#2e7d32',1000],['#f9a825',100]];let left=amt,h='';
   for(const [c,v] of cols){const n=Math.min(8,Math.floor(left/v));left-=n*v;if(n)h+=`<span class="chipstack" style="--c:${c}">${'<i></i>'.repeat(n)}</span>`;}return h||'<span class="chipstack" style="--c:#f9a825"><i></i></span>';};
-function bigText(t){const b=$('pbig');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),1200);}
+function bigText(t){VOICE.say(t);const b=$('pbig');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),1200);}
 const KIND={seven:'세븐포커',hilo:'하이로우',badugi:'바둑이'};
 let sqOn=store.get('squeeze',true);
 const opt={kind:store.get('kind','seven'),players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',1000)};
-let money=store.get('money',1000000),rec=store.get('rec',{}),G=null;
-function saveMoney(){store.set('money',money);$('pmoney').textContent=won(money);}
+let money=WALLET.get(),rec=store.get('rec',{}),G=null;
+function saveMoney(){WALLET.set(money);$('pmoney').textContent=won(money);}
 const cardHtml=(id,o={})=>`<div class="card pk${o.down?' down':''}${o.deal?' deal':''}${o.pick?' pick':''}${o.chosen?' chosen':''}${o.reveal?' reveal':''}${o.hid?' hid':''}" data-id="${id}" style="${o.delay!=null?`animation-delay:${o.delay}ms;`:''}"><div class="ci"><div class="cf">${face(id)}</div><div class="cb">${PC.back()}</div></div></div>`;
 
 /* ---------- 온라인 ----------
@@ -885,7 +969,7 @@ $('ptable').addEventListener('click',e=>{const c=e.target.closest('.card.pick');
 /* ---------- 진행 ---------- */
 async function newHand(){
   if(GUEST())return;
-  const n=opt.players;if(money<opt.ante*10){money=1000000;bigText('돈 충전!');}
+  const n=opt.players;money=WALLET.get();if(money<opt.ante*10)money=WALLET.rescue(opt.ante*10);
   const ai=G&&G.ai&&G.ai.length===n?G.ai:Array(n).fill(1000000);
   G={kind:opt.kind,s:PK.newGame({kind:opt.kind,players:n,ante:opt.ante,dealer:G?(G.s.dealer+1)%n:0}),ai,known:Array(n).fill(0),last:{},sel:[],phase:'deal',busy:true,reveal:false,result:null,gen:(G?G.gen:0)+1,hid:Date.now()+Math.random()};
   const left=[];
@@ -960,11 +1044,16 @@ async function reveal(){G.reveal=true;G.result=G.s.result;G.phase='end';render()
 function settle(){
   const s=G.s,res=s.result;G.result=res;G.phase='end';G.busy=true;
   res.winners.forEach(w=>{if(w.p===0)money+=w.share;else G.ai[w.p]+=w.share;});saveMoney();
-  const me=res.winners.find(w=>w.p===0),k=KIND[s.kind];if(me){SND.win();bigText('승리!');}
+  const me=res.winners.find(w=>w.p===0),k=KIND[s.kind];if(me){SND.win();bigText('승리!');pokerBadges(s,me);}
   if(!NETP){const r=rec[k]||{w:0,l:0};if(me)r.w++;else r.l++;rec[k]=r;store.set('rec',rec);}
   settleMsg(res);
   render();$('pnext').hidden=false;renderRec();
 }
+// 배지: 내 패 족보에 따라
+function pokerBadges(s,me){ACH.unlock('pk_win');if(NETP)ACH.unlock('online_win');
+  if(s.kind==='badugi'){if(PK.badugi(s.hidden[0]).name==='골프')ACH.unlock('bd_golf');return;}
+  const all=PK.all(s,0);if(all.length>=5){const c=PK.bestHigh(all).cat;if(c>=8)ACH.unlock('pk_full');if(c>=9)ACH.unlock('pk_four');if(c>=10)ACH.unlock('pk_sf');if(c===12)ACH.unlock('pk_royal');}
+  if(s.kind==='hilo'&&s.declare[0]==='swing'&&me.share>=s.pot)ACH.unlock('pk_swing');}
 function settleMsg(res){const me=res.winners.find(w=>w.p===0);
   const lines=res.winners.map(w=>`<b>${nm(w.p)}</b> ${w.why} · ${won(w.share)}`).join('<br>');
   msg(`${me?'🎉 <b>내가 이겼어요!</b><br>':''}${lines}${res.failed&&res.failed.length?`<br>스윙 실패: ${res.failed.map(p=>nm(p)).join(', ')}`:''}${GUEST()?'<br><small>다음 판은 방장이 시작해요.</small>':''}`);}
@@ -1031,7 +1120,7 @@ $('pPlayers').value=String(opt.players);$('pPlayers').onchange=e=>{opt.players=+
 $('pAnte').value=String(opt.ante);$('pAnte').onchange=e=>{opt.ante=+e.target.value;store.set('ante',opt.ante);};
 $('pSq').checked=sqOn;$('pSq').onchange=e=>{sqOn=e.target.checked;store.set('squeeze',sqOn);};
 $('pSound').checked=SND.on;$('pSound').onchange=e=>{SND.on=e.target.checked;store.set('sound',SND.on);};
-$('pReset').onclick=()=>{money=1000000;rec={};store.set('rec',rec);saveMoney();renderRec();};
+$('pReset').onclick=()=>{WALLET.reset();money=WALLET.get();rec={};store.set('rec',rec);saveMoney();renderRec();};
 function setKind(k){if(GUEST()){$('play').hidden=k==='rules';$('rules').hidden=k!=='rules';return;}if(NETP&&k!=='rules'){opt.kind=k;store.set('kind',k);startOnline();return;}opt.kind=k;store.set('kind',k);for(const x of ['seven','hilo','badugi','rules'])$('tab_'+x).setAttribute('aria-selected',x===k);
   $('play').hidden=k==='rules';$('rules').hidden=k!=='rules';
   if(k!=='rules'){$('ptitle').textContent=KIND[k];$('phow').innerHTML=HOW[k];waiter=null;G=null;newHand();}}
@@ -1055,6 +1144,7 @@ saveMoney();renderRec();renderLevels();setKind(location.hash==='#hilo'?'hilo':lo
 <style>.pwa-home{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:80;padding:7px 13px;border-radius:999px;
 background:rgba(20,24,22,.78);color:#fff;font:600 13px "Noto Sans KR","Malgun Gothic",sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .pwa-home:focus-visible{outline:2px solid #fff;outline-offset:2px}</style>
+<script>try{const k='bgc-recent',f=location.pathname.split('/').pop()||'index.html';let a=JSON.parse(localStorage.getItem(k)||'[]').filter(x=>x!==f);a.unshift(f);localStorage.setItem(k,JSON.stringify(a.slice(0,6)));}catch(e){}</script>
 <div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
 <style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
 padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);

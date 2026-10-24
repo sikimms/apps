@@ -445,6 +445,76 @@ self.onmessage=e=>{const q=e.data;let r;
 };
 </script>
 <script>
+/* ===== 보드게임 교실 공통: 지갑 · 매일 용돈 · 목소리 · 업적 배지 · 알림 =====
+   휴대폰 앱(같은 주소)에서는 모든 게임이 이 지갑과 배지를 함께 쓴다. */
+const FUNLS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const dayKey=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+// 화면 위쪽 알림
+function funToast(html,ms=2600){let box=document.getElementById('funToasts');
+  if(!box){box=document.createElement('div');box.id='funToasts';box.style.cssText='position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92vw,420px)';document.body.appendChild(box);}
+  const t=document.createElement('div');t.innerHTML=html;t.style.cssText='background:#1f2a24;color:#fff;border:2px solid #ffd54f;border-radius:14px;padding:9px 16px;font:600 14px "Noto Sans KR",sans-serif;box-shadow:0 6px 18px #0007;opacity:0;transform:translateY(-10px);transition:all .3s;text-align:center';
+  box.appendChild(t);requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='none';});setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(-10px)';setTimeout(()=>t.remove(),350);},ms);}
+const wonF=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
+
+/* ---------- 지갑: 처음 만들 때 각 게임에 있던 돈을 모두 합쳐 옮김 ---------- */
+const WALLET=(()=>{
+  const K='bgc-wallet',KD='bgc-daily';
+  function init(){let w=FUNLS.get(K,null);
+    if(typeof w!=='number'){let sum=0,any=false;for(const g of ['gostop','seotda','poker']){const v=FUNLS.get(g+'-money',null);if(typeof v==='number'){sum+=Math.max(0,v);any=true;}}
+      w=any?sum:300000;FUNLS.set(K,w);if(any)setTimeout(()=>funToast(`💰 게임마다 따로 있던 돈을 한 지갑에 합쳤어요: <b>${wonF(w)}</b>`,4200),600);}
+    return w;}
+  let bal=init();
+  const get=()=>{const v=FUNLS.get(K,null);if(typeof v==='number')bal=v;return bal;};
+  function set(v){bal=Math.round(v);FUNLS.set(K,bal);
+    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');}}
+  // 돈이 모자라면 다시 채워 줌 (가짜 돈이라 멈추지 않게)
+  function rescue(min){const b=get();if(b>=min)return b;const v=Math.max(100000,min*4);set(v);funToast(`💸 돈이 모자라서 <b>${wonF(v)}</b>으로 채워 드렸어요`);return v;}
+  // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
+  function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
+  // 매일 한 번 용돈
+  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=30000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
+    setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
+  function reset(){set(300000);}
+  return{get,set,rescue,today,daily,reset};
+})();
+
+/* ---------- 목소리: 휴대폰·PC에 들어 있는 한국어 음성으로 외침 ---------- */
+const VOICE={on:FUNLS.get('bgc-voice',true),
+  say(t){if(!this.on||!window.speechSynthesis)return;const s=String(t).replace(/<[^>]+>/g,'').replace(/[!~★]/g,'').trim();if(!s)return;
+    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s);u.lang='ko-KR';u.rate=1.08;u.pitch=1.15;u.volume=1;
+      const v=speechSynthesis.getVoices().find(x=>/^ko/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u);}catch(e){}},
+  set(on){this.on=on;FUNLS.set('bgc-voice',on);}};
+if(window.speechSynthesis)try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{};}catch(e){}
+
+/* ---------- 업적 배지 ---------- */
+const ACH=(()=>{
+  const K='bgc-ach';
+  const L={
+    gs_win:['🎴','고스톱 첫 승리','고스톱에서 처음 이기기','고스톱'],gs_3go:['🔥','3고 성공','3고 이상 불러서 이기기','고스톱'],gs_chongtong:['👑','총통','처음부터 같은 달 4장','고스톱'],
+    gs_5gwang:['🌟','오광','광 5장 모으기','고스톱'],gs_big:['💵','큰 판','고스톱 한 판에 2만원 넘게 따기','고스톱'],
+    sd_win:['🀄','섯다 첫 승리','섯다에서 처음 이기기','섯다'],sd_38:['🌕','38광땡','38광땡으로 이기기','섯다'],sd_gwang:['✨','광땡','13·18광땡으로 이기기','섯다'],
+    sd_jang:['🔟','장땡','장땡으로 이기기','섯다'],sd_ttaeng:['💰','땡값','땡값 받기','섯다'],sd_jabi:['🗡️','땡잡이','땡잡이로 땡 잡기','섯다'],dori_win:['🏮','도리짓고땡 승리','선을 이기기','섯다'],
+    pk_win:['♠️','포커 첫 승리','포커에서 처음 이기기','포커'],pk_full:['🏠','풀하우스','풀하우스 이상으로 이기기','포커'],pk_four:['4️⃣','포카드','포카드 이상으로 이기기','포커'],
+    pk_sf:['🌈','스트레이트 플러시','스트레이트 플러시 이상으로 이기기','포커'],pk_royal:['👑','로열 스트레이트 플러시','로열로 이기기','포커'],pk_swing:['🎯','스윙 성공','하이로우 스윙으로 다 가져가기','포커'],bd_golf:['⛳','골프','바둑이 골프(A·2·3·4)로 이기기','포커'],
+    mj_win:['🀅','마작 첫 화료','마작에서 처음 화료','마작'],mj_riichi:['🎌','리치 화료','리치하고 화료','마작'],mj_mangan:['💮','만관','만관 이상으로 화료','마작'],mj_yakuman:['🐉','역만','역만으로 화료','마작'],mj_top:['🥇','대국 1등','마작 대국 1등','마작'],
+    ss_clear:['🧩','사천성 완성','사천성 다 없애기','사천성'],ss_fast:['⏱️','번개 손','보통 판을 5분 안에','사천성'],ss_big:['🏯','큰 판 완성','144장 판 다 없애기','사천성'],
+    yut_win:['🐎','윷놀이 승리','윷놀이에서 이기기','윷놀이'],
+    baduk_win:['⚫','바둑 승리','컴퓨터를 이기기','판 게임'],chess_win:['♟️','체스 승리','컴퓨터를 이기기','판 게임'],janggi_win:['🐘','장기 승리','컴퓨터를 이기기','판 게임'],
+    omok_win:['⭕','오목 승리','컴퓨터를 이기기','판 게임'],othello_win:['⚪','오델로 승리','컴퓨터를 이기기','판 게임'],gonu_win:['🔷','고누 승리','컴퓨터를 이기기','판 게임'],
+    oc_win:['🃏','원카드 승리','원카드에서 이기기','카드'],hula_win:['🂡','훌라 승리','훌라에서 이기기','카드'],hula_hula:['💥','훌라!','한 번에 다 내고 이기기','카드'],
+    online_win:['🌐','온라인 승리','친구와 온라인으로 이기기','온라인'],
+    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],
+    slot_star:['⭐','골든스타','황금별 슬롯 별 3개','카지노'],bj_bj:['🂱','블랙잭','블랙잭 나오기','카지노'],bac_tie:['🤝','타이 적중','바카라 타이 맞히기','카지노']};
+  const got=()=>FUNLS.get(K,{});
+  function unlock(id){if(!L[id])return;const g=got();if(g[id])return;g[id]=Date.now();FUNLS.set(K,g);
+    funToast(`${L[id][0]} 배지 획득! <b>${L[id][1]}</b><br><small>${L[id][2]}</small>`,3600);VOICE.say('배지 획득');}
+  return{L,got,unlock};
+})();
+// 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
+document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
+setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
+WALLET.daily();
+
 /* ===== 공통 도구 ===== */
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -563,6 +633,17 @@ const NET={peer:null,conn:null,host:false,ok:false,side:0,code:'',
   send(o){if(this.conn&&this.ok)try{this.conn.send(o);}catch(e){}},
   say(h,kind){const el=document.getElementById('netMsg');if(el){el.innerHTML=h;el.className='netmsg '+(kind||'');}}};
 const NET_PREFIX='sikimms-bgc-';
+/* ---------- 이모티콘·한마디 ---------- */
+const EMOS=['👍','😂','😱','😭','💢','🙏','🔥','🎉'],PHRASES=['빨리 해!','한 판 더?','잘했어!','아깝다!','고마워','봐주세요 ㅠ'];
+function emoShow(who,e){let box=document.getElementById('emoBox');
+  if(!box){box=document.createElement('div');box.id='emoBox';box.style.cssText='position:fixed;right:14px;bottom:18px;z-index:9998;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none';document.body.appendChild(box);}
+  const big=EMOS.includes(e),t=document.createElement('div');t.innerHTML=`<small style="display:block;font-size:11px;opacity:.8">${who}</small><span style="font-size:${big?34:16}px">${e}</span>`;
+  t.style.cssText='background:#fff;color:#222;border-radius:16px 16px 4px 16px;padding:6px 12px;box-shadow:0 4px 14px #0006;font:700 15px "Noto Sans KR",sans-serif;transform:scale(.4);opacity:0;transition:all .25s cubic-bezier(.3,1.6,.5,1)';
+  box.appendChild(t);requestAnimationFrame(()=>{t.style.transform='none';t.style.opacity='1';});setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},2800);
+  if(!big&&typeof VOICE!=='undefined')VOICE.say(e);}
+const emoBar=id=>`<div class="emobar" id="${id}">${EMOS.map(e=>`<button data-emo="${e}">${e}</button>`).join('')}${PHRASES.map(e=>`<button class="ph" data-emo="${e}">${e}</button>`).join('')}</div>`;
+const emoCss='<style>.emobar{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 2px}.emobar button{border:1px solid var(--rule,#ccc);background:var(--surface,#fff);border-radius:999px;padding:3px 8px;font-size:18px;cursor:pointer;line-height:1.2}.emobar button.ph{font:600 12px var(--f-body,sans-serif);padding:5px 9px}.emobar button:active{transform:scale(.9)}</style>';
+
 function netLoad(){return new Promise((res,rej)=>{if(window.Peer)return res();const s=document.createElement('script');
   s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=()=>res();s.onerror=()=>rej(new Error('load'));document.head.appendChild(s);});}
 function netSettings(){const o={};document.querySelectorAll('[data-newgame]').forEach(el=>{o[el.id]=el.type==='checkbox'?el.checked:el.value;});return o;}
@@ -573,6 +654,7 @@ function netUI(){
   document.getElementById('netIdle').hidden=!!NET.peer;document.getElementById('netLive').hidden=!NET.peer;
   document.getElementById('netCode').textContent=NET.code?NET.code.split('').join(' '):'';
   document.getElementById('netShare').hidden=!(NET.host&&!NET.ok);
+  const em=document.getElementById('netEmo');if(em)em.hidden=!NET.ok;
 }
 function netSetup(c){
   NET.conn=c;
@@ -607,6 +689,7 @@ async function netJoin(code){
 function netStart(){G=null;newGame();G.coach=`온라인 대국을 시작해요. 당신은 <b>${GAME.sideName(NET.side)}</b>이에요. ${NET.side===1?'먼저 두세요.':'친구가 먼저 둬요.'}`;renderPlay();if(NET.host)NET.send({t:'new',opts:netSettings()});}
 function netOnData(d){
   if(!d||!d.t)return;
+  if(d.t==='emo'){emoShow('친구',d.e);return;}
   if(d.t==='hello'||d.t==='new'){netApplySettings(d.opts||{});G=null;newGame();G.coach=`온라인 대국을 시작해요. 당신은 <b>${GAME.sideName(NET.side)}</b>이에요. ${NET.side===1?'먼저 두세요.':'친구가 먼저 둬요.'}`;renderPlay();return;}
   if(!G||G.over)return;
   if(d.t==='move'){const mv=G.legal.find(x=>RULES.same(x,d.m));if(!mv){NET.say('친구의 수가 이 판과 맞지 않아요. 새 판을 시작해 주세요.','bad');return;}
@@ -617,6 +700,7 @@ function netOnData(d){
 // 버튼
 (()=>{const $$=id=>document.getElementById(id);
   if(!$$('netbox'))return;
+  {const live=$$('netLive');if(live&&!$$('netEmo')){live.insertAdjacentHTML('beforeend',emoBar('netEmo')+emoCss);$$('netEmo').hidden=true;$$('netEmo').addEventListener('click',e=>{const b=e.target.closest('[data-emo]');if(!b)return;emoShow('나',b.dataset.emo);NET.send({t:'emo',e:b.dataset.emo});});}}
   $$('netHost').onclick=netHost;
   $$('netJoin').onclick=()=>netJoin($$('netIn').value);
   $$('netIn').addEventListener('keydown',e=>{if(e.key==='Enter')netJoin($$('netIn').value);});
@@ -1001,6 +1085,7 @@ async function finish(w,reason){
   if(ai&&G.pending){G.coach='게임 끝! 마지막 수를 분석하는 중이에요';G.kind='info';renderPlay();await Promise.race([G.pending,sleep(4000)]);}
   const title=w===0?'무승부':ai?(w===US?`당신(${GAME.sideName(US)})이 이겼어요!`:`컴퓨터(${GAME.sideName(AS)})가 이겼어요.`):mode()==='online'?(w===NET.side?'🎉 내가 이겼어요!':'친구가 이겼어요'):`${GAME.sideName(w)} 승리!`;
   let h=`<div class="result"><b>게임 끝 · ${title}</b><div>${reason}</div>`;
+  if(typeof ACH!=='undefined'){if(ai&&w===US)ACH.unlock(GAME.id+'_win');if(mode()==='online'&&w===NET.side)ACH.unlock('online_win');}
   if(ai){
     const g=rateGame(w===US?1:w===0?0:-1);
     h+=`<div style="margin-top:10px">이번 판 수준 <b>${RK.label(g.P)}</b>
@@ -1138,6 +1223,7 @@ if(location.hash==='#play')showTab('play');
 <style>.pwa-home{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:80;padding:7px 13px;border-radius:999px;
 background:rgba(20,24,22,.78);color:#fff;font:600 13px "Noto Sans KR","Malgun Gothic",sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .pwa-home:focus-visible{outline:2px solid #fff;outline-offset:2px}</style>
+<script>try{const k='bgc-recent',f=location.pathname.split('/').pop()||'index.html';let a=JSON.parse(localStorage.getItem(k)||'[]').filter(x=>x!==f);a.unshift(f);localStorage.setItem(k,JSON.stringify(a.slice(0,6)));}catch(e){}</script>
 <div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
 <style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
 padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);

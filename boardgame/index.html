@@ -31,6 +31,19 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
 .how b{color:var(--accent)}
 .how ul{margin:6px 0 0;padding-left:18px}
 .state{margin-top:10px;font-size:12.5px;color:var(--muted)}
+.cat{font:700 15px var(--f-body);color:var(--muted);margin:22px 0 8px;letter-spacing:1px}
+.wallet{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,#2d6a4f,#1b4332);color:#fff;margin-bottom:6px;box-shadow:0 6px 16px #0003}
+.wallet small{display:block;font-size:12px;opacity:.85}.wallet b{font:800 26px var(--f-display);color:#ffe082}.wallet #wToday{display:block;font-size:13px;margin-top:2px}
+.wbtns{display:flex;gap:8px;align-items:center}.wbtns button{border:0;border-radius:999px;padding:8px 14px;font:700 14px var(--f-body);background:#ffe082;color:#3a2a00;cursor:pointer}
+.vv{font-size:13px;display:flex;gap:4px;align-items:center}
+#recent .apps .app{padding:10px 12px}#recent .app img{width:44px;height:44px}#recent .app b{font-size:18px}
+.achov{position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center;z-index:50;padding:14px}.achov[hidden]{display:none}
+.achbox{background:var(--card);color:var(--ink);border-radius:16px;padding:16px;max-width:620px;width:100%;max-height:88vh;overflow:auto}
+.achbox h2{margin:0 0 8px;font-family:var(--f-display)}.achbox h3{margin:14px 0 6px;font-size:14px;color:var(--muted)}
+.achgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.ach{display:flex;gap:8px;align-items:center;padding:8px;border-radius:12px;border:1px solid var(--rule);background:var(--bg)}.ach i{font-style:normal;font-size:24px}
+.ach b{display:block;font-size:13px}.ach small{display:block;font-size:11px;color:var(--muted)}.ach.no{opacity:.4;filter:grayscale(1)}
+.achbox button{border:1px solid var(--rule);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 14px;cursor:pointer}
 .more{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:18px;font-size:14px}
 .more a{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--card);border:1px solid var(--rule);color:inherit;text-decoration:none}
 .more a img{border-radius:8px}.more small{flex-basis:100%;color:var(--muted);font-size:12.5px}
@@ -39,22 +52,16 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
 <body>
   <div class="wrap">
     <h1>보드게임 교실</h1>
-    <div class="sub">처음 배우는 사람을 위한 바둑·체스·장기·오목·오델로·고누·윷놀이·고스톱·섯다·포커·마작·사천성, 그리고 사다리타기</div>
-    <div class="apps">
-      <a class="app" href="baduk.html"><img src="icons/baduk.png" alt="" width="64" height="64"><span><b>바둑</b><small>9·13·19줄 바둑 배우기와 대국</small></span></a>
-      <a class="app" href="chess.html"><img src="icons/chess.png" alt="" width="64" height="64"><span><b>체스</b><small>체스 배우기와 대국</small></span></a>
-      <a class="app" href="janggi.html"><img src="icons/janggi.png" alt="" width="64" height="64"><span><b>장기</b><small>장기 배우기와 대국</small></span></a>
-      <a class="app" href="omok.html"><img src="icons/omok.png" alt="" width="64" height="64"><span><b>오목</b><small>오목 배우기와 대국 (3·3 금지)</small></span></a>
-      <a class="app" href="othello.html"><img src="icons/othello.png" alt="" width="64" height="64"><span><b>오델로</b><small>오델로 배우기와 대국</small></span></a>
-      <a class="app" href="gonu.html"><img src="icons/gonu.png" alt="" width="64" height="64"><span><b>고누</b><small>우물고누·참고누 배우기와 대국</small></span></a>
-      <a class="app" href="yut.html"><img src="icons/yut.png" alt="" width="64" height="64"><span><b>윷놀이</b><small>윷놀이 배우기와 2~4명 놀이</small></span></a>
-      <a class="app" href="gostop.html"><img src="icons/gostop.png" alt="" width="64" height="64"><span><b>고스톱</b><small>맞고(2명)·3명 고스톱 배우기와 실전</small></span></a>
-      <a class="app" href="seotda.html"><img src="icons/seotda.png" alt="" width="64" height="64"><span><b>섯다·도리짓고땡</b><small>화투 20장으로 하는 섯다와 도리짓고땡</small></span></a>
-      <a class="app" href="poker.html"><img src="icons/poker.png" alt="" width="64" height="64"><span><b>포커·하이로우·바둑이</b><small>트럼프 카드로 하는 세븐포커·하이로우·바둑이</small></span></a>
-      <a class="app" href="mahjong.html"><img src="icons/mahjong.png" alt="" width="64" height="64"><span><b>마작</b><small>리치 마작 4명 · 컴퓨터와 또는 온라인으로</small></span></a>
-      <a class="app" href="shisen.html"><img src="icons/shisen.png" alt="" width="64" height="64"><span><b>사천성</b><small>같은 마작 패를 이어 없애는 짝 맞추기 퍼즐</small></span></a>
-      <a class="app" href="ladder.html"><img src="icons/ladder.png" alt="" width="64" height="64"><span><b>사다리타기</b><small>이름과 결과를 적고 공평하게 사다리 타기</small></span></a>
-    </div>
+    <div class="sub">처음 배우는 사람을 위한 화투·카드·판 게임·마작 교실</div>
+    <div class="wallet"><div><small>내 지갑 (모든 게임 공통 · 가짜 돈)</small><b id="wBal">-</b><span id="wToday"></span></div>
+      <div class="wbtns"><button id="achBtn">🏅 배지 <span id="achN"></span></button><label class="vv"><input type="checkbox" id="vVoice"> 목소리</label></div></div>
+    <div id="recent"></div>
+    <h2 class="cat">화투</h2><div class="apps"><a class="app" href="gostop.html"><img src="icons/gostop.png" alt="" width="64" height="64"><span><b>고스톱</b><small>맞고(2명)·3명 고스톱 배우기와 실전</small></span></a><a class="app" href="seotda.html"><img src="icons/seotda.png" alt="" width="64" height="64"><span><b>섯다·도리짓고땡</b><small>화투 20장으로 하는 섯다와 도리짓고땡</small></span></a></div>
+<h2 class="cat">카드</h2><div class="apps"><a class="app" href="poker.html"><img src="icons/poker.png" alt="" width="64" height="64"><span><b>포커·하이로우·바둑이</b><small>트럼프 카드로 하는 세븐포커·하이로우·바둑이</small></span></a></div>
+<h2 class="cat">판 게임</h2><div class="apps"><a class="app" href="baduk.html"><img src="icons/baduk.png" alt="" width="64" height="64"><span><b>바둑</b><small>9·13·19줄 바둑 배우기와 대국</small></span></a><a class="app" href="chess.html"><img src="icons/chess.png" alt="" width="64" height="64"><span><b>체스</b><small>체스 배우기와 대국</small></span></a><a class="app" href="janggi.html"><img src="icons/janggi.png" alt="" width="64" height="64"><span><b>장기</b><small>장기 배우기와 대국</small></span></a><a class="app" href="omok.html"><img src="icons/omok.png" alt="" width="64" height="64"><span><b>오목</b><small>오목 배우기와 대국 (3·3 금지)</small></span></a><a class="app" href="othello.html"><img src="icons/othello.png" alt="" width="64" height="64"><span><b>오델로</b><small>오델로 배우기와 대국</small></span></a><a class="app" href="gonu.html"><img src="icons/gonu.png" alt="" width="64" height="64"><span><b>고누</b><small>우물고누·참고누 배우기와 대국</small></span></a><a class="app" href="yut.html"><img src="icons/yut.png" alt="" width="64" height="64"><span><b>윷놀이</b><small>윷놀이 배우기와 2~4명 놀이</small></span></a></div>
+<h2 class="cat">마작·퍼즐</h2><div class="apps"><a class="app" href="mahjong.html"><img src="icons/mahjong.png" alt="" width="64" height="64"><span><b>마작</b><small>리치 마작 4명 · 컴퓨터와 또는 온라인으로</small></span></a><a class="app" href="shisen.html"><img src="icons/shisen.png" alt="" width="64" height="64"><span><b>사천성</b><small>같은 마작 패를 이어 없애는 짝 맞추기 퍼즐</small></span></a></div>
+<h2 class="cat">기타</h2><div class="apps"><a class="app" href="ladder.html"><img src="icons/ladder.png" alt="" width="64" height="64"><span><b>사다리타기</b><small>이름과 결과를 적고 공평하게 사다리 타기</small></span></a></div>
+    <div id="achOv" class="achov" hidden><div class="achbox"><h2>배지 모음</h2><div id="achList"></div><div style="text-align:right;margin-top:10px"><button id="achClose">닫기</button></div></div></div>
     <div class="more"><b>다른 앱</b>
       <a href="../lotto/"><img src="../lotto/icons/icon-192.png" alt="" width="28" height="28">로또 번호뽑기</a>
       <a href="../slot/"><img src="../slot/icons/icon-192.png" alt="" width="28" height="28">황금별 슬롯</a>
@@ -69,6 +76,90 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
     </div>
     <div class="state" id="state"></div>
   </div>
+<script>/* ===== 보드게임 교실 공통: 지갑 · 매일 용돈 · 목소리 · 업적 배지 · 알림 =====
+   휴대폰 앱(같은 주소)에서는 모든 게임이 이 지갑과 배지를 함께 쓴다. */
+const FUNLS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const dayKey=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+// 화면 위쪽 알림
+function funToast(html,ms=2600){let box=document.getElementById('funToasts');
+  if(!box){box=document.createElement('div');box.id='funToasts';box.style.cssText='position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92vw,420px)';document.body.appendChild(box);}
+  const t=document.createElement('div');t.innerHTML=html;t.style.cssText='background:#1f2a24;color:#fff;border:2px solid #ffd54f;border-radius:14px;padding:9px 16px;font:600 14px "Noto Sans KR",sans-serif;box-shadow:0 6px 18px #0007;opacity:0;transform:translateY(-10px);transition:all .3s;text-align:center';
+  box.appendChild(t);requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='none';});setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(-10px)';setTimeout(()=>t.remove(),350);},ms);}
+const wonF=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
+
+/* ---------- 지갑: 처음 만들 때 각 게임에 있던 돈을 모두 합쳐 옮김 ---------- */
+const WALLET=(()=>{
+  const K='bgc-wallet',KD='bgc-daily';
+  function init(){let w=FUNLS.get(K,null);
+    if(typeof w!=='number'){let sum=0,any=false;for(const g of ['gostop','seotda','poker']){const v=FUNLS.get(g+'-money',null);if(typeof v==='number'){sum+=Math.max(0,v);any=true;}}
+      w=any?sum:300000;FUNLS.set(K,w);if(any)setTimeout(()=>funToast(`💰 게임마다 따로 있던 돈을 한 지갑에 합쳤어요: <b>${wonF(w)}</b>`,4200),600);}
+    return w;}
+  let bal=init();
+  const get=()=>{const v=FUNLS.get(K,null);if(typeof v==='number')bal=v;return bal;};
+  function set(v){bal=Math.round(v);FUNLS.set(K,bal);
+    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');if(bal>=100000000)ACH.unlock('rich_100m');}}
+  // 돈이 모자라면 다시 채워 줌 (가짜 돈이라 멈추지 않게)
+  function rescue(min){const b=get();if(b>=min)return b;const v=Math.max(100000,min*4);set(v);funToast(`💸 돈이 모자라서 <b>${wonF(v)}</b>으로 채워 드렸어요`);return v;}
+  // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
+  function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
+  // 매일 한 번 용돈
+  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=30000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
+    setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
+  function reset(){set(300000);}
+  return{get,set,rescue,today,daily,reset};
+})();
+
+/* ---------- 목소리: 휴대폰·PC에 들어 있는 한국어 음성으로 외침 ---------- */
+const VOICE={on:FUNLS.get('bgc-voice',true),
+  say(t){if(!this.on||!window.speechSynthesis)return;const s=String(t).replace(/<[^>]+>/g,'').replace(/[!~★]/g,'').trim();if(!s)return;
+    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s);u.lang='ko-KR';u.rate=1.08;u.pitch=1.15;u.volume=1;
+      const v=speechSynthesis.getVoices().find(x=>/^ko/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u);}catch(e){}},
+  set(on){this.on=on;FUNLS.set('bgc-voice',on);}};
+if(window.speechSynthesis)try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{};}catch(e){}
+
+/* ---------- 업적 배지 ---------- */
+const ACH=(()=>{
+  const K='bgc-ach';
+  const L={
+    gs_win:['🎴','고스톱 첫 승리','고스톱에서 처음 이기기','고스톱'],gs_3go:['🔥','3고 성공','3고 이상 불러서 이기기','고스톱'],gs_chongtong:['👑','총통','처음부터 같은 달 4장','고스톱'],
+    gs_5gwang:['🌟','오광','광 5장 모으기','고스톱'],gs_big:['💵','큰 판','고스톱 한 판에 2만원 넘게 따기','고스톱'],
+    sd_win:['🀄','섯다 첫 승리','섯다에서 처음 이기기','섯다'],sd_38:['🌕','38광땡','38광땡으로 이기기','섯다'],sd_gwang:['✨','광땡','13·18광땡으로 이기기','섯다'],
+    sd_jang:['🔟','장땡','장땡으로 이기기','섯다'],sd_ttaeng:['💰','땡값','땡값 받기','섯다'],sd_jabi:['🗡️','땡잡이','땡잡이로 땡 잡기','섯다'],dori_win:['🏮','도리짓고땡 승리','선을 이기기','섯다'],
+    pk_win:['♠️','포커 첫 승리','포커에서 처음 이기기','포커'],pk_full:['🏠','풀하우스','풀하우스 이상으로 이기기','포커'],pk_four:['4️⃣','포카드','포카드 이상으로 이기기','포커'],
+    pk_sf:['🌈','스트레이트 플러시','스트레이트 플러시 이상으로 이기기','포커'],pk_royal:['👑','로열 스트레이트 플러시','로열로 이기기','포커'],pk_swing:['🎯','스윙 성공','하이로우 스윙으로 다 가져가기','포커'],bd_golf:['⛳','골프','바둑이 골프(A·2·3·4)로 이기기','포커'],
+    mj_win:['🀅','마작 첫 화료','마작에서 처음 화료','마작'],mj_riichi:['🎌','리치 화료','리치하고 화료','마작'],mj_mangan:['💮','만관','만관 이상으로 화료','마작'],mj_yakuman:['🐉','역만','역만으로 화료','마작'],mj_top:['🥇','대국 1등','마작 대국 1등','마작'],
+    ss_clear:['🧩','사천성 완성','사천성 다 없애기','사천성'],ss_fast:['⏱️','번개 손','보통 판을 5분 안에','사천성'],ss_big:['🏯','큰 판 완성','144장 판 다 없애기','사천성'],
+    yut_win:['🐎','윷놀이 승리','윷놀이에서 이기기','윷놀이'],
+    baduk_win:['⚫','바둑 승리','컴퓨터를 이기기','판 게임'],chess_win:['♟️','체스 승리','컴퓨터를 이기기','판 게임'],janggi_win:['🐘','장기 승리','컴퓨터를 이기기','판 게임'],
+    omok_win:['⭕','오목 승리','컴퓨터를 이기기','판 게임'],othello_win:['⚪','오델로 승리','컴퓨터를 이기기','판 게임'],gonu_win:['🔷','고누 승리','컴퓨터를 이기기','판 게임'],
+    oc_win:['🃏','원카드 승리','원카드에서 이기기','카드'],hula_win:['🂡','훌라 승리','훌라에서 이기기','카드'],hula_hula:['💥','훌라!','한 번에 다 내고 이기기','카드'],
+    online_win:['🌐','온라인 승리','친구와 온라인으로 이기기','온라인'],
+    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],rich_100m:['👑','억만장자','지갑 1억원 넘기기','지갑'],
+    slot_star:['⭐','골든스타','황금별 슬롯 별 3개','카지노'],bj_bj:['🂱','블랙잭','블랙잭 나오기','카지노'],bac_tie:['🤝','타이 적중','바카라 타이 맞히기','카지노']};
+  const got=()=>FUNLS.get(K,{});
+  function unlock(id){if(!L[id])return;const g=got();if(g[id])return;g[id]=Date.now();FUNLS.set(K,g);
+    funToast(`${L[id][0]} 배지 획득! <b>${L[id][1]}</b><br><small>${L[id][2]}</small>`,3600);VOICE.say('배지 획득');}
+  return{L,got,unlock};
+})();
+// 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
+document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
+setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
+WALLET.daily();
+</script>
+<script>
+const GAMES=[{"f":"baduk.html","n":"바둑","i":"baduk"},{"f":"chess.html","n":"체스","i":"chess"},{"f":"janggi.html","n":"장기","i":"janggi"},{"f":"omok.html","n":"오목","i":"omok"},{"f":"othello.html","n":"오델로","i":"othello"},{"f":"gonu.html","n":"고누","i":"gonu"},{"f":"yut.html","n":"윷놀이","i":"yut"},{"f":"gostop.html","n":"고스톱","i":"gostop"},{"f":"seotda.html","n":"섯다·도리짓고땡","i":"seotda"},{"f":"poker.html","n":"포커·하이로우·바둑이","i":"poker"},{"f":"mahjong.html","n":"마작","i":"mahjong"},{"f":"shisen.html","n":"사천성","i":"shisen"},{"f":"ladder.html","n":"사다리타기","i":"ladder"}];
+function homeRender(){document.getElementById('wBal').textContent=wonF(WALLET.get());const t=WALLET.today();document.getElementById('wToday').innerHTML='오늘 '+(t>=0?'<b style="font-size:14px;color:#b9f6ca">+'+wonF(t)+'</b>':'<b style="font-size:14px;color:#ffab91">'+wonF(t)+'</b>');
+  const g=ACH.got(),ids=Object.keys(ACH.L);document.getElementById('achN').textContent=ids.filter(i=>g[i]).length+' / '+ids.length;
+  let rec=[];try{rec=JSON.parse(localStorage.getItem('bgc-recent')||'[]');}catch(e){}
+  const rs=rec.map(f=>GAMES.find(x=>x.f===f)).filter(Boolean).slice(0,3);
+  document.getElementById('recent').innerHTML=rs.length?'<h2 class="cat">최근에 한 게임</h2><div class="apps">'+rs.map(x=>'<a class="app" href="'+x.f+'"><img src="icons/'+x.i+'.png" alt="" width="44" height="44"><span><b>'+x.n+'</b></span></a>').join('')+'</div>':'';}
+document.getElementById('achBtn').onclick=()=>{const g=ACH.got(),by={};for(const [id,v] of Object.entries(ACH.L))(by[v[3]]=by[v[3]]||[]).push([id,v]);
+  document.getElementById('achList').innerHTML=Object.entries(by).map(([k,list])=>'<h3>'+k+'</h3><div class="achgrid">'+list.map(([id,v])=>'<div class="ach'+(g[id]?'':' no')+'"><i>'+v[0]+'</i><span><b>'+v[1]+'</b><small>'+v[2]+'</small></span></div>').join('')+'</div>').join('');
+  document.getElementById('achOv').hidden=false;};
+document.getElementById('achClose').onclick=()=>document.getElementById('achOv').hidden=true;
+document.getElementById('achOv').onclick=e=>{if(e.target.id==='achOv')e.target.hidden=true;};
+homeRender();addEventListener('focus',homeRender);addEventListener('pageshow',homeRender);
+</script>
 <div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
 <style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
 padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);
