@@ -253,13 +253,13 @@ const WALLET=(()=>{
   let bal=init();
   const get=()=>{const v=FUNLS.get(K,null);if(typeof v==='number')bal=v;return bal;};
   function set(v){bal=Math.round(v);FUNLS.set(K,bal);
-    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');}}
+    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');if(bal>=100000000)ACH.unlock('rich_100m');}}
   // 돈이 모자라면 다시 채워 줌 (가짜 돈이라 멈추지 않게)
   function rescue(min){const b=get();if(b>=min)return b;const v=Math.max(100000,min*4);set(v);funToast(`💸 돈이 모자라서 <b>${wonF(v)}</b>으로 채워 드렸어요`);return v;}
   // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
   function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
   // 매일 한 번 용돈
-  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=30000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
+  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=100000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
     setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
   function reset(){set(300000);}
   return{get,set,rescue,today,daily,reset};
@@ -290,7 +290,7 @@ const ACH=(()=>{
     omok_win:['⭕','오목 승리','컴퓨터를 이기기','판 게임'],othello_win:['⚪','오델로 승리','컴퓨터를 이기기','판 게임'],gonu_win:['🔷','고누 승리','컴퓨터를 이기기','판 게임'],
     oc_win:['🃏','원카드 승리','원카드에서 이기기','카드'],hula_win:['🂡','훌라 승리','훌라에서 이기기','카드'],hula_hula:['💥','훌라!','한 번에 다 내고 이기기','카드'],
     online_win:['🌐','온라인 승리','친구와 온라인으로 이기기','온라인'],
-    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],
+    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],rich_100m:['👑','억만장자','지갑 1억원 넘기기','지갑'],
     slot_star:['⭐','골든스타','황금별 슬롯 별 3개','카지노'],bj_bj:['🂱','블랙잭','블랙잭 나오기','카지노'],bac_tie:['🤝','타이 적중','바카라 타이 맞히기','카지노']};
   const got=()=>FUNLS.get(K,{});
   function unlock(id){if(!L[id])return;const g=got();if(g[id])return;g[id]=Date.now();FUNLS.set(K,g);

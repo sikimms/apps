@@ -103,7 +103,7 @@ const WALLET=(()=>{
   // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
   function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
   // 매일 한 번 용돈
-  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=30000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
+  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=100000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
     setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
   function reset(){set(300000);}
   return{get,set,rescue,today,daily,reset};

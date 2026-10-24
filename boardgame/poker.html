@@ -313,7 +313,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
 <div class="wrap">
   <header>
     <h1>포커 · 하이로우 · 바둑이<small>트럼프 카드 52장으로 컴퓨터와 겨뤄요. 가짜 돈으로만 해요. <span id="pmoney" style="font-weight:700"></span></small></h1>
-    <div class="tabs" role="tablist"><button id="tab_seven" role="tab">세븐포커</button><button id="tab_hilo" role="tab">하이로우</button><button id="tab_badugi" role="tab">바둑이</button><button id="tab_rules" role="tab">족보</button></div>
+    <div class="tabs" role="tablist"><button id="tab_seven" role="tab">세븐포커</button><button id="tab_hilo" role="tab">하이로우</button><button id="tab_badugi" role="tab">바둑이</button><button id="tab_learn" role="tab">배우기</button><button id="tab_rules" role="tab">족보</button></div>
   </header>
   <section id="play" class="grid">
     <div class="boardcol"><div class="stable" id="ptable"><div class="spot" id="ppot"></div><div class="sbig" id="pbig"></div></div>
@@ -336,6 +336,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
         <div class="sub" id="prec"></div><button class="linkbtn" id="pReset">돈·기록 처음으로</button></div>
     </div>
   </section>
+  <section id="learn" hidden><div class="panel"><div id="plearn"></div></div></section>
   <section id="rules" hidden>
     <div class="panel">
       <h2>세븐포커·하이 족보 (높은 순)</h2><div class="jokbo" id="jokbo"></div>
@@ -368,13 +369,13 @@ const WALLET=(()=>{
   let bal=init();
   const get=()=>{const v=FUNLS.get(K,null);if(typeof v==='number')bal=v;return bal;};
   function set(v){bal=Math.round(v);FUNLS.set(K,bal);
-    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');}}
+    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');if(bal>=100000000)ACH.unlock('rich_100m');}}
   // 돈이 모자라면 다시 채워 줌 (가짜 돈이라 멈추지 않게)
   function rescue(min){const b=get();if(b>=min)return b;const v=Math.max(100000,min*4);set(v);funToast(`💸 돈이 모자라서 <b>${wonF(v)}</b>으로 채워 드렸어요`);return v;}
   // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
   function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
   // 매일 한 번 용돈
-  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=30000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
+  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=100000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
     setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
   function reset(){set(300000);}
   return{get,set,rescue,today,daily,reset};
@@ -405,7 +406,7 @@ const ACH=(()=>{
     omok_win:['⭕','오목 승리','컴퓨터를 이기기','판 게임'],othello_win:['⚪','오델로 승리','컴퓨터를 이기기','판 게임'],gonu_win:['🔷','고누 승리','컴퓨터를 이기기','판 게임'],
     oc_win:['🃏','원카드 승리','원카드에서 이기기','카드'],hula_win:['🂡','훌라 승리','훌라에서 이기기','카드'],hula_hula:['💥','훌라!','한 번에 다 내고 이기기','카드'],
     online_win:['🌐','온라인 승리','친구와 온라인으로 이기기','온라인'],
-    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],
+    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],rich_100m:['👑','억만장자','지갑 1억원 넘기기','지갑'],
     slot_star:['⭐','골든스타','황금별 슬롯 별 3개','카지노'],bj_bj:['🂱','블랙잭','블랙잭 나오기','카지노'],bac_tie:['🤝','타이 적중','바카라 타이 맞히기','카지노']};
   const got=()=>FUNLS.get(K,{});
   function unlock(id){if(!L[id])return;const g=got();if(g[id])return;g[id]=Date.now();FUNLS.set(K,g);
@@ -1122,14 +1123,15 @@ $('pSq').checked=sqOn;$('pSq').onchange=e=>{sqOn=e.target.checked;store.set('squ
 $('pSound').checked=SND.on;$('pSound').onchange=e=>{SND.on=e.target.checked;store.set('sound',SND.on);};
 $('pReset').onclick=()=>{WALLET.reset();money=WALLET.get();rec={};store.set('rec',rec);saveMoney();renderRec();};
 function setKind(k){if(GUEST()){$('play').hidden=k==='rules';$('rules').hidden=k!=='rules';return;}if(NETP&&k!=='rules'){opt.kind=k;store.set('kind',k);startOnline();return;}opt.kind=k;store.set('kind',k);for(const x of ['seven','hilo','badugi','rules'])$('tab_'+x).setAttribute('aria-selected',x===k);
-  $('play').hidden=k==='rules';$('rules').hidden=k!=='rules';
+  $('play').hidden=k==='rules';$('rules').hidden=k!=='rules';$('learn').hidden=true;$('tab_learn').setAttribute('aria-selected',false);
   if(k!=='rules'){$('ptitle').textContent=KIND[k];$('phow').innerHTML=HOW[k];waiter=null;G=null;newHand();}}
 const HOW={
   seven:'<li>4장을 받아 <b>1장 버리고</b>, <b>1장을 보여 줘요</b>. 그다음 4·5·6구는 모두가 보는 카드, 7구는 나만 보는 히든 카드예요.</li><li>카드를 받을 때마다 베팅해요. 보이는 카드가 가장 좋은 사람(보스)부터 시작해요.</li><li>7장 중 가장 좋은 5장으로 겨뤄요. 같은 족보면 숫자, 그다음 무늬(♠>♦>♥>♣)로 정해요.</li>',
   hilo:'<li>세븐포커와 똑같이 진행하고, 마지막에 <b>하이·로우·스윙</b>을 선언해요.</li><li><b>하이</b>는 가장 높은 패, <b>로우</b>는 숫자가 다른 5장으로 가장 낮은 패(A·2·3·4·5가 최고)끼리 판돈을 반씩 나눠요.</li><li><b>스윙</b>은 하이와 로우를 모두 이겨야 전부 가져가고, 하나라도 지면 아무것도 못 받아요.</li>',
   badugi:'<li>4장을 받아 <b>무늬도 숫자도 모두 다른</b> 카드로 가장 <b>낮은</b> 패를 만들어요. A는 1이에요.</li><li><b>아침·점심·저녁</b> 세 번 원하는 카드를 바꿀 수 있고, 바꿀 때마다 베팅해요.</li><li>4장이 다 맞으면 <b>메이드</b>(A·2·3·4 골프가 최고), 3장만 맞으면 <b>베이스</b>, 2장은 투베이스예요.</li>'};
 $('tab_seven').onclick=()=>setKind('seven');$('tab_hilo').onclick=()=>setKind('hilo');$('tab_badugi').onclick=()=>setKind('badugi');
-$('tab_rules').onclick=()=>{for(const x of ['seven','hilo','badugi','rules'])$('tab_'+x).setAttribute('aria-selected',x==='rules');$('play').hidden=true;$('rules').hidden=false;};
+$('tab_rules').onclick=()=>{for(const x of ['seven','hilo','badugi','rules','learn'])$('tab_'+x).setAttribute('aria-selected',x==='rules');$('play').hidden=true;$('rules').hidden=false;$('learn').hidden=true;};
+$('tab_learn').onclick=()=>{for(const x of ['seven','hilo','badugi','rules','learn'])$('tab_'+x).setAttribute('aria-selected',x==='learn');$('play').hidden=true;$('rules').hidden=true;$('learn').hidden=false;};
 // 족보 표
 (()=>{const c=(r,s)=>s*13+(r-2);const rows=[['로열 스트레이트 플러시',[c(14,3),c(13,3),c(12,3),c(11,3),c(10,3)]],['백스트레이트 플러시',[c(14,2),c(2,2),c(3,2),c(4,2),c(5,2)]],['스트레이트 플러시',[c(9,1),c(8,1),c(7,1),c(6,1),c(5,1)]],
   ['포카드',[c(9,3),c(9,2),c(9,1),c(9,0),c(4,1)]],['풀하우스',[c(8,3),c(8,2),c(8,0),c(3,1),c(3,2)]],['플러시',[c(13,0),c(10,0),c(7,0),c(4,0),c(2,0)]],['마운틴',[c(14,0),c(13,1),c(12,2),c(11,3),c(10,0)]],
@@ -1137,6 +1139,46 @@ $('tab_rules').onclick=()=>{for(const x of ['seven','hilo','badugi','rules'])$('
   $('jokbo').innerHTML=rows.map(([n,cs])=>`<span class="jc">${cs.map(x=>face(x)).join('')}</span><span><b>${n}</b></span>`).join('');
   $('jokbo2').innerHTML=[['골프 (가장 셈)',[c(14,0),c(2,1),c(3,2),c(4,3)]],['8 메이드',[c(8,3),c(5,1),c(3,2),c(14,0)]],['베이스 (3장만 맞음)',[c(6,0),c(4,1),c(2,2),c(9,2)]]].map(([n,cs])=>`<span class="jc">${cs.map(x=>face(x)).join('')}</span><span><b>${n}</b></span>`).join('');})();
 saveMoney();renderRec();renderLevels();setKind(location.hash==='#hilo'?'hilo':location.hash==='#badugi'?'badugi':opt.kind==='rules'?'seven':opt.kind);
+
+/* ===== 배우기 탭 (문제 풀며 배우기): mountLessons(상자, 수업 목록, 저장 이름) =====
+   수업: {title, html, quiz:{q, opts:[...], ans, ok, no}} — html에는 카드 그림을 넣는다 */
+function mountLessons(box,L,key){
+  if(!box)return;let i=0,fb=null,solved=new Set((()=>{try{return JSON.parse(localStorage.getItem(key)||'[]');}catch(e){return[];}})());
+  const save=()=>{try{localStorage.setItem(key,JSON.stringify([...solved]));}catch(e){}};
+  function draw(){const l=L[i];
+    box.innerHTML=`<div class="lchips">${L.map((x,k)=>`<button class="chip${k===i?' on':''}${solved.has(k)?' done':''}" data-k="${k}">${k+1}. ${x.title}</button>`).join('')}</div>
+      <div class="lcard"><div class="eyebrow">${i+1}강</div><h2>${l.title}</h2><div class="ltext">${l.html}</div>
+      ${l.quiz?`<div class="lq"><b>문제.</b> ${l.quiz.q}<div class="quiz">${l.quiz.opts.map((o,k)=>`<button class="btn" data-a="${k}">${o}</button>`).join('')}</div></div>`:''}
+      ${fb?`<div class="fb ${fb.kind}">${fb.msg}</div>`:''}
+      <div class="row"><button class="btn" data-nav="-1"${i?'':' disabled'}>이전</button><button class="btn primary" data-nav="1">${i===L.length-1?'처음으로':'다음 강의'}</button></div></div>`;}
+  box.addEventListener('click',e=>{const c=e.target.closest('[data-k]');if(c){i=+c.dataset.k;fb=null;draw();return;}
+    const a=e.target.closest('[data-a]');if(a){const q=L[i].quiz,ok=+a.dataset.a===q.ans;fb={kind:ok?'ok':'no',msg:ok?'정답! '+q.ok:q.no};if(ok){solved.add(i);save();if(typeof VOICE!=='undefined')VOICE.say('정답');}draw();return;}
+    const n=e.target.closest('[data-nav]');if(n){i=(i+(+n.dataset.nav)+L.length)%L.length;fb=null;draw();box.scrollIntoView({block:'start',behavior:'smooth'});}});
+  draw();}
+
+/* ===== 포커 배우기 (8강) ===== 카드 번호 = 무늬*13 + (숫자-2), 무늬 0♣ 1♥ 2♦ 3♠, A=14 */
+(()=>{
+const c=(r,s)=>s*13+(r-2),cs=list=>`<div class="lcards">${list.map(([r,s])=>`<span class="lc pk">${face(c(r,s))}</span>`).join('')}</div>`;
+const hand=(list,name)=>`<div class="lpair">${cs(list)}<b>${name}</b></div>`;
+const L=[
+ {title:'트럼프 카드 52장',html:`카드는 <b>♠ 스페이드 · ♦ 다이아 · ♥ 하트 · ♣ 클로버</b> 4가지 무늬에 2~10, J, Q, K, A가 있어요. <b>A가 가장 높아요</b>. 족보와 숫자가 같으면 무늬로 정해요: ♠ > ♦ > ♥ > ♣.${cs([[14,3],[13,2],[12,1],[11,0],[10,3]])}`,
+  quiz:{q:'가장 센 무늬는?',opts:['♠ 스페이드','♥ 하트','♣ 클로버'],ans:0,ok:'♠ > ♦ > ♥ > ♣ 순서예요.',no:'스페이드가 가장 세요.'}},
+ {title:'페어·트리플',html:`같은 숫자 2장이 <b>원페어</b>, 원페어 두 개가 <b>투페어</b>, 같은 숫자 3장이 <b>트리플</b>이에요.${hand([[9,3],[9,1]],'원페어')}${hand([[9,3],[9,1],[5,2],[5,0]],'투페어')}${hand([[7,3],[7,2],[7,0]],'트리플')}`,
+  quiz:{q:'투페어와 트리플이 붙으면?',opts:['트리플','투페어'],ans:0,ok:'트리플이 투페어보다 세요.',no:'같은 숫자 3장(트리플)이 더 세요.'}},
+ {title:'스트레이트·플러시·풀하우스',html:`· <b>스트레이트</b>: 이어진 숫자 5장 (A·K·Q·J·10은 <b>마운틴</b>, A·2·3·4·5는 <b>백스트레이트</b>)<br>· <b>플러시</b>: 같은 무늬 5장<br>· <b>풀하우스</b>: 트리플 + 원페어${hand([[9,0],[8,2],[7,1],[6,3],[5,0]],'스트레이트')}${hand([[13,1],[10,1],[7,1],[4,1],[2,1]],'플러시')}${hand([[8,3],[8,2],[8,0],[3,1],[3,2]],'풀하우스')}`,
+  quiz:{q:'같은 무늬 5장은 무엇일까요?',opts:['스트레이트','플러시','풀하우스'],ans:1,ok:'무늬가 모두 같으면 플러시예요.',no:'같은 무늬 5장은 플러시예요.'}},
+ {title:'포카드와 스트레이트 플러시',html:`높은 순서: <b>로열 스트레이트 플러시</b> (같은 무늬 10~A) > <b>스트레이트 플러시</b> (같은 무늬로 이어진 5장) > <b>포카드</b> (같은 숫자 4장) > 풀하우스 > 플러시 > 스트레이트 > 트리플 > 투페어 > 원페어 > 탑${hand([[14,3],[13,3],[12,3],[11,3],[10,3]],'로열 스트레이트 플러시')}${hand([[9,3],[9,2],[9,1],[9,0]],'포카드')}`,
+  quiz:{q:'가장 센 족보는?',opts:['포카드','로열 스트레이트 플러시','풀하우스'],ans:1,ok:'로열 스트레이트 플러시가 최고예요.',no:'같은 무늬 10·J·Q·K·A가 최고예요.'}},
+ {title:'세븐포커 진행',html:`1. 4장을 받아 <b>1장 버리고, 1장은 모두에게 보여 줘요</b>.<br>2. 4구·5구·6구는 모두가 보는 카드, <b>7구는 나만 보는 히든 카드</b>예요.<br>3. 카드를 받을 때마다 베팅해요. 보이는 카드가 가장 좋은 사람부터 시작해요.<br>4. 7장 중 <b>가장 좋은 5장</b>으로 겨뤄요.`,
+  quiz:{q:'나만 보는 히든 카드는 몇 구일까요?',opts:['4구','6구','7구'],ans:2,ok:'마지막 7구가 히든이에요. 쪼아 보기로 천천히 확인해요.',no:'마지막 장이 히든이에요.'}},
+ {title:'베팅 용어',html:`· <b>다이</b>: 포기 · <b>체크</b>: 넘김 · <b>삥</b>: 기본 판돈만큼 · <b>콜</b>: 따라감<br>· <b>쿼터</b>: 판의 1/4 더 · <b>하프</b>: 판의 1/2 더 · <b>따당</b>: 앞사람이 올린 만큼의 2배<br>한 바퀴에 두 번까지 올릴 수 있고, 가진 돈보다 많이 걸 수는 없어요 (올인).`,
+  quiz:{q:'판의 절반을 더 거는 건?',opts:['쿼터','하프','삥'],ans:1,ok:'하프는 판의 1/2이에요.',no:'절반은 하프예요.'}},
+ {title:'하이로우',html:`세븐포커와 같이 하고 마지막에 <b>하이·로우·스윙</b>을 선언해요.<br>· <b>하이</b>: 가장 높은 패끼리 판돈의 절반<br>· <b>로우</b>: 숫자가 다른 5장으로 <b>가장 낮은 패</b>끼리 절반 (A·2·3·4·5가 최고)<br>· <b>스윙</b>: 하이와 로우를 둘 다 이겨야 전부, 하나라도 지면 0${hand([[14,1],[2,0],[3,2],[4,3],[5,1]],'최고의 로우 (휠)')}`,
+  quiz:{q:'로우에서 가장 좋은 패는?',opts:['A·2·3·4·5','10·J·Q·K·A','2·2·3·3·4'],ans:0,ok:'숫자가 모두 다르고 가장 낮은 A·2·3·4·5가 최고예요.',no:'로우는 낮을수록 좋아요.'}},
+ {title:'바둑이',html:`4장으로 <b>무늬도 숫자도 모두 다른</b> 카드를 만들고, 그중 <b>숫자가 낮을수록</b> 좋아요. 아침·점심·저녁 세 번 바꿀 수 있어요.<br>4장이 다 다르면 <b>메이드</b>, A·2·3·4는 <b>골프</b>(최고)예요.${hand([[14,0],[2,1],[3,2],[4,3]],'골프')}${hand([[6,0],[4,1],[2,2],[9,2]],'베이스 (3장만 맞음)')}`,
+  quiz:{q:'♣A ♥2 ♦3 ♠4 는 무엇일까요?',opts:['골프 (최고)','베이스','투베이스'],ans:0,ok:'무늬·숫자가 모두 다르고 가장 낮아서 골프예요.',no:'4장이 모두 다르고 가장 낮아요.'}}];
+mountLessons(document.getElementById('plearn'),L,'poker-lessons');
+})();
 
 </script>
 
