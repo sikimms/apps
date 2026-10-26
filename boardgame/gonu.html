@@ -478,7 +478,10 @@ const ACH=(()=>{
     slot_star:['⭐','골든스타','황금별 슬롯 별 3개','카지노'],bj_bj:['🂱','블랙잭','블랙잭 나오기','카지노'],bac_tie:['🤝','타이 적중','바카라 타이 맞히기','카지노']};
   const got=()=>FUNLS.get(K,{});
   function unlock(id){if(!L[id])return;const g=got();if(g[id])return;g[id]=Date.now();FUNLS.set(K,g);
-    funToast(`${L[id][0]} 배지 획득! <b>${L[id][1]}</b><br><small>${L[id][2]}</small>`,3600);VOICE.say('배지 획득');}
+    // 상금: 배지마다 1,000만원 (게임 화면이 들고 있는 돈에도 같이 더해서 나중에 덮어쓰지 않게)
+    const PRIZE=10000000;WALLET.set(WALLET.get()+PRIZE);try{if(typeof money==='number')money+=PRIZE;}catch(e){}
+    funToast(`${L[id][0]} 배지 획득! <b>${L[id][1]}</b><br><small>${L[id][2]}</small><br>🎁 상금 <b>+${wonF(PRIZE)}</b>`,4200);VOICE.say('배지 획득, 상금 천만 원');
+    setTimeout(()=>{try{const sm=document.getElementById('smoney')||document.getElementById('pmoney');if(sm&&typeof money==='number')sm.textContent=wonF(money);}catch(e){}},50);}
   return{L,got,unlock};
 })();
 // 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
