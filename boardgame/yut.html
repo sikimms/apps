@@ -305,6 +305,13 @@ const ACH=(()=>{
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
 setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
 if(!window.FUN_NO_DAILY)WALLET.daily();
+/* ---------- 판이 끝나면 게임 판 가운데에 큰 '다음 판' 버튼 (옆 패널의 다음 판 버튼과 같이 움직임) ---------- */
+function bigNext(btnId,hostId){const btn=document.getElementById(btnId),host=document.getElementById(hostId);if(!btn||!host||host.querySelector('.bignext'))return;
+  if(!document.getElementById('bignextCss')){const st=document.createElement('style');st.id='bignextCss';st.textContent='.bignext{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;font:800 22px "Noto Sans KR",sans-serif;padding:14px 34px;border-radius:999px;border:3px solid #fff;background:linear-gradient(#ff8a65,#e53935);color:#fff;cursor:pointer;box-shadow:0 6px 20px #0009;animation:bnPulse 1.2s ease-in-out infinite;white-space:nowrap}.bignext[hidden]{display:none}.bignext:active{transform:translate(-50%,-48%)}@keyframes bnPulse{50%{box-shadow:0 6px 28px #ff5252,0 0 0 6px #ffffff55}}@media (max-width:600px){.bignext{font-size:18px;padding:11px 26px}}';document.head.appendChild(st);}
+  const b=document.createElement('button');b.className='bignext';b.type='button';b.innerHTML='다음 판 ▶';b.hidden=true;host.appendChild(b);
+  b.onclick=e=>{e.stopPropagation();b.hidden=true;btn.click();};
+  const sync=()=>{b.hidden=btn.hidden||btn.disabled;};new MutationObserver(sync).observe(btn,{attributes:true,attributeFilter:['hidden','disabled']});sync();}
+setTimeout(()=>{[['snext','stable'],['dnext','dtable'],['pnext','ptable'],['onext','otable'],['dnext2','dtable2']].forEach(([a,b])=>bigNext(a,b));},0);
 
 /* ===== 윷놀이 규칙 =====
    말판 점 29개: 0 참먹이(출발·도착, 오른쪽 아래) → 1~4 오른쪽 변 → 5 오른쪽 위 귀(모) → 6~9 → 10 왼쪽 위 귀(뒷모)
