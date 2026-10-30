@@ -509,7 +509,8 @@ function actions(s){
   if(st<=0)return[{k:'check',amt:0,name:'올인'}];   // 이미 올인: 더 걸 돈이 없음
   const out=[{k:'die',amt:0,name:'다이'}];
   if(need<=0)out.push({k:'check',amt:0,name:'체크'});else out.push(need>=st?{k:'call',amt:st,name:'올인'}:{k:'call',amt:need,name:'콜'});
-  if(s.raises<2&&st>need){
+  const canRaise=alive(s).some(q=>q!==p&&s.stack[q]>0);   // 상대가 모두 올인이면 더 올릴 수 없음 (콜만)
+  if(s.raises<2&&st>need&&canRaise){
     if(s.toCall===0)out.push({k:'bbing',amt:s.ante,raise:s.ante,name:'삥'});
     const base=s.pot+need,q=Math.max(s.ante,Math.round(base/4/100)*100),h=Math.max(s.ante,Math.round(base/2/100)*100);
     out.push({k:'quarter',amt:need+q,raise:q,name:'쿼터'});out.push({k:'half',amt:need+h,raise:h,name:'하프'});
@@ -529,6 +530,28 @@ function act(s,a){
   s.turn=nextAlive(s,p);return'next';
 }
 
+/* ---------- 사이드 팟: 올인한 사람은 자기가 낸 만큼만 겨루고, 아무도 못 받은 돈은 돌려줌 ---------- */
+function potLayers(s){
+  const al=alive(s),lv=[...new Set(al.map(q=>s.paid[q]))].sort((a,b)=>a-b),out=[];let prev=0,sum=0;
+  for(const L of lv){let amt=0;for(let j=0;j<s.n;j++)amt+=Math.max(0,Math.min(s.paid[j],L)-Math.min(s.paid[j],prev));
+    out.push({amt,elig:al.filter(q=>s.paid[q]>=L)});sum+=amt;prev=L;}
+  const rest=s.pot-sum;if(rest&&out.length){const top=[...out].reverse().find(x=>x.elig.length>1)||out[out.length-1];top.amt+=rest;}   // 다이한 사람이 더 낸 돈
+  return out;
+}
+function sidePots(s,fn){
+  const layers=potLayers(s);
+  if(layers.length<=1)return fn(s);
+  const winners=[],refunds=[];let first=null;
+  for(const L of layers){
+    if(L.elig.length<2){if(L.amt>0)refunds.push({p:L.elig[0],amt:L.amt});continue;}
+    const t=Object.assign({},s,{folded:s.folded.map((f,i)=>f||!L.elig.includes(i)),pot:L.amt}),r=fn(t);if(!first)first=r;
+    for(const w of r.winners){const ex=winners.find(x=>x.p===w.p);if(ex)ex.share+=w.share;else winners.push(Object.assign({},w));}
+  }
+  s.over=true;s.result={winners,hands:first?first.hands:[],failed:first?first.failed||[]:[],refunds};
+  if(!winners.length&&refunds.length){const r=refunds.shift();winners.push({p:r.p,share:r.amt,why:'혼자 남음'});}
+  return s.result;
+}
+
 /* ---------- 세븐포커 · 하이로우 진행 ---------- */
 const all=(s,p)=>s.hidden[p].concat(s.open[p]);
 function studDeal4(s){for(let k=0;k<4;k++)for(let p=0;p<s.n;p++)s.hidden[p].push(draw1(s));s.street=3;s.phase='discard';}   // 버리고 보여 주면 3장(3구). 다음부터 4·5·6구 오픈, 7구 히든
@@ -540,7 +563,8 @@ function studNextCard(s){   // 4·5·6구: 오픈, 7구: 히든
   s.street++;for(const p of alive(s)){const c=draw1(s);if(s.street<=6)s.open[p].push(c);else s.hidden[p].push(c);}
   startBetting(s,boss(s));
 }
-function studShowdown(s){
+function studShowdown(s){return sidePots(s,studShowdown1);}
+function studShowdown1(s){
   const al=alive(s);s.over=true;
   if(s.kind==='seven'){
     let best=null,ws=[];for(const p of al){const h=bestHigh(all(s,p));const c=best?cmp(h.score,best.score):1;if(c>0){best=h;ws=[p];}else if(c===0)ws.push(p);}
@@ -569,7 +593,8 @@ function studShowdown(s){
 /* ---------- 바둑이 진행 ---------- */
 function badugiDeal(s){for(let k=0;k<4;k++)for(let p=0;p<s.n;p++)s.hidden[p].push(draw1(s));s.street=0;startBetting(s,(s.dealer+1)%s.n);}
 function badugiDraw(s,p,ids){for(const id of ids){s.hidden[p]=s.hidden[p].filter(x=>x!==id);s.discards.push(id);}for(let k=0;k<ids.length;k++)s.hidden[p].push(draw1(s));}
-function badugiShowdown(s){
+function badugiShowdown(s){return sidePots(s,badugiShowdown1);}
+function badugiShowdown1(s){
   const al=alive(s);s.over=true;let best=null,ws=[];
   for(const p of al){const b=badugi(s.hidden[p]);const c=best?cmp(b.score,best.score):1;if(c>0){best=b;ws=[p];}else if(c===0)ws.push(p);}
   s.result={winners:ws.map(p=>({p,share:Math.floor(s.pot/ws.length),why:badugi(s.hidden[p]).name})),hands:al.map(p=>({p,name:badugi(s.hidden[p]).name}))};return s.result;
