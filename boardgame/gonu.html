@@ -445,7 +445,11 @@ const WALLET=(()=>{
   function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=100000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
     setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
   function reset(){set(300000);}
-  return{get,set,rescue,today,daily,reset};
+  // 선물 코드: 기기마다 한 번만 (코드는 해시로만 들어 있음)
+  const GIFTS={4089959630:1000000000};
+  function gift(code){const c=String(code||'').replace(/\s/g,'').toUpperCase();let x=5381;for(const ch of c)x=((x*33)^ch.codePointAt(0))>>>0;
+    const amt=GIFTS[x];if(!amt)return -1;const used=FUNLS.get('bgc-gift',[]);if(used.includes(x))return 0;used.push(x);FUNLS.set('bgc-gift',used);set(get()+amt);return amt;}
+  return{get,set,rescue,today,daily,reset,gift};
 })();
 
 /* ---------- 목소리: 휴대폰·PC에 들어 있는 한국어 음성으로 외침 ---------- */
@@ -488,6 +492,11 @@ const ACH=(()=>{
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
 setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
 if(!window.FUN_NO_DAILY)WALLET.daily();
+// 🎁 선물 코드 넣기 (홈의 선물 버튼, 또는 게임 화면에서 Ctrl+Shift+G)
+function giftPrompt(){const c=prompt('🎁 선물 코드를 넣어 주세요');if(c==null)return;const r=WALLET.gift(c);
+  if(r>0){alert('🎉 '+wonF(r)+'을 받았어요! 지갑: '+wonF(WALLET.get()));if(typeof homeRender==='function')homeRender();else location.reload();}
+  else alert(r===0?'이 기기에서 이미 받은 선물 코드예요.':'코드가 맞지 않아요.');}
+document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&(e.key==='G'||e.key==='g')){e.preventDefault();giftPrompt();}});
 /* ---------- 판이 끝나면 게임 판 가운데에 큰 '다음 판' 버튼 (옆 패널의 다음 판 버튼과 같이 움직임) ---------- */
 function bigNext(btnId,hostId){const btn=document.getElementById(btnId),host=document.getElementById(hostId);if(!btn||!host||host.querySelector('.bignext'))return;
   if(!document.getElementById('bignextCss')){const st=document.createElement('style');st.id='bignextCss';st.textContent='.bignext{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;font:800 22px "Noto Sans KR",sans-serif;padding:14px 34px;border-radius:999px;border:3px solid #fff;background:linear-gradient(#ff8a65,#e53935);color:#fff;cursor:pointer;box-shadow:0 6px 20px #0009;animation:bnPulse 1.2s ease-in-out infinite;white-space:nowrap}.bignext[hidden]{display:none}.bignext:active{transform:translate(-50%,-48%)}@keyframes bnPulse{50%{box-shadow:0 6px 28px #ff5252,0 0 0 6px #ffffff55}}@media (max-width:600px){.bignext{font-size:18px;padding:11px 26px}}';document.head.appendChild(st);}
