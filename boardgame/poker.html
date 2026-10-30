@@ -786,10 +786,14 @@ function roomEach(fn){for(const g of ROOM.guests)if(g.open){const d=fn(g.gi);if(
 // 친구 → 방장
 function roomToHost(d){if(ROOM.conn&&ROOM.ok)try{ROOM.conn.send(d);}catch(e){}}
 const roomGuests=()=>ROOM.guests.filter(g=>g.open).map(g=>g.gi);
+// 친구 지갑·별명 (방장이 들고 있음)
+function roomMoney(gi,def){const x=ROOM.gm&&ROOM.gm[gi];return x&&typeof x.money==='number'?x.money:def;}
+function roomName(gi){const x=ROOM.gm&&ROOM.gm[gi];return x&&x.nick?x.nick:'친구 '+gi;}
+function roomSendMoney(){if(ROOM.ok&&typeof WALLET!=='undefined')roomToHost({t:'money',v:WALLET.get(),nick:typeof LOBBY!=='undefined'?LOBBY.nick():''});}
 function roomReset(){
   try{ROOM.conn&&ROOM.conn.close();}catch(e){}for(const g of ROOM.guests)try{g.conn.close();}catch(e){}
   try{ROOM.peer&&ROOM.peer.destroy();}catch(e){}
-  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';ROOM.playing=false;roomUI();roomLobby();}
+  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';ROOM.gm={};ROOM.playing=false;roomUI();roomLobby();}
 function roomLobby(){if(typeof LOBBY==='undefined'||!ROOM.cfg)return;const pub=document.getElementById('nrPub');
   if(ROOM.host&&ROOM.peer&&ROOM.code&&pub&&pub.checked)LOBBY.publish({code:ROOM.code,game:ROOM.cfg.game,title:LOBBY.nick()||'방장',kind:(ROOM.cfg.kind&&ROOM.cfg.kind())||document.title,players:roomGuests().length+1,max:ROOM.cfg.max+1,playing:!!ROOM.playing});
   else LOBBY.publish(null);}
@@ -802,7 +806,7 @@ function roomUI(){
   $$('nrShare').hidden=!ROOM.host||gs.length>=ROOM.cfg.max;
   $$('nrStart').hidden=!ROOM.host||!gs.length;
   const em=$$('nrEmo');if(em)em.hidden=!(ROOM.host?gs.length:ROOM.ok);
-  $$('nrList').innerHTML=ROOM.peer?(ROOM.host?`<span class="nrp me">방장 (나)</span>`+gs.map(gi=>`<span class="nrp">친구 ${gi}</span>`).join('')
+  $$('nrList').innerHTML=ROOM.peer?(ROOM.host?`<span class="nrp me">방장 (나)</span>`+gs.map(gi=>`<span class="nrp">${roomName(gi)}${roomMoney(gi,null)!=null?' · '+Math.round(roomMoney(gi,0)).toLocaleString()+'원':''}</span>`).join('')
     :(ROOM.ok?`<span class="nrp">방장</span><span class="nrp me">나</span>`:'')):'';
 }
 function roomHost(){
@@ -818,7 +822,7 @@ function roomHost(){
         c.on('open',()=>{const used=new Set(roomGuests());let gi=1;while(used.has(gi))gi++;g.gi=gi;g.open=true;ROOM.guests.push(g);
           try{c.send({t:'welcome',gi});}catch(e){}
           ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();roomLobby();cfg.join&&cfg.join(gi);});
-        c.on('data',d=>{if(!g.open||!d||!d.t)return;if(d.t==='emo'){const who='친구 '+g.gi;emoShow(who,d.e);for(const o of ROOM.guests)if(o.open&&o!==g)try{o.conn.send({t:'emo',from:who,e:d.e});}catch(_){}return;}cfg.msg(g.gi,d);});
+        c.on('data',d=>{if(!g.open||!d||!d.t)return;if(d.t==='money'){ROOM.gm=ROOM.gm||{};ROOM.gm[g.gi]={money:+d.v||0,nick:String(d.nick||'').slice(0,10)};roomUI();if(ROOM.cfg.money)ROOM.cfg.money(g.gi);return;}if(d.t==='emo'){const who='친구 '+g.gi;emoShow(who,d.e);for(const o of ROOM.guests)if(o.open&&o!==g)try{o.conn.send({t:'emo',from:who,e:d.e});}catch(_){}return;}cfg.msg(g.gi,d);});
         c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();roomLobby();cfg.leave&&cfg.leave(g.gi);});
         c.on('error',()=>{});});
       ROOM.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){ROOM.peer.destroy();tryOpen(left-1);return;}
@@ -835,7 +839,7 @@ function roomJoin(code){
     ROOM.peer=new Peer();
     ROOM.peer.on('open',()=>{ROOM.say(`방 ${code}에 들어가는 중…`);
       const c=ROOM.peer.connect(ROOM_PREFIX+cfg.game+'-'+code,{reliable:true});ROOM.conn=c;
-      c.on('open',()=>{ROOM.ok=true;roomUI();ROOM.say('연결됐어요. 방장이 판을 시작하면 자동으로 시작돼요.','ok');});
+      c.on('open',()=>{ROOM.ok=true;roomUI();roomSendMoney();ROOM.say('연결됐어요. 방장이 판을 시작하면 자동으로 시작돼요.','ok');});
       c.on('data',d=>{if(!d||!d.t)return;if(d.t==='full'){ROOM.say('방이 꽉 찼어요.','bad');return;}if(d.t==='welcome'){ROOM.gi=d.gi;roomUI();return;}if(d.t==='emo'){emoShow(d.from==='친구 '+ROOM.gi?'나':d.from,d.e);return;}cfg.msg(0,d);});
       c.on('close',()=>{if(!ROOM.ok)return;ROOM.ok=false;ROOM.say('방장과 연결이 끊겼어요. 다시 들어가 주세요.','bad');roomUI();cfg.leave&&cfg.leave(0);});
       c.on('error',()=>{});
@@ -1005,7 +1009,7 @@ function render(){
     const cards=list.map((c,i)=>{const isNew=i>=known;return cardHtml(c.id,{down:c.id<0||(p!==0&&c.h&&!(show&&!s.folded[p]))||(p===0&&c.id===G.hideId),deal:isNew,delay:isNew?((i-known)*180+p*70):null,
       pick:pickable&&c.h,chosen:pickable&&G.sel.includes(c.id),reveal:show&&p!==0&&c.h&&!s.folded[p]&&c.id>=0,hid:p===0&&c.h&&s.kind!=='badugi'});}).join('');
     const isWin=G.result&&G.result.winners.some(w=>w.p===p),hn=G.result&&G.result.hands?G.result.hands.find(x=>x.p===p):null;
-    const label=p===0?myHandName():(show&&hn?hn.name:'');
+    const label=p===0?(G.hideId!=null?'히든 카드를 까 보세요':myHandName()):(show&&hn?hn.name:'');
     const la=G.last[p],dec=s.declare[p]&&show?` · ${({hi:'하이',lo:'로우',swing:'스윙'})[s.declare[p]]}`:'';
     const plate=`<div class="splate${s.turn===p&&!s.over&&s.phase==='bet'?' turn':''}${s.folded[p]?' out':''}">${avatar(p)}<span class="sn"><b>${nm(p)}</b><small>${won(chipOf(p))}</small></span></div>`;
     el.innerHTML=(p===0?'':plate)+`<div class="scards">${cards}</div>`+(label&&!s.folded[p]?`<span class="shand${isWin?' win':''}">${label}${dec}</span>`:'')+
@@ -1040,6 +1044,7 @@ async function newHand(){
   const ai=G&&G.ai&&G.ai.length===n?G.ai:Array(n).fill(1000000);
   G={kind:opt.kind,s:PK.newGame({kind:opt.kind,players:n,ante:opt.ante,dealer:G?(G.s.dealer+1)%n:0}),ai,known:Array(n).fill(0),last:{},sel:[],phase:'deal',busy:true,reveal:false,result:null,gen:(G?G.gen:0)+1,hid:Date.now()+Math.random()};
   const left=[];
+  if(NETP&&!NETP.guest)for(let p=1;p<n;p++)if(remote(p))G.ai[p]=roomMoney(NETP.seats[p],G.ai[p]);   // 친구 자리는 친구 지갑 돈
   for(let p=0;p<n;p++){if(p===0)money-=opt.ante;else{if(G.ai[p]<opt.ante*10){if(!NETP){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}G.ai[p]=1000000;}G.ai[p]-=opt.ante;}}
   G.s.stack=[money].concat(G.ai.slice(1));   // 가진 돈만큼만 걸 수 있음
   saveMoney();$('pnext').hidden=true;const gen=G.gen,s=G.s;
@@ -1131,7 +1136,7 @@ function startOnline(){
   const gs=roomGuests();if(!gs.length)return;
   if(gs.length+1>opt.players){opt.players=gs.length+1;$('pPlayers').value=String(opt.players);}
   const n=opt.players,seats=[0];for(let q=1;q<n;q++)seats.push(gs[q-1]!=null?gs[q-1]:-1);
-  NETP={seats,names:seats.map((g,q)=>q===0?'나':g>0?'친구 '+g:NAMES[q])};
+  NETP={seats,names:seats.map((g,q)=>q===0?'나':g>0?roomName(g):NAMES[q])};
   if(opt.kind==='rules')opt.kind='seven';
   for(const x of ['seven','hilo','badugi','rules'])$('tab_'+x).setAttribute('aria-selected',x===opt.kind);$('play').hidden=false;$('rules').hidden=true;
   $('ptitle').textContent=KIND[opt.kind]+' · 온라인';$('phow').innerHTML=HOW[opt.kind];
@@ -1151,7 +1156,7 @@ function onNet(gi,d){
         $('ptitle').textContent=KIND[d.s.kind]+' · 온라인';$('phow').innerHTML=HOW[d.s.kind];$('pnext').hidden=true;}
       const prevPot=G.s.pot,flyFrom=Object.keys(d.last).map(Number).find(q=>d.last[q]&&d.last[q].amt);G.s=d.s;G.last=d.last;G.reveal=d.reveal;G.result=d.s.result;G.ai=d.chips;if(d.kn)G.known=d.kn.slice();
       if(d.big)bigText(d.big);if(d.s.pot>prevPot)SND.chip();
-      if(d.end){G.phase='end';render();if(!G.settled){G.settled=true;if(G.result.winners.some(w=>w.p===0)){SND.win();bigText('승리!');}settleMsg(G.result);}return;}
+      if(d.end){G.phase='end';render();if(!G.settled){G.settled=true;money=d.chips[0];WALLET.set(money);saveMoney();roomSendMoney();if(G.result.winners.some(w=>w.p===0)){SND.win();bigText('승리!');}settleMsg(G.result);}return;}
       render();if(d.s.pot>prevPot)MONEY.fly($('ptable').querySelectorAll('.seat')[flyFrom!=null?flyFrom:0],$('ppot'),d.s.pot-prevPot,$('ptable'));
       if(d.sq&&sqOn&&!d.s.folded[0]){const hid=d.s.hidden[0][d.s.hidden[0].length-1];G.hideId=hid;render();SND.card();await sleep(800);
         await squeeze($('ptable'),face(hid),PC.back(),'60/90','7구 히든 카드');G.hideId=null;render();}

@@ -761,10 +761,14 @@ function roomEach(fn){for(const g of ROOM.guests)if(g.open){const d=fn(g.gi);if(
 // 친구 → 방장
 function roomToHost(d){if(ROOM.conn&&ROOM.ok)try{ROOM.conn.send(d);}catch(e){}}
 const roomGuests=()=>ROOM.guests.filter(g=>g.open).map(g=>g.gi);
+// 친구 지갑·별명 (방장이 들고 있음)
+function roomMoney(gi,def){const x=ROOM.gm&&ROOM.gm[gi];return x&&typeof x.money==='number'?x.money:def;}
+function roomName(gi){const x=ROOM.gm&&ROOM.gm[gi];return x&&x.nick?x.nick:'친구 '+gi;}
+function roomSendMoney(){if(ROOM.ok&&typeof WALLET!=='undefined')roomToHost({t:'money',v:WALLET.get(),nick:typeof LOBBY!=='undefined'?LOBBY.nick():''});}
 function roomReset(){
   try{ROOM.conn&&ROOM.conn.close();}catch(e){}for(const g of ROOM.guests)try{g.conn.close();}catch(e){}
   try{ROOM.peer&&ROOM.peer.destroy();}catch(e){}
-  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';ROOM.playing=false;roomUI();roomLobby();}
+  ROOM.peer=null;ROOM.conn=null;ROOM.guests=[];ROOM.ok=false;ROOM.code='';ROOM.gm={};ROOM.playing=false;roomUI();roomLobby();}
 function roomLobby(){if(typeof LOBBY==='undefined'||!ROOM.cfg)return;const pub=document.getElementById('nrPub');
   if(ROOM.host&&ROOM.peer&&ROOM.code&&pub&&pub.checked)LOBBY.publish({code:ROOM.code,game:ROOM.cfg.game,title:LOBBY.nick()||'방장',kind:(ROOM.cfg.kind&&ROOM.cfg.kind())||document.title,players:roomGuests().length+1,max:ROOM.cfg.max+1,playing:!!ROOM.playing});
   else LOBBY.publish(null);}
@@ -777,7 +781,7 @@ function roomUI(){
   $$('nrShare').hidden=!ROOM.host||gs.length>=ROOM.cfg.max;
   $$('nrStart').hidden=!ROOM.host||!gs.length;
   const em=$$('nrEmo');if(em)em.hidden=!(ROOM.host?gs.length:ROOM.ok);
-  $$('nrList').innerHTML=ROOM.peer?(ROOM.host?`<span class="nrp me">방장 (나)</span>`+gs.map(gi=>`<span class="nrp">친구 ${gi}</span>`).join('')
+  $$('nrList').innerHTML=ROOM.peer?(ROOM.host?`<span class="nrp me">방장 (나)</span>`+gs.map(gi=>`<span class="nrp">${roomName(gi)}${roomMoney(gi,null)!=null?' · '+Math.round(roomMoney(gi,0)).toLocaleString()+'원':''}</span>`).join('')
     :(ROOM.ok?`<span class="nrp">방장</span><span class="nrp me">나</span>`:'')):'';
 }
 function roomHost(){
@@ -793,7 +797,7 @@ function roomHost(){
         c.on('open',()=>{const used=new Set(roomGuests());let gi=1;while(used.has(gi))gi++;g.gi=gi;g.open=true;ROOM.guests.push(g);
           try{c.send({t:'welcome',gi});}catch(e){}
           ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();roomLobby();cfg.join&&cfg.join(gi);});
-        c.on('data',d=>{if(!g.open||!d||!d.t)return;if(d.t==='emo'){const who='친구 '+g.gi;emoShow(who,d.e);for(const o of ROOM.guests)if(o.open&&o!==g)try{o.conn.send({t:'emo',from:who,e:d.e});}catch(_){}return;}cfg.msg(g.gi,d);});
+        c.on('data',d=>{if(!g.open||!d||!d.t)return;if(d.t==='money'){ROOM.gm=ROOM.gm||{};ROOM.gm[g.gi]={money:+d.v||0,nick:String(d.nick||'').slice(0,10)};roomUI();if(ROOM.cfg.money)ROOM.cfg.money(g.gi);return;}if(d.t==='emo'){const who='친구 '+g.gi;emoShow(who,d.e);for(const o of ROOM.guests)if(o.open&&o!==g)try{o.conn.send({t:'emo',from:who,e:d.e});}catch(_){}return;}cfg.msg(g.gi,d);});
         c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();roomLobby();cfg.leave&&cfg.leave(g.gi);});
         c.on('error',()=>{});});
       ROOM.peer.on('error',e=>{if(e.type==='unavailable-id'&&left>0){ROOM.peer.destroy();tryOpen(left-1);return;}
@@ -810,7 +814,7 @@ function roomJoin(code){
     ROOM.peer=new Peer();
     ROOM.peer.on('open',()=>{ROOM.say(`방 ${code}에 들어가는 중…`);
       const c=ROOM.peer.connect(ROOM_PREFIX+cfg.game+'-'+code,{reliable:true});ROOM.conn=c;
-      c.on('open',()=>{ROOM.ok=true;roomUI();ROOM.say('연결됐어요. 방장이 판을 시작하면 자동으로 시작돼요.','ok');});
+      c.on('open',()=>{ROOM.ok=true;roomUI();roomSendMoney();ROOM.say('연결됐어요. 방장이 판을 시작하면 자동으로 시작돼요.','ok');});
       c.on('data',d=>{if(!d||!d.t)return;if(d.t==='full'){ROOM.say('방이 꽉 찼어요.','bad');return;}if(d.t==='welcome'){ROOM.gi=d.gi;roomUI();return;}if(d.t==='emo'){emoShow(d.from==='친구 '+ROOM.gi?'나':d.from,d.e);return;}cfg.msg(0,d);});
       c.on('close',()=>{if(!ROOM.ok)return;ROOM.ok=false;ROOM.say('방장과 연결이 끊겼어요. 다시 들어가 주세요.','bad');roomUI();cfg.leave&&cfg.leave(0);});
       c.on('error',()=>{});
@@ -1030,6 +1034,7 @@ async function startRound(){
   const n=NET?NET.kind.length:opt.players;money=WALLET.get();if(money<opt.ante*10)money=WALLET.rescue(opt.ante*10);
   // 선: 하우스(컴퓨터)면 마지막 자리, 돌아가며면 한 칸씩
   let d;if(opt.house&&!NET){d=n-1;}else{dealerSeat=(dealerSeat+1)%n;d=dealerSeat;}
+  if(NET&&!NET.guest)for(let p=1;p<n;p++)if(remote(p))aiMoney[p]=roomMoney(NET.seats[p],aiMoney[p]);   // 친구 자리는 친구 지갑 돈
   const left=[];for(let p=1;p<n;p++){if((!NET||NET.kind[p]==='ai')&&aiMoney[p]<opt.ante*10){const o=NAMES[p];if(!NET&&!(opt.house&&p===d)){NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}aiMoney[p]=opt.house&&p===d?5000000:100000;}}
   if(opt.house&&!NET&&aiMoney[d]<1000000)aiMoney[d]=5000000;
   S=PD.newRound({players:n,dealer:d,ante:opt.ante});S.turn=-1;S.chips=[...Array(n).keys()].map(seatMoney);
@@ -1072,14 +1077,14 @@ $('dnext2').onclick=startRound;
 
 /* ---------- 온라인 ---------- */
 function startOnline(){const gs=roomGuests();if(!gs.length)return;const n=Math.max(opt.players,gs.length+1),seats=[0];for(let q=1;q<n;q++)seats.push(gs[q-1]!=null?gs[q-1]:-1);
-  let ai=0;NET={seats,kind:seats.map((x,q)=>q===0?'me':x>0?'net':'ai'),names:seats.map((x,q)=>q===0?'방장':x>0?'친구 '+x:'컴퓨터 '+(++ai))};ME=0;dealerSeat=n-1;gen++;startRound();}
+  let ai=0;NET={seats,kind:seats.map((x,q)=>q===0?'me':x>0?'net':'ai'),names:seats.map((x,q)=>q===0?'방장':x>0?roomName(x):'컴퓨터 '+(++ai))};ME=0;dealerSeat=n-1;gen++;startRound();}
 function stopOnline(){NET=null;ME=0;for(const k in pend){pend[k].res(pend[k].def);delete pend[k];}gen++;UI=null;startRound();}
 const dq=roomQueue();
 function onNet(gi,d){
   if(ROOM.host){if(!NET)return;if(d.t==='ans'&&pend[gi]&&(d.q==null||d.q===pend[gi].q)){const r=pend[gi].res;delete pend[gi];r(d.v);}return;}
   dq(async()=>{
     if(d.t==='view'){if(!GUEST()){NET={guest:true,names:d.names};gen++;$('dnext2').hidden=true;}NET.names=d.names;ME=d.me;V=d;render();if(d.fx)showFx(d.fx);
-      if(d.s&&d.s.over&&!V.done){V.done=1;resultMsg();badges();}else if(d.s&&!d.s.over)msg(d.s.turn===ME?'<b>내 차례</b>예요.':d.s.phase==='bet'?'돈을 거는 중…':d.s.turn>=0?`<b>${nameOf(d.s.turn)}</b> 차례예요…`:'카드를 나누는 중…');return;}
+      if(d.s&&d.s.over&&!V.done){V.done=1;resultMsg();badges();if(d.chips){money=d.chips[ME];WALLET.set(money);roomSendMoney();}}else if(d.s&&!d.s.over)msg(d.s.turn===ME?'<b>내 차례</b>예요.':d.s.phase==='bet'?'돈을 거는 중…':d.s.turn>=0?`<b>${nameOf(d.s.turn)}</b> 차례예요…`:'카드를 나누는 중…');return;}
     if(d.t==='ask'&&GUEST()){let v;if(d.kind==='bet')v=await askLocal('bet');else if(d.kind==='draw')v=await askLocal('draw');roomToHost({t:'ans',v,q:d.q});}
   });}
 function onLeave(gi){if(!ROOM.host){if(GUEST()){NET=null;UI=null;msg('방장과 연결이 끊겼어요. <b>새 판</b>을 누르면 컴퓨터와 해요.');render();}return;}
