@@ -54,7 +54,7 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
     <h1>보드게임 교실</h1>
     <div class="sub">처음 배우는 사람을 위한 화투·카드·판 게임·마작 교실</div>
     <div class="wallet"><div><small>내 지갑 (모든 게임 공통 · 가짜 돈)</small><b id="wBal">-</b><span id="wToday"></span></div>
-      <div class="wbtns"><button id="achBtn">🏅 배지 <span id="achN"></span></button><button onclick="giftPrompt()" title="선물 코드">🎁</button><label class="vv"><input type="checkbox" id="vVoice"> 목소리</label></div></div>
+      <div class="wbtns"><button id="achBtn">🏅 배지 <span id="achN"></span></button><label class="vv"><input type="checkbox" id="vVoice"> 목소리</label></div></div>
     <div id="recent"></div>
     <h2 class="cat">화투</h2><div class="apps"><a class="app" href="gostop.html"><img src="icons/gostop.png" alt="" width="64" height="64"><span><b>고스톱</b><small>맞고(2명)·3명 고스톱 배우기와 실전</small></span></a><a class="app" href="seotda.html"><img src="icons/seotda.png" alt="" width="64" height="64"><span><b>섯다·도리짓고땡</b><small>화투 20장으로 하는 섯다와 도리짓고땡</small></span></a></div>
 <h2 class="cat">카드</h2><div class="apps"><a class="app" href="poker.html"><img src="icons/poker.png" alt="" width="64" height="64"><span><b>포커·하이로우·바둑이</b><small>트럼프 카드로 하는 세븐포커·하이로우·바둑이</small></span></a><a class="app" href="onecard.html"><img src="icons/onecard.png" alt="" width="64" height="64"><span><b>원카드·훌라</b><small>트럼프 카드로 하는 원카드와 훌라 · 컴퓨터와 또는 온라인으로</small></span></a><a class="app" href="pokdeng.html"><img src="icons/pokdeng.png" alt="" width="64" height="64"><span><b>뽁뎅 (복땡)</b><small>태국 카드놀이 · 2~3장 끗수로 선과 1대1 · 온라인도</small></span></a></div>
@@ -106,11 +106,7 @@ const WALLET=(()=>{
   function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=100000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
     setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
   function reset(){set(300000);}
-  // 선물 코드: 기기마다 한 번만 (코드는 해시로만 들어 있음)
-  const GIFTS={4089959630:1000000000};
-  function gift(code){const c=String(code||'').replace(/\s/g,'').toUpperCase();let x=5381;for(const ch of c)x=((x*33)^ch.codePointAt(0))>>>0;
-    const amt=GIFTS[x];if(!amt)return -1;const used=FUNLS.get('bgc-gift',[]);if(used.includes(x))return 0;used.push(x);FUNLS.set('bgc-gift',used);set(get()+amt);return amt;}
-  return{get,set,rescue,today,daily,reset,gift};
+  return{get,set,rescue,today,daily,reset};
 })();
 
 /* ---------- 목소리: 휴대폰·PC에 들어 있는 한국어 음성으로 외침 ---------- */
@@ -153,11 +149,6 @@ const ACH=(()=>{
 document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
 setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
 if(!window.FUN_NO_DAILY)WALLET.daily();
-// 🎁 선물 코드 넣기 (홈의 선물 버튼, 또는 게임 화면에서 Ctrl+Shift+G)
-function giftPrompt(){const c=prompt('🎁 선물 코드를 넣어 주세요');if(c==null)return;const r=WALLET.gift(c);
-  if(r>0){alert('🎉 '+wonF(r)+'을 받았어요! 지갑: '+wonF(WALLET.get()));if(typeof homeRender==='function')homeRender();else location.reload();}
-  else alert(r===0?'이 기기에서 이미 받은 선물 코드예요.':'코드가 맞지 않아요.');}
-document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&(e.key==='G'||e.key==='g')){e.preventDefault();giftPrompt();}});
 /* ---------- 판이 끝나면 게임 판 가운데에 큰 '다음 판' 버튼 (옆 패널의 다음 판 버튼과 같이 움직임) ---------- */
 function bigNext(btnId,hostId){const btn=document.getElementById(btnId),host=document.getElementById(hostId);if(!btn||!host||host.querySelector('.bignext'))return;
   if(!document.getElementById('bignextCss')){const st=document.createElement('style');st.id='bignextCss';st.textContent='.bignext{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;font:800 22px "Noto Sans KR",sans-serif;padding:14px 34px;border-radius:999px;border:3px solid #fff;background:linear-gradient(#ff8a65,#e53935);color:#fff;cursor:pointer;box-shadow:0 6px 20px #0009;animation:bnPulse 1.2s ease-in-out infinite;white-space:nowrap}.bignext[hidden]{display:none}.bignext:active{transform:translate(-50%,-48%)}@keyframes bnPulse{50%{box-shadow:0 6px 28px #ff5252,0 0 0 6px #ffffff55}}@media (max-width:600px){.bignext{font-size:18px;padding:11px 26px}}';document.head.appendChild(st);}
