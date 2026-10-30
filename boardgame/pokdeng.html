@@ -327,7 +327,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="row"><button class="btn primary" id="dnext2" hidden>다음 판</button><button class="btn" id="dNew">새 판</button></div><div id="netroom"></div>
       <div class="opts">
         <label>인원 (선 포함) <select id="dPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option><option value="6">6명</option></select></label>
-        <label>기본 판돈 <select id="dAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">10,000원</option></select></label>
+        <label>기본 판돈 <select id="dAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option><option value="50000">5만원</option><option value="100000">10만원</option></select></label>
         <label>선 <select id="dHouse"><option value="house">컴퓨터 (하우스)</option><option value="turn">돌아가며</option></select></label>
         <label><input type="checkbox" id="dSound"> 소리</label><label><input type="checkbox" id="vVoice"> 목소리</label>
       </div>
@@ -1001,7 +1001,7 @@ const won=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
 const SND={ctx:null,on:store.get('sound',true),
   tick(f=900,v=.15,d=.06){if(!this.on)return;try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}const c=this.ctx,t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.02);},
   card(){this.tick(1500,.12,.05);},chip(){this.tick(2200,.12,.04);setTimeout(()=>this.tick(2600,.08,.04),40);},win(){[660,880,1320].forEach((f,i)=>setTimeout(()=>this.tick(f,.18,.25),i*110));}};
-const opt={players:store.get('players',4),ante:store.get('ante',1000),house:store.get('house',true)};
+const opt={players:store.get('players',4),ante:(x=>[1000,5000,10000,50000,100000].includes(x)?x:1000)(store.get('ante',1000)),house:store.get('house',true)};
 let seq=0;const face=id=>{const t='d'+(++seq)+'_';return PC.face(id).split(`pc${id}_`).join(`${t}pc${id}_`);};
 const cardHtml=(id,o={})=>`<div class="card pk${o.down?' down':''}${o.deal?' deal':''}" data-id="${id}"><div class="ci"><div class="cf">${id<0?'':face(id)}</div><div class="cb">${PC.back()}</div></div></div>`;
 const AVC=['#ffb74d','#64b5f6','#81c784','#ba68c8','#4db6ac','#e57373'];
@@ -1060,8 +1060,8 @@ async function startRound(){
   // 선: 하우스(컴퓨터)면 마지막 자리, 돌아가며면 한 칸씩
   let d;if(opt.house&&!NET){d=n-1;}else{dealerSeat=(dealerSeat+1)%n;d=dealerSeat;}
   if(NET&&!NET.guest)for(let p=1;p<n;p++)if(remote(p))aiMoney[p]=roomMoney(NET.seats[p],aiMoney[p]);   // 친구 자리는 친구 지갑 돈
-  const left=[];for(let p=1;p<n;p++){if((!NET||NET.kind[p]==='ai')&&aiMoney[p]<opt.ante*10){const o=NAMES[p];if(!NET&&!(opt.house&&p===d)){NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}aiMoney[p]=opt.house&&p===d?5000000:100000;}}
-  if(opt.house&&!NET&&aiMoney[d]<1000000)aiMoney[d]=5000000;
+  const left=[];for(let p=1;p<n;p++){if((!NET||NET.kind[p]==='ai')&&aiMoney[p]<opt.ante*10){const o=NAMES[p];if(!NET&&!(opt.house&&p===d)){NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}aiMoney[p]=opt.house&&p===d?Math.max(5000000,opt.ante*500):Math.max(100000,opt.ante*100);}}
+  if(opt.house&&!NET&&aiMoney[d]<opt.ante*100)aiMoney[d]=Math.max(5000000,opt.ante*500);
   S=PD.newRound({players:n,dealer:d,ante:opt.ante});S.turn=-1;S.chips=[...Array(n).keys()].map(seatMoney);
   if(!NET){NAMES[d]=opt.house?'선 (하우스)':NAMES[d];}
   msg((left.length?guestNote(left)+'<br>':'')+`<b>${nameOf(d)}</b>이(가) 선이에요. 돈을 걸어 주세요.`);push();

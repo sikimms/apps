@@ -326,7 +326,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="levels" id="plevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="opts">
         <label>인원 <select id="pPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
-        <label>판돈 <select id="pAnte"><option value="500">500원</option><option value="1000">1,000원</option><option value="5000">5,000원</option></select></label>
+        <label>판돈 <select id="pAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option><option value="50000">5만원</option><option value="100000">10만원</option></select></label>
         <label><input type="checkbox" id="pSound"> 소리</label>
         <label><input type="checkbox" id="vVoice"> 목소리</label>
         <label><input type="checkbox" id="pSq"> 히든 카드 쪼아 보기</label>
@@ -992,7 +992,7 @@ const chipsHtml=amt=>{const cols=[['#c62828',100000],['#1565c0',10000],['#2e7d32
 function bigText(t){VOICE.say(t);const b=$('pbig');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),1200);}
 const KIND={seven:'세븐포커',hilo:'하이로우',badugi:'바둑이'};
 let sqOn=store.get('squeeze',true);
-const opt={kind:store.get('kind','seven'),players:store.get('players',3),level:store.get('level',1),ante:store.get('ante',1000)};
+const opt={kind:store.get('kind','seven'),players:store.get('players',3),level:store.get('level',1),ante:(x=>[1000,5000,10000,50000,100000].includes(x)?x:1000)(store.get('ante',1000))};
 let money=WALLET.get(),rec=store.get('rec',{}),G=null;
 function saveMoney(){WALLET.set(money);$('pmoney').textContent=won(money);}
 const cardHtml=(id,o={})=>`<div class="card pk${o.down?' down':''}${o.deal?' deal':''}${o.pick?' pick':''}${o.chosen?' chosen':''}${o.reveal?' reveal':''}${o.hid?' hid':''}" data-id="${id}" style="${o.delay!=null?`animation-delay:${o.delay}ms;`:''}"><div class="ci"><div class="cf">${face(id)}</div><div class="cb">${PC.back()}</div></div></div>`;
@@ -1070,7 +1070,7 @@ async function newHand(){
   G={kind:opt.kind,s:PK.newGame({kind:opt.kind,players:n,ante:opt.ante,dealer:G?(G.s.dealer+1)%n:0}),ai,known:Array(n).fill(0),last:{},sel:[],phase:'deal',busy:true,reveal:false,result:null,gen:(G?G.gen:0)+1,hid:Date.now()+Math.random()};
   const left=[];
   if(NETP&&!NETP.guest)for(let p=1;p<n;p++)if(remote(p))G.ai[p]=roomMoney(NETP.seats[p],G.ai[p]);   // 친구 자리는 친구 지갑 돈
-  for(let p=0;p<n;p++){if(p===0)money-=opt.ante;else{if(G.ai[p]<opt.ante*10){if(!NETP){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}G.ai[p]=1000000;}G.ai[p]-=opt.ante;}}
+  for(let p=0;p<n;p++){if(p===0)money-=opt.ante;else{if(G.ai[p]<opt.ante*10){if(!NETP){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}G.ai[p]=Math.max(1000000,opt.ante*200);}G.ai[p]-=opt.ante;}}
   G.s.stack=[money].concat(G.ai.slice(1));   // 가진 돈만큼만 걸 수 있음
   saveMoney();$('pnext').hidden=true;const gen=G.gen,s=G.s;
   msg((left.length?guestNote(left)+'<br>':'')+`판돈 ${won(opt.ante)}씩 내고 <b>${KIND[s.kind]}</b>를 시작해요.`);if(left.length)setTimeout(()=>bigText('새 손님!'),200);

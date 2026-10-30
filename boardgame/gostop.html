@@ -244,6 +244,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="sub" id="grec"></div>
       <div class="opts">
         <label>인원 <select id="gPlayers"><option value="2">2명 (맞고)</option><option value="3">3명 고스톱</option></select></label>
+        <label>점당 <select id="gPoint"><option value="100">100원</option><option value="500">500원</option><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option></select></label>
         <label><input type="checkbox" id="gLabels"> 카드에 달·종류 표시</label>
         <label><input type="checkbox" id="gSound"> 소리</label>
         <label><input type="checkbox" id="vVoice"> 목소리</label>
@@ -896,7 +897,7 @@ const store={get(k,d){try{const v=localStorage.getItem('gostop-'+k);return v==nu
   set(k,v){try{localStorage.setItem('gostop-'+k,JSON.stringify(v));}catch(e){}}};
 const {monthOf,CARDS}=GS;
 const won=n=>(n<0?'-':'')+Math.abs(n).toLocaleString()+'원';
-const POINT=100;   // 1점 = 100원 (가짜 돈)
+let POINT=(x=>[100,500,1000,5000,10000].includes(x)?x:100)(store.get('point',100));   // 1점 값 (가짜 돈) — 설정에서 고름, 온라인은 방장 값
 
 /* ---------- 소리: 패를 바닥에 내려치는 '탁' ---------- */
 const SND={ctx:null,on:store.get('sound',true),
@@ -1072,12 +1073,12 @@ function stopOnline(){NETG=null;ME=0;if(pendAsk){pendAsk.res(pendAsk.def);pendAs
 function newGame(keepFirst){
   if(GUEST())return;
   money=WALLET.get();if(money<=0)money=WALLET.rescue(1);   // 공통 지갑 (돈이 다 떨어지면 다시 채워 줌)
-  const left=[];if(!NETG&&!GUEST())for(let q=1;q<3;q++)if(aiMoney[q]<=0){const o=CNAME[q];CNAME[q]=newGuest(CNAME);aiMoney[q]=100000;left.push([o,CNAME[q]]);}
+  const left=[];if(!NETG&&!GUEST())for(let q=1;q<3;q++)if(aiMoney[q]<=0){const o=CNAME[q];CNAME[q]=newGuest(CNAME);aiMoney[q]=Math.max(100000,POINT*1000);left.push([o,CNAME[q]]);}
   if(left.length){store.set('cname',CNAME);store.set('aimoney',aiMoney);setTimeout(()=>PT.shout('새 손님!'),400);}
   const first=G&&keepFirst&&G.nextFirst!=null?G.nextFirst:0,nag=G&&G.nagariNext||1;
   PT.reset();PT.closeOverlay();
   G={s:GS.newRound({players:opt.players,first,nagari:nag}),busy:false,sel:null,hl:[],gen:(G?G.gen:0)+1,nagariNext:1,nextFirst:null};
-  if(NETG){NETG.names=NETG.names.slice(0,G.s.n);roomEach(gi=>({t:'deal',seat:NETG.seats.indexOf(gi),names:NETG.names,level:opt.level,nag,st:maskFor(G.s,NETG.seats.indexOf(gi))}));}
+  if(NETG){NETG.names=NETG.names.slice(0,G.s.n);roomEach(gi=>({t:'deal',seat:NETG.seats.indexOf(gi),names:NETG.names,level:opt.level,pt:POINT,nag,st:maskFor(G.s,NETG.seats.indexOf(gi))}));}
   msg((left.length?guestNote(left)+'<br>':'')+(nag>1?`나가리 다음 판이라 점수가 <b>×${nag}</b>예요. `+turnMsg():turnMsg()));
   G.busy=true;const gen=G.gen,wait=PT.deal(G.s,ro());renderPanel();SND.slap(0.5);
   setTimeout(()=>{if(gen!==G.gen)return;G.busy=false;draw();
@@ -1220,7 +1221,7 @@ function onNet(gi,d){
     if(d.t==='play'&&!G.busy&&!G.s.over&&G.s.turn===p)remoteMove(p,d);
     return;}
   gq(async()=>{   // 친구: 방장이 보낸 판 소식
-    if(d.t==='deal'){ME=d.seat;NETG={guest:true,names:d.names};opt.level=d.level;$('gNew').disabled=true;$('gPlayers').disabled=true;showTab('play');
+    if(d.t==='deal'){ME=d.seat;NETG={guest:true,names:d.names};opt.level=d.level;if(d.pt)POINT=d.pt;$('gNew').disabled=true;$('gPlayers').disabled=true;showTab('play');
       PT.reset();PT.closeOverlay();G={s:unmask(d.st,null),busy:true,sel:null,hl:[],gen:(G?G.gen:0)+1};
       msg((d.nag>1?`나가리 다음 판이라 점수가 <b>×${d.nag}</b>예요. `:'')+'온라인 판이 시작됐어요.');
       const wait=PT.deal(G.s,ro());renderPanel();SND.slap(0.5);await sleep(wait);G.busy=false;draw();
@@ -1245,6 +1246,7 @@ roomMount($('netroom'),{game:'gostop',max:2,start:startOnline,msg:onNet,leave:on
 function renderRec(){const lv=GS.LEVELS[opt.level].name,r=rec[lv]||{w:0,l:0};$('grec').innerHTML=`<b>${lv}</b> 상대 ${r.w}승 ${r.l}패 · 내 돈 ${won(money)}`;}
 function renderLevels(){$('glevels').innerHTML=GS.LEVELS.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===opt.level}" data-k="${k}">${l.name}<span>${['막 둠','눈앞만','계산함','깊이 계산'][k]}</span></button>`).join('');}
 $('glevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b||GUEST())return;opt.level=+b.dataset.k;store.set('level',opt.level);renderLevels();renderRec();if(G&&!G.s.over)draw();});
+$('gPoint').value=String(POINT);$('gPoint').onchange=e=>{if(GUEST()){e.target.value=String(POINT);return;}POINT=+e.target.value;store.set('point',POINT);if(G&&G.s)renderPanel();};
 $('gPlayers').value=String(opt.players);$('gPlayers').onchange=e=>{opt.players=+e.target.value;store.set('players',opt.players);if(NETG){startOnline();return;}G=null;newGame();};
 $('gNew').onclick=()=>{if(GUEST())return;G&&(G.nagariNext=1);if(NETG){startOnline();return;}newGame();};
 $('gLabels').checked=PT.labels;$('gLabels').onchange=e=>{PT.setLabels(e.target.checked);LT.setLabels(e.target.checked);if(G)draw();renderLesson();};
