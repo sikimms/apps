@@ -148,23 +148,25 @@ const SL=(()=>{
 const NAME=['체리','오렌지','자두','종','수박','BAR','세븐','별'];
 // 릴 띠: 위에서 아래로 도는 순서. 같은 그림이 붙어 있으면 세로 줄도 맞을 수 있다
 const REELS=[
-  [0,1,2,0,0,3,1,4,2,1,5,0,2,3,1,6,2,0,1,4,3,7,1,2,5,0,1,3],
-  [1,0,2,3,1,0,4,2,1,5,3,0,2,1,6,0,3,2,4,1,0,7,2,1,3,5,2,0],
-  [2,1,0,3,2,1,4,0,3,2,5,1,0,2,6,3,1,0,4,2,7,1,3,0,2,5,1,3]];
+  [0,1,2,0,0,3,1,4,2,1,5,0,2,3,1,6,2,0,1,4,3,7,1,2,5,2,1,3],
+  [1,0,2,3,1,0,4,2,1,5,3,0,2,1,6,0,3,2,4,1,0,7,2,1,3,5,2,1],
+  [2,1,0,3,2,1,4,0,3,2,5,1,0,2,6,3,1,0,4,2,7,1,3,3,2,5,1,3]];
 const LINES={A:[[1,0],[1,1],[1,2]],B:[[0,0],[0,1],[0,2]],C:[[2,0],[2,1],[2,2]],D:[[0,0],[1,1],[2,2]],E:[[2,0],[1,1],[0,2]],
   F:[[0,0],[1,0],[2,0]],G:[[0,1],[1,1],[2,1]],H:[[0,2],[1,2],[2,2]]};
 const LN=Object.keys(LINES);
 // 같은 그림 3개일 때 건 돈의 몇 배
 const PAY=[20,25,30,50,80,120,250,750];
-const CHERRY2=4;   // 가로·대각선 줄 왼쪽부터 체리 2개 (세로 줄은 위에서부터)
-// 보너스: 그림 3개가 맞을 때마다 숫자가 하나씩 줄고 0이 되면 보너스 크레딧 (8개 이상 걸었을 때만)
-const BONUS=[{sym:0,count:9,pay:100,name:'체리 보너스'},{sym:3,count:5,pay:200,name:'종 보너스'},{sym:5,count:3,pay:500,name:'BAR 보너스'}];
+const CHERRY2=2;   // 한 줄에 체리 2개 (어느 칸이든)
+// 보너스: 맞을 때마다 숫자가 하나씩 줄고 0이 되면 보너스 크레딧 (8개 이상 걸었을 때만)
+// 체리판은 체리 2개로 숫자가 줄고, 체리 3개는 바로 보너스. 종·BAR판은 그림 3개로 숫자가 줆
+const BONUS=[{sym:0,count:20,pay:20,name:'체리 보너스'},{sym:3,count:5,pay:200,name:'종 보너스'},{sym:5,count:3,pay:500,name:'BAR 보너스'}];
 const MIN_BONUS_BET=8;
 // 멈춘 자리 stops[c] = 가운데 칸 위치 → 3×3 그림
 function grid(stops){const g=[[],[],[]];for(let c=0;c<3;c++){const R=REELS[c],n=R.length;for(let r=0;r<3;r++)g[r][c]=R[(stops[c]+r-1+n)%n];}return g;}
 function lineWin(g,k){const s=LINES[k].map(([r,c])=>g[r][c]);
-  if(s[0]===s[1]&&s[1]===s[2])return{mult:PAY[s[0]],sym:s[0],three:true};
-  if(s[0]===0&&s[1]===0)return{mult:CHERRY2,sym:0,three:false};
+  if(s[0]===s[1]&&s[1]===s[2])return{mult:PAY[s[0]],sym:s[0],three:true,cells:[0,1,2]};
+  const ch=[0,1,2].filter(i=>s[i]===0);
+  if(ch.length===2)return{mult:CHERRY2,sym:0,three:false,cells:ch};
   return null;}
 // bets: {A:1,...} → {wins:[{line,mult,amount,sym,three}], total}
 function evaluate(g,bets){const wins=[];let total=0;
@@ -172,11 +174,11 @@ function evaluate(g,bets){const wins=[];let total=0;
   return{wins,total};}
 const spinStops=(rnd=Math.random)=>REELS.map(R=>Math.floor(rnd()*R.length));
 // 환수율: 모든 멈춤 조합을 다 세어서 계산 (줄마다 1씩 8줄)
-function exactRTP(){let bet=0,ret=0,three=[0,0,0,0,0,0,0,0],N=0;const all={};LN.forEach(k=>all[k]=1);
+function exactRTP(){let bet=0,ret=0,three=[0,0,0,0,0,0,0,0],two=0,N=0;const all={};LN.forEach(k=>all[k]=1);
   for(let a=0;a<REELS[0].length;a++)for(let b=0;b<REELS[1].length;b++)for(let c=0;c<REELS[2].length;c++){
-    const r=evaluate(grid([a,b,c]),all);N++;bet+=8;ret+=r.total;r.wins.forEach(w=>{if(w.three)three[w.sym]++;});}
-  // 보너스 몫: 그림 3개 맞은 횟수 ÷ 필요한 횟수 × 보너스
-  let bonus=0;BONUS.forEach(B=>bonus+=three[B.sym]/B.count*B.pay);
+    const r=evaluate(grid([a,b,c]),all);N++;bet+=8;ret+=r.total;r.wins.forEach(w=>{if(w.three)three[w.sym]++;else two++;});}
+  // 보너스 몫: 맞은 횟수 ÷ 필요한 횟수 × 보너스 (체리는 2개로 줄고 3개는 바로 보너스)
+  let bonus=0;BONUS.forEach(B=>bonus+=B.sym===0?(two/B.count+three[0])*B.pay:three[B.sym]/B.count*B.pay);
   return{base:ret/bet,withBonus:(ret+bonus)/bet,perSpin:three.map(x=>x/N),N};}
 return{NAME,REELS,LINES,LN,PAY,CHERRY2,BONUS,MIN_BONUS_BET,grid,lineWin,evaluate,spinStops,exactRTP};
 })();
@@ -341,7 +343,7 @@ const SND={ctx:null,on:store.get('sound',true),
 const LN=SL.LN;
 let credit=store.get('credit',100),bets=store.get('bets',null)||Object.fromEntries(LN.map(k=>[k,1]));
 let counters=store.get('counters',SL.BONUS.map(b=>b.count)),stat=store.get('stat',{bet:0,won:0,spins:0,best:0,coins:0});
-let win=0,busy=false,auto=false,stops=store.get('stops',[3,7,11]),lastWins=[],mode='game',idleAt=Date.now(),note='PUSH BET',noteT=0;
+let event=null,win=0,busy=false,auto=false,stops=store.get('stops',[3,7,11]),lastWins=[],mode='game',idleAt=Date.now(),note='PUSH BET',noteT=0;
 const DBL={hist:store.get('dhist',[]),card:null,flip:0,state:'wait',msg:'',pick:null,half:0};
 const totalBet=()=>LN.reduce((a,k)=>a+(bets[k]||0),0);
 function save(){store.set('credit',credit);store.set('bets',bets);store.set('counters',counters);store.set('stat',stat);store.set('stops',stops);store.set('dhist',DBL.hist.slice(-8));}
@@ -386,10 +388,12 @@ function drawGame(){
   // 당첨 줄
   if(lastWins.length&&!busy&&(frame>>3)%2===0){X.lineWidth=3;
     lastWins.forEach(w=>{const pts=SL.LINES[w.line].map(([r,c])=>[RX[c]+RW/2,RY+CH*r+CH/2]);X.strokeStyle=LCOL[w.line];X.beginPath();pts.forEach((p,i)=>i?X.lineTo(p[0],p[1]):X.moveTo(p[0],p[1]));X.stroke();
-      SL.LINES[w.line].slice(0,w.three?3:2).forEach(([r,c])=>{X.strokeStyle='#ffea00';X.lineWidth=2;X.strokeRect(RX[c]+1,RY+CH*r+1,RW-2,CH-2);X.lineWidth=3;});});}
+      w.cells.map(i=>SL.LINES[w.line][i]).forEach(([r,c])=>{X.strokeStyle='#ffea00';X.lineWidth=2;X.strokeRect(RX[c]+1,RY+CH*r+1,RW-2,CH-2);X.lineWidth=3;});});}
   // 줄 글자
   LPOS.forEach(([k,x,y],i)=>{const on=bets[k]>0,won=lastWins.some(w=>w.line===k)&&(frame>>3)%2===0;
     txt(k,x-6,y,on?'#fff':'#666',8,'center');X.fillStyle=won?'#ffea00':on?'#d50000':'#444';X.fillRect(x-1,y-5,10,10);txt(String(bets[k]),x+4,y,won?'#000':'#fff',8,'center');LBL[i]={k,x:x-11,y:y-7,w:22,h:14};});
+  // 보너스 이벤트
+  if(event){if(--event.t<=0)event=null;else if((frame>>2)%2===0){X.fillStyle='rgba(120,0,40,.88)';X.fillRect(RX[0]-6,RY+CH-6,RX[2]+RW-RX[0]+12,CH+12);X.strokeStyle='#ffea00';X.lineWidth=2;X.strokeRect(RX[0]-5,RY+CH-5,RX[2]+RW-RX[0]+10,CH+10);txt(event.text+'!',RX[1]+RW/2,RY+CH+14,'#ffea00',10,'center');txt('+'+event.amt,RX[1]+RW/2,RY+CH+36,'#fff',10,'center');}}
   // 아래 계기
   X.fillStyle='#101030';X.fillRect(0,206,320,34);X.fillStyle='#2fd3b5';X.fillRect(0,206,320,1);
   txt('CREDIT',4,214,'#ffeb3b');txt(pad(credit,6),4,227,'#ffd740',8);
@@ -503,8 +507,12 @@ async function start(){
 }
 async function settle(res,tb){
   lastWins=res.wins;let bonusTotal=0;const notes=[];
-  if(tb>=SL.MIN_BONUS_BET){const hits=res.wins.filter(w=>w.three);
-    SL.BONUS.forEach((B,i)=>{const n=hits.filter(w=>w.sym===B.sym).length;for(let j=0;j<n;j++){counters[i]--;if(counters[i]<=0){const amt=B.pay*Math.floor(tb/8);bonusTotal+=amt;notes.push(B.name);counters[i]=B.count;}}});}
+  if(tb>=SL.MIN_BONUS_BET){const hits=res.wins.filter(w=>w.three),amtOf=B=>B.pay*Math.floor(tb/8);
+    SL.BONUS.forEach((B,i)=>{const pay=()=>{bonusTotal+=amtOf(B);notes.push(B.name);};
+      if(B.sym===0)hits.filter(w=>w.sym===0).forEach(pay);   // 체리 3개: 바로 보너스
+      const n=B.sym===0?res.wins.filter(w=>w.sym===0&&!w.three).length:hits.filter(w=>w.sym===B.sym).length;   // 체리판은 2개로 숫자가 줆
+      for(let j=0;j<n;j++){counters[i]--;if(counters[i]<=0){pay();counters[i]=B.count;}}});
+    if(bonusTotal){event={text:notes[0].includes('체리')?'CHERRY BONUS':notes[0].includes('종')?'BELL BONUS':'BAR BONUS',amt:bonusTotal,t:90};}}
   const total=res.total+bonusTotal;
   if(total>0){const jack=res.wins.some(w=>w.three&&w.sym>=6)||bonusTotal>0,big=jack||total>=tb*20;
     if(jack){SND.jackpot();flash();party=40;if(typeof VOICE!=='undefined')VOICE.say('잭팟');}else SND.win(big);
@@ -553,9 +561,9 @@ function renderPay(){
     `<div class="pr"><span class="ps">${ART.sym(0)}${ART.sym(0)}<em>?</em></span><b>×${SL.CHERRY2}</b></div>`;
   const r=SL.exactRTP();
   $('payBody').innerHTML=`<div class="paygrid">${rows}</div>
-    <p>건 크레딧 × 배수만큼 받아요. 체리 2개는 줄의 처음 두 칸(가로·대각선은 왼쪽부터, 세로는 위부터)이 체리일 때예요.</p>
+    <p>건 크레딧 × 배수만큼 받아요. 체리는 한 줄에 2개면 어느 칸이든 ×${SL.CHERRY2}예요. 8개 이상 걸면 체리 2개마다 체리판 숫자가 줄고(0이 되면 보너스), <b>체리 3개는 바로 체리 보너스</b>예요.</p>
     <h3>8줄</h3><div class="linesmap">${LN.map(k=>`<span><svg viewBox="0 0 30 30">${[0,1,2].map(rr=>[0,1,2].map(c=>`<rect x="${c*10+1}" y="${rr*10+1}" width="8" height="8" fill="#333" opacity=".25"/>`).join('')).join('')}<polyline points="${SL.LINES[k].map(([rr,c])=>`${c*10+5},${rr*10+5}`).join(' ')}" stroke="${LCOL[k]}" stroke-width="3" fill="none"/></svg>${k}</span>`).join('')}</div>
-    <h3>보너스</h3><p>${SL.BONUS.map(b=>`<b>${b.name}</b>: ${SL.NAME[b.sym]} 3개가 ${b.count}번 맞으면 ${b.pay} 크레딧 × (건 크레딧 ÷ 8)`).join('<br>')}<br>모두 합쳐 <b>${SL.MIN_BONUS_BET} 크레딧 이상</b> 걸었을 때만 숫자가 줄어요.</p>
+    <h3>보너스</h3><p>${SL.BONUS.map(b=>`<b>${b.name}</b>: ${b.sym===0?`체리 2개가 ${b.count}번 맞거나 체리 3개가 나오면 바로`:`${SL.NAME[b.sym]} 3개가 ${b.count}번 맞으면`} ${b.pay} 크레딧 × (건 크레딧 ÷ 8)`).join('<br>')}<br>모두 합쳐 <b>${SL.MIN_BONUS_BET} 크레딧 이상</b> 걸었을 때만 숫자가 줄어요.</p>
     <h3>더블업</h3><p>다음 카드가 BIG(8~K)인지 SMALL(A~6)인지 맞히면 두 배, 틀리면 잃어요. 7은 무승부. HALF는 절반을 먼저 받고 나머지만 걸어요. 맞힐 확률은 반반이라 환수율에는 영향이 없어요.</p>
     <h3>공정성</h3><p>레버(START)를 누르는 순간 릴 3개의 멈출 자리를 무작위로 정해요. STOP은 연출만 빨리 끝내요. 모든 멈춤 조합 ${r.N.toLocaleString()}가지를 다 세면 줄마다 1씩 8줄 걸 때 환수율은 약 <b>${Math.round(r.withBonus*1000)/10}%</b>예요 (보너스 포함).</p>`;}
 
