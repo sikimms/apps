@@ -159,9 +159,9 @@ const LINES={A:[[1,0],[1,1],[1,2]],B:[[0,0],[0,1],[0,2]],C:[[2,0],[2,1],[2,2]],D
   F:[[0,0],[1,0],[2,0]],G:[[0,1],[1,1],[2,1]],H:[[0,2],[1,2],[2,2]]};
 const LN=Object.keys(LINES);
 // 같은 그림 3개일 때 건 돈의 몇 배
-const PAY=[15,15,20,40,80,120,250,750];
+const PAY=[15,20,20,40,80,120,250,750];
 const CHERRY1=1;   // 왼쪽 릴에 체리 1개: 그 칸의 가로줄만 받음
-const CHERRY2=2;   // 한 줄에 체리 2개 (어느 칸이든). 대각선은 왼쪽 칸(1·7번)과 한가운데(5번)가 체리일 때만
+const CHERRY2=2;   // 한 줄의 처음 두 칸이 체리 (가로·대각선은 왼쪽부터, 세로는 위부터)
 const FRUITS=[0,1,2],FRUIT_MIX=1;   // 가로·대각선 줄이 체리·오렌지·자두로만 섞여 나옴 (수박·세로 줄은 해당 없음)
 // 보너스: 맞을 때마다 숫자가 하나씩 줄고 0이 되면 보너스 크레딧 (건 크레딧에 비례, 8개 기준)
 // 체리판은 체리 2개로 숫자가 줄고, 체리 3개는 바로 보너스. 종·BAR판은 그림 3개로 숫자가 줆
@@ -173,8 +173,8 @@ function grid(stops){const g=[[],[],[]];for(let c=0;c<3;c++){const R=REELS[c],n=
 function lineWin(g,k){const s=LINES[k].map(([r,c])=>g[r][c]);
   if(s[0]===s[1]&&s[1]===s[2])return{mult:PAY[s[0]],sym:s[0],three:true,cells:[0,1,2]};
   const ch=[0,1,2].filter(i=>s[i]===0);
-  if(ch.length===2&&(!"DE".includes(k)||(ch[0]===0&&ch[1]===1)))return{mult:CHERRY2,sym:0,three:false,cells:ch};
-  if(ch.length===1&&ch[0]===0&&"ABC".includes(k))return{mult:CHERRY1,sym:0,three:false,cells:ch};
+  if(ch.length===2&&ch[0]===0&&ch[1]===1)return{mult:CHERRY2,sym:0,three:false,cells:ch};
+  if(ch[0]===0&&"ABC".includes(k))return{mult:CHERRY1,sym:0,three:false,cells:[0]};
   if("ABCDE".includes(k)&&s.every(x=>FRUITS.includes(x)))return{mult:FRUIT_MIX,sym:-1,three:false,cells:[0,1,2]};
   return null;}
 // bets: {A:1,...} → {wins:[{line,mult,amount,sym,three}], total}
@@ -589,7 +589,7 @@ function renderPay(){
     `<div class="pr"><span class="ps">${ART.sym(0)}${ART.sym(0)}<em>?</em></span><b>×${SL.CHERRY2}</b></div><div class="pr"><span class="ps">${ART.sym(0)}<em>?</em><em>?</em></span><b>×${SL.CHERRY1}</b></div><div class="pr"><span class="ps">${ART.sym(1)}${ART.sym(0)}${ART.sym(2)}</span><b>×${SL.FRUIT_MIX}</b></div>`;
   const r=SL.exactRTP();
   $('payBody').innerHTML=`<div class="paygrid">${rows}</div>
-    <p>건 크레딧 × 배수만큼 받아요. 체리는 한 줄에 2개면 ×${SL.CHERRY2}예요. 대각선은 왼쪽 칸과 한가운데가 체리일 때만 받아요. 왼쪽 릴에 체리가 1개 있으면 그 칸의 가로줄이 ×${SL.CHERRY1}이에요. 가로줄·대각선이 체리·오렌지·자두로만 섞여 나오면 (수박은 빠져요) ×${SL.FRUIT_MIX}이에요. 체리 2개가 나온 줄마다 체리판 숫자가 1씩 줄고(0이 되면 보너스), <b>체리 3개는 바로 체리 보너스</b>예요.</p>
+    <p>건 크레딧 × 배수만큼 받아요. 체리 2개는 줄의 처음 두 칸(가로·대각선은 왼쪽부터, 세로는 위부터)이 체리일 때 ×${SL.CHERRY2}예요. 왼쪽 릴에 체리가 1개 있으면 그 칸의 가로줄이 ×${SL.CHERRY1}이에요. 가로줄·대각선이 체리·오렌지·자두로만 섞여 나오면 (수박은 빠져요) ×${SL.FRUIT_MIX}이에요. 체리 2개가 나온 줄마다 체리판 숫자가 1씩 줄고(0이 되면 보너스), <b>체리 3개는 바로 체리 보너스</b>예요.</p>
     <h3>8줄</h3><div class="linesmap">${LN.map(k=>`<span><svg viewBox="0 0 30 30">${[0,1,2].map(rr=>[0,1,2].map(c=>`<rect x="${c*10+1}" y="${rr*10+1}" width="8" height="8" fill="#333" opacity=".25"/>`).join('')).join('')}<polyline points="${SL.LINES[k].map(([rr,c])=>`${c*10+5},${rr*10+5}`).join(' ')}" stroke="${LCOL[k]}" stroke-width="3" fill="none"/></svg>${k}</span>`).join('')}</div>
     <h3>보너스</h3><p><b>과일 이벤트</b>: 화면 9칸이 모두 과일(체리·오렌지·자두·수박)이면 ${SL.ALL_FRUIT.pay} 크레딧 (8개 걸었을 때 기준, 건 만큼 비례)<br>${SL.BONUS.map(b=>`<b>${b.name}</b>: ${b.sym===0?`체리 2개가 ${b.count}번 맞거나 체리 3개가 나오면 바로`:`${SL.NAME[b.sym]} 3개가 ${b.count}번 맞으면`} ${b.pay} 크레딧 (8개 걸었을 때 기준, 건 만큼 비례)`).join('<br>')}<br>모두 합쳐 <b>${SL.MIN_BONUS_BET} 크레딧 이상</b> 걸었을 때만 숫자가 줄어요.</p>
     <h3>더블업</h3><p>다음 카드가 BIG(8~K)인지 SMALL(A~6)인지 맞히면 두 배, 틀리면 잃어요. 7은 무승부. HALF는 절반을 먼저 받고 나머지만 걸어요. 맞힐 확률은 반반이라 환수율에는 영향이 없어요.</p>
