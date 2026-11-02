@@ -41,6 +41,14 @@ body{margin:0;background-color:var(--bg);color:var(--ink);font-family:var(--f);m
 .crt::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;background:repeating-linear-gradient(#0000 0 3px,#0000001f 3px 4px)}
 .crt::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:3;border-radius:inherit;
   background:radial-gradient(ellipse at 50% 50%,#0000 60%,#000a 100%),linear-gradient(120deg,#ffffff14 0%,#fff0 28%);box-shadow:inset 0 0 40px #000c}
+.crt .roll{display:none}
+.crt.old{border-radius:34px/40px;box-shadow:0 0 0 3px #050505,0 0 46px #7fb4ff44}
+.crt.old #scr{image-rendering:pixelated;filter:contrast(1.14) saturate(1.28) brightness(1.08)}
+.crt.old::before{background:repeating-linear-gradient(#0000 0 2px,#00000066 2px 4px),repeating-linear-gradient(90deg,#ff00000f 0 1px,#00ff000f 1px 2px,#0000ff0f 2px 3px)}
+.crt.old::after{box-shadow:inset 0 0 70px 18px #000c}
+.crt.old .roll{display:block;position:absolute;left:0;right:0;height:22%;top:-25%;z-index:2;pointer-events:none;background:linear-gradient(#fff0,#ffffff12,#fff0);animation:roll 7s linear infinite}
+@keyframes roll{to{top:105%}}
+@media (prefers-reduced-motion:reduce){.crt.old .roll{animation:none;display:none}}
 .crt.flick #scr{animation:fl .12s steps(2) 3}@keyframes fl{50%{filter:brightness(1.6) saturate(1.4)}}
 /* ---------- 조작판 ---------- */
 .panel{margin-top:4px;padding:14px 12px 12px;border-radius:12px;background:linear-gradient(#1b1b22,#0c0c11);box-shadow:inset 0 2px 0 #ffffff14,inset 0 0 0 2px #000,0 3px 0 #000}
@@ -106,11 +114,11 @@ body{margin:0;background-color:var(--bg);color:var(--ink);font-family:var(--f);m
 <body>
 
 <div class="wrap">
-  <div class="top"><button class="ibtn" id="bPay">배당표</button><button class="ibtn" id="bSound" aria-label="소리">🔊</button><button class="ibtn" id="bReset">처음으로</button></div>
+  <div class="top"><button class="ibtn" id="bOld" title="화면 느낌 바꾸기">📺 옛날 화면</button><button class="ibtn" id="bPay">배당표</button><button class="ibtn" id="bSound" aria-label="소리">🔊</button><button class="ibtn" id="bReset">처음으로</button></div>
   <div class="modes" id="modes"><button data-mode="slot" class="on">🎰 슬롯</button><button data-mode="bj">🂡 블랙잭</button><button data-mode="bac">🎴 바카라</button></div>
   <div class="cab" id="cab">
     <div class="marquee"><div class="bulbs" id="bulbs"></div><div class="mq"><b>★ 황금별 ★</b><small>GOLDEN STAR</small></div></div>
-    <div class="bezel" id="crtBox"><div class="crt" id="crt"><canvas id="scr" width="960" height="720" aria-label="슬롯머신 화면"></canvas></div></div>
+    <div class="bezel" id="crtBox"><div class="crt" id="crt"><canvas id="scr" width="960" height="720" aria-label="슬롯머신 화면"></canvas><div class="roll"></div></div></div>
     <div id="casWrap" hidden><div class="casinfo">CREDIT <b id="casCredit">0</b><button class="ibtn" id="casCoin">🪙 동전 넣기 (+100)</button></div><div id="casino"></div></div>
     <div class="panel" id="slotPanel">
       <div class="btns">
@@ -350,12 +358,18 @@ function save(){store.set('credit',credit);store.set('bets',bets);store.set('cou
 
 /* ---------- 도트 그림: SVG를 작게 굽고 확대해서 픽셀이 보이게 ---------- */
 const SPR=[],MINI=[];
-function bake(svg,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const img=new Image();img.onload=()=>{c.getContext('2d').drawImage(img,0,0,w,h);};img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);return c;}
+function bake(svg,w,h,lo){const c=document.createElement('canvas');c.width=w;c.height=h;const img=new Image();img.onload=()=>{const k=c.getContext('2d');k.drawImage(img,0,0,w,h);if(lo)try{const d=k.getImageData(0,0,w,h),a=d.data;for(let i=0;i<a.length;i+=4){for(let j=0;j<3;j++)a[i+j]=Math.round(a[i+j]/36)*36;a[i+3]=a[i+3]<110?0:255;}k.putImageData(d,0,0);}catch(e){}};img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);return c;}
 const Q=3;   // 선명하게: 화면을 3배 해상도로 그림
-for(let i=0;i<8;i++){SPR[i]=bake(ART.sym(i),46*Q,37*Q);MINI[i]=bake(ART.sym(i),16*Q,13*Q);}
+const HI=[[],[]],LO=[[],[]];   // 선명한 그림 · 옛날 도트 그림
+for(let i=0;i<8;i++){HI[0][i]=bake(ART.sym(i),46*Q,37*Q);HI[1][i]=bake(ART.sym(i),16*Q,13*Q);LO[0][i]=bake(ART.sym(i),46,37,true);LO[1][i]=bake(ART.sym(i),16,13,true);}
 
 /* ---------- 화면 배치 ---------- */
-const scr=$('scr'),X=scr.getContext('2d');X.setTransform(Q,0,0,Q,0,0);X.imageSmoothingEnabled=true;X.imageSmoothingQuality='high';
+const scr=$('scr'),X=scr.getContext('2d');
+let OLD=store.get('oldscreen',true);   // 옛날 오락실 화면 (320×240 그대로, 굵은 주사선)
+function applyScreen(){const q=OLD?1:Q;scr.width=320*q;scr.height=240*q;X.setTransform(q,0,0,q,0,0);X.imageSmoothingEnabled=!OLD;X.imageSmoothingQuality='high';
+  const src=OLD?LO:HI;for(let i=0;i<8;i++){SPR[i]=src[0][i];MINI[i]=src[1][i];}
+  $('crt').classList.toggle('old',OLD);$('bOld').textContent=OLD?'📺 옛날 화면':'✨ 깨끗한 화면';}
+applyScreen();
 const RX=[88,158,228],RW=64,RY=22,CH=54,RH=CH*3;
 const LBL={};   // 줄 글자 위치 (누르기용)
 const LPOS=[['D',80,13],['F',RX[0]+RW/2,13],['G',RX[1]+RW/2,13],['H',RX[2]+RW/2,13],['E',301,13],['B',80,RY+CH*.5],['A',80,RY+CH*1.5],['C',80,RY+CH*2.5],
@@ -370,7 +384,7 @@ REEL.forEach((r,c)=>r.p=((stops[c]-1)%r.n+r.n)%r.n);
 let frame=0;
 function draw(){
   frame++;X.fillStyle='#000';X.fillRect(0,0,320,240);
-  if(mode==='double')drawDouble();else if(mode==='demo')drawDemo();else drawGame();
+  if(mode==='boot')drawBoot();else if(mode==='double')drawDouble();else if(mode==='demo')drawDemo();else drawGame();
 }
 function drawGame(){
   // 왼쪽 보너스판
@@ -442,8 +456,17 @@ function drawDouble(){
   const m=DBL.state==='wait'?((frame>>4)%2?'BIG OR SMALL ?':''):DBL.msg;txt(m,160,200,DBL.msg.startsWith('YOU WIN')?'#69f0ae':DBL.msg.startsWith('YOU LOSE')?'#ff5252':'#fff',8,'center');
   txt('TAKE / HALF / BIG / SMALL',160,222,'#888',8,'center');
 }
+/* ---------- 전원 켤 때 점검 화면 ---------- */
+const BOOT=['GOLDEN STAR  SYSTEM','','RAM CHECK ......... OK','VIDEO CHECK ....... OK','SOUND CHECK ....... OK','REEL 1 2 3 ........ OK','','8 LINES  3 REELS','CREDIT '+pad(credit,6)];
+const bootAt=Date.now();
+function drawBoot(){const k=Date.now()-bootAt,n=Math.floor(k/260);X.fillStyle='#000';X.fillRect(0,0,320,240);
+  BOOT.slice(0,n).forEach((s,i)=>txt(s,28,44+i*16,s.endsWith('OK')?'#69f0ae':i===0?'#ffd600':'#fff'));
+  if((frame>>3)%2)txt('_',28,44+Math.min(n,BOOT.length)*16,'#fff');
+  if(n>BOOT.length+2){mode='game';idleAt=Date.now();note='PUSH START';lights();}}
 /* ---------- 데모 화면 (손님 없을 때) ---------- */
+const TUNE=[523,659,784,1046,784,659,587,0,494,587,784,988,784,587,523,0];let tuneAt=0;
 function drawDemo(){
+  if(OLD&&SND.on&&SND.ctx&&SND.ctx.state==='running'&&Date.now()>tuneAt){SND.seq(TUNE,.15,.028);tuneAt=Date.now()+9000;}
   const page=Math.floor((Date.now()-idleAt)/5000)%2;
   X.fillStyle='#05051a';X.fillRect(0,0,320,240);
   for(let i=0;i<40;i++){const x=(i*73+frame*(1+i%3))%320,y=(i*41)%240;X.fillStyle=i%5?'#334':'#ffd54f';X.fillRect(x,y,2,2);}
@@ -463,12 +486,12 @@ function loop(t){const dt=Math.min(50,t-(lastT||t))/1000;lastT=t;
       if(k>=1){r.p=a.to;r.spinning=false;r.anim=null;SND.stop();a.done&&a.done();}}
     else{r.p-=24*dt;if(r.stopAt!=null&&performance.now()>=r.stopAt)beginStop(r);}}
   if(DBL.flip>0&&DBL.flip<1){DBL.flip=Math.min(1,DBL.flip+dt*2.2);}
-  if(mode==='game'&&!busy&&win===0&&!auto&&Date.now()-idleAt>25000){mode='demo';idleAt=Date.now();}
+  if(mode==='game'&&!busy&&win===0&&!auto&&Date.now()-idleAt>(OLD?15000:25000)){mode='demo';idleAt=Date.now();}
   draw();requestAnimationFrame(loop);}
 function beginStop(r){if(r.anim||!r.spinning)return;const c=REEL.indexOf(r),t=((stops[c]-1)%r.n+r.n)%r.n;
   let to=Math.floor(r.p)-2;while(((to%r.n)+r.n)%r.n!==t)to--;r.anim={from:r.p,to,t0:performance.now(),dur:300+(r.p-to)*10,done:r.onStop};r.stopAt=null;}
 function stopNext(){const r=REEL.find(x=>x.spinning&&!x.anim);if(r)beginStop(r);}
-function wake(){idleAt=Date.now();if(mode==='demo'){mode='game';return true;}return false;}
+function wake(){idleAt=Date.now();if(mode==='demo'||mode==='boot'){mode='game';note='PUSH START';return true;}return false;}
 
 /* ---------- 버튼 불빛 ---------- */
 function lights(){
@@ -576,12 +599,14 @@ tap('bAuto',()=>{wake();auto=!auto;if(auto&&!busy&&mode==='game'){if(win>0)take(
 const coin=()=>{wake();credit+=100;stat.coins+=100;SND.coin();setTimeout(()=>SND.coin(),120);dropCoins(10);note='PUSH START';save();lights();};
 $('bCoin').onclick=coin;$('casCoin').onclick=()=>{coin();if(typeof CAS!=='undefined')CAS.render();};$('bCoin').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();coin();}};
 $('bPay').onclick=()=>{renderPay();$('pay').hidden=false;};$('payClose').onclick=()=>$('pay').hidden=true;$('pay').onclick=e=>{if(e.target.id==='pay')$('pay').hidden=true;};
+$('bOld').onclick=()=>{OLD=!OLD;store.set('oldscreen',OLD);applyScreen();};
 $('bSound').onclick=()=>{SND.on=!SND.on;store.set('sound',SND.on);$('bSound').textContent=SND.on?'🔊':'🔇';};$('bSound').textContent=SND.on?'🔊':'🔇';
 $('bReset').onclick=()=>{if(!confirm('크레딧과 기록을 처음으로 돌릴까요?'))return;credit=100;counters=SL.BONUS.map(b=>b.count);stat={bet:0,won:0,spins:0,best:0,coins:0};win=0;DBL.hist=[];mode='game';save();lights();};
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(typeof CAS!=='undefined'&&CAS.mode!=='slot')return;const k=e.key.toLowerCase();
   if(e.code==='Space'||e.key==='Enter'){e.preventDefault();start();}else if(k==='b'){mode==='double'?dblPick('big'):pushBet();}else if(k==='s'){dblPick('small');}
   else if(k==='m')maxBet();else if(k==='t')take();else if(k==='d')openDouble();else if(k==='h')half();lights();});
 addEventListener('resize',buildBulbs);
+if(OLD)mode='boot';
 buildBulbs();lights();requestAnimationFrame(loop);
 (document.fonts&&document.fonts.load?document.fonts.load('8px "Press Start 2P"'):Promise.resolve()).catch(()=>{});
 
