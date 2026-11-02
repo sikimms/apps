@@ -173,9 +173,9 @@ const CHERRY2=2;   // 가로줄은 어느 칸이든 체리 2개. 대각선은 �
 // 체리판은 체리 2개로 숫자가 줄고, 체리 3개는 바로 보너스. 종·BAR판은 그림 3개로 숫자가 줆
 const BONUS=[{sym:0,count:20,free:5,mult:2,name:'체리 보너스'},{sym:3,count:5,free:10,mult:3,name:'종 보너스'},{sym:5,count:3,free:10,mult:3,name:'BAR 보너스'}];
 // 멈춘 자리 stops[c] = 가운데 칸 위치 → 3×3 그림
-// 세븐: 줄과 상관없이 화면에 2개 이상이면 건 돈의 배수를 받음. 한가운데(5번)에 나오면 건 돈의 절반을 적립하고,
+// 세븐: 줄과 상관없이 화면에 2개 이상이면 건 돈의 배수를 받음. 한가운데(5번)에 나오면 건 돈만큼 적립하고,
 // 한 줄로 맞으면 적립금을 다 받고 공짜판 7번
-const SEVEN={sym:6,scatter:[0,0,.5,3],free:7,mult:5,poolRate:.5,poolSeed:100};
+const SEVEN={sym:6,scatter:[0,0,.5,3],free:7,mult:5,poolRate:1,poolSeed:100};
 // 화면 9칸이 모두 과일(체리·오렌지·자두·수박)이면 공짜판
 const ALL_FRUIT={syms:[0,1,2,4],free:5,mult:3};
 function grid(stops){const g=[[],[],[]];for(let c=0;c<3;c++){const R=REELS[c],n=R.length;for(let r=0;r<3;r++)g[r][c]=R[(stops[c]+r-1+n)%n];}return g;}
@@ -362,7 +362,7 @@ const SND={ctx:null,on:store.get('sound',true),
 const LN=SL.LN;
 let credit=store.get('credit',100),bets=store.get('bets',null)||Object.fromEntries(LN.map(k=>[k,1]));
 let counters=store.get('counters',SL.BONUS.map(b=>b.count)),stat=store.get('stat',{bet:0,won:0,spins:0,best:0,coins:0});
-let lastSev=[],pool=store.get('pool',SL.SEVEN.poolSeed),event=null,fg=store.get('fg',null),boardHit=[0,0,0],win=fg?fg.win:0,busy=false,auto=false,stops=store.get('stops',[3,7,11]),lastWins=[],mode='game',idleAt=Date.now(),note='PUSH BET',noteT=0;
+let poolHit=0,poolGain=0,lastSev=[],pool=store.get('pool',SL.SEVEN.poolSeed),event=null,fg=store.get('fg',null),boardHit=[0,0,0],win=fg?fg.win:0,busy=false,auto=false,stops=store.get('stops',[3,7,11]),lastWins=[],mode='game',idleAt=Date.now(),note='PUSH BET',noteT=0;
 const DBL={hist:store.get('dhist',[]),card:null,flip:0,state:'wait',msg:'',pick:null,half:0};
 const MAXLINE=8;   // 줄마다 최대 8개, 8줄 합쳐 최대 64개
 LN.forEach(k=>{if(bets[k]>MAXLINE)bets[k]=MAXLINE;});
@@ -407,7 +407,9 @@ function drawGame(){
     if(boardHit[i]>0)boardHit[i]--;const hitOn=boardHit[i]>0&&(frame>>2)%2===0;
     txt('LAST',8,y+22,'#fff');X.fillStyle=hitOn?'#ffea00':'#d50000';X.fillRect(42,y+16,20,12);txt(String(counters[i]),52,y+22,hitOn?'#000':'#fff',8,'center');txt('TIMES',8,y+33,'#fff');
     const nI=B.sym===0?2:3;for(let k=0;k<nI;k++)X.drawImage(MINI[B.sym],(nI===2?20:10)+k*21,y+39,16,13);});
-  txt('7 POOL',6,192,'#ffd600');txt(pad(pool,6),6,203,'#fff');
+  if(poolHit>0)poolHit--;const poolOn=poolHit>0&&(frame>>2)%2===0;
+  if(poolOn){X.fillStyle='#ffea00';X.fillRect(4,186,72,22);}
+  txt(poolHit>0?'+'+poolGain:'7 POOL',6,192,poolOn?'#000':'#ffd600');txt(pad(pool,6),6,203,poolOn?'#000':'#fff');
   // 릴 틀
   X.fillStyle='#0d6b5e';X.fillRect(RX[0]-6,RY-6,RX[2]+RW-RX[0]+12,RH+12);X.fillStyle='#2fd3b5';X.fillRect(RX[0]-4,RY-4,RX[2]+RW-RX[0]+8,RH+8);
   for(let c=0;c<3;c++)drawReel(c);
@@ -554,14 +556,15 @@ async function runFree(){
   event={text:'FREE GAME!',sub:(fg.n-fg.done)+' GAMES  x'+fg.mult,t:130};SND.jackpot();flash();party=40;if(typeof VOICE!=='undefined')VOICE.say('공짜판');note='FREE GAME';lights();await sleep(2200);
   while(fg.done<fg.n){fg.done++;fg.win=win;save();lastWins=[];lastSev=[];note=`FREE ${fg.done}/${fg.n} x${fg.mult}`;
     stops=SL.spinStops();const res=SL.evaluate(SL.grid(stops),bets);await spinReels();
-    lastWins=res.wins;lastSev=res.sevens;const amt=res.total*fg.mult;
+    lastWins=res.wins;lastSev=res.sevens;if(res.center)addPool(totalBet());const amt=res.total*fg.mult;
     if(amt>0){SND.win(amt>=totalBet()*5);await countUp(win+amt,amt>=totalBet()*5);fg.win=win;stat.best=Math.max(stat.best,win);await sleep(700);}else await sleep(350);}
   fg=null;event={text:'FREE GAME END',sub:'TOTAL '+win,t:130};SND.jackpot();flash();party=40;lastWins=[];lastSev=[];save();await sleep(2000);
 }
+function addPool(tb){poolGain=Math.max(1,Math.round(tb*SL.SEVEN.poolRate));pool+=poolGain;poolHit=120;SND.seq([1319,1568,2093],.07,.06);save();}   // 한가운데 세븐: 적립
 function endSpin(){note=win>0?'TAKE OR DOUBLE':'PUSH START';busy=false;idleAt=Date.now();save();lights();}
 async function settle(res,tb){
   lastWins=res.wins;lastSev=res.sevens;const freeAdd=[];
-  if(res.center)pool+=Math.max(1,Math.round(tb*SL.SEVEN.poolRate));   // 한가운데 세븐: 적립
+  if(res.center)addPool(tb);
   const sevenLines=res.wins.filter(w=>w.three&&w.sym===SL.SEVEN.sym).length;let poolPay=0;
   if(sevenLines){poolPay=pool;pool=SL.SEVEN.poolSeed;for(let j=0;j<sevenLines;j++)freeAdd.push(SL.SEVEN);event={text:'777 JACKPOT',sub:'+'+poolPay,t:110};}
   {const hits=res.wins.filter(w=>w.three);
@@ -622,7 +625,7 @@ function renderPay(){
   $('payBody').innerHTML=`<div class="paygrid">${rows}</div>
     <p>건 크레딧 × 배수만큼 받아요. 체리 2개는 가로줄이면 어느 칸이든, 대각선은 왼쪽부터 두 칸, 세로줄은 위부터 두 칸일 때 ×${SL.CHERRY2}예요. 왼쪽 릴에 체리가 1개 있으면 그 칸의 가로줄이 ×${SL.CHERRY1}이에요. 체리 2개가 나온 줄마다 체리판 숫자가 1씩 줄고(0이 되면 보너스), <b>체리 3개는 바로 공짜판</b>이에요.</p>
     <h3>8줄</h3><div class="linesmap">${LN.map(k=>`<span><svg viewBox="0 0 30 30">${[0,1,2].map(rr=>[0,1,2].map(c=>`<rect x="${c*10+1}" y="${rr*10+1}" width="8" height="8" fill="#333" opacity=".25"/>`).join('')).join('')}<polyline points="${SL.LINES[k].map(([rr,c])=>`${c*10+5},${rr*10+5}`).join(' ')}" stroke="${LCOL[k]}" stroke-width="3" fill="none"/></svg>${k}</span>`).join('')}</div>
-    <h3>세븐</h3><p>세븐은 줄과 상관없이 화면에 <b>2개면 건 돈의 절반, 3개면 건 돈의 ${SL.SEVEN.scatter[3]}배</b>를 받아요. 한가운데 칸에 세븐이 나오면 건 돈의 절반이 <b>7 POOL</b>에 쌓이고, 세븐이 <b>한 줄</b>로 맞으면 쌓인 돈을 모두 받고 <b>공짜판 ${SL.SEVEN.free}번 ×${SL.SEVEN.mult}</b>이 시작돼요.</p><h3>보너스</h3><p><b>이벤트는 공짜판이에요.</b> 건 돈을 안 내고 자동으로 돌고, 당첨금에 배수가 붙어요.<br><b>과일 이벤트</b>: 화면 9칸이 모두 과일(체리·오렌지·자두·수박)이면 공짜판 ${SL.ALL_FRUIT.free}번 ×${SL.ALL_FRUIT.mult}<br>${SL.BONUS.map(b=>`<b>${b.name}</b>: ${b.sym===0?`체리 2개가 ${b.count}번 맞거나 체리 3개가 나오면 바로`:`${SL.NAME[b.sym]} 3개가 ${b.count}번 맞으면`} 공짜판 ${b.free}번 ×${b.mult}`).join('<br>')}<br>모두 합쳐 <b>${SL.MIN_BONUS_BET} 크레딧 이상</b> 걸었을 때만 숫자가 줄어요.</p>
+    <h3>세븐</h3><p>세븐은 줄과 상관없이 화면에 <b>2개면 건 돈의 절반, 3개면 건 돈의 ${SL.SEVEN.scatter[3]}배</b>를 받아요. 한가운데 칸(5번)에 세븐이 나오면 건 돈만큼 <b>7 POOL</b>에 쌓이고(공짜판 중에도), 세븐이 <b>한 줄</b>로 맞으면 쌓인 돈을 모두 받고 <b>공짜판 ${SL.SEVEN.free}번 ×${SL.SEVEN.mult}</b>이 시작돼요.</p><h3>보너스</h3><p><b>이벤트는 공짜판이에요.</b> 건 돈을 안 내고 자동으로 돌고, 당첨금에 배수가 붙어요.<br><b>과일 이벤트</b>: 화면 9칸이 모두 과일(체리·오렌지·자두·수박)이면 공짜판 ${SL.ALL_FRUIT.free}번 ×${SL.ALL_FRUIT.mult}<br>${SL.BONUS.map(b=>`<b>${b.name}</b>: ${b.sym===0?`체리 2개가 ${b.count}번 맞거나 체리 3개가 나오면 바로`:`${SL.NAME[b.sym]} 3개가 ${b.count}번 맞으면`} 공짜판 ${b.free}번 ×${b.mult}`).join('<br>')}<br>모두 합쳐 <b>${SL.MIN_BONUS_BET} 크레딧 이상</b> 걸었을 때만 숫자가 줄어요.</p>
     <h3>더블업</h3><p>다음 카드가 BIG(8~K)인지 SMALL(A~6)인지 맞히면 두 배, 틀리면 잃어요. 7은 무승부. HALF는 절반을 먼저 받고 나머지만 걸어요. 맞힐 확률은 반반이라 환수율에는 영향이 없어요.</p>
     <h3>공정성</h3><p>레버(START)를 누르는 순간 릴 3개의 멈출 자리를 무작위로 정해요. STOP은 연출만 빨리 끝내요. 모든 멈춤 조합 ${r.N.toLocaleString()}가지를 다 세면 줄마다 1씩 8줄 걸 때 환수율은 약 <b>${Math.round(r.withBonus*1000)/10}%</b>예요 (보너스 포함).</p>`;}
 
