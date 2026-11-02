@@ -352,6 +352,8 @@ let credit=store.get('credit',100),bets=store.get('bets',null)||Object.fromEntri
 let counters=store.get('counters',SL.BONUS.map(b=>b.count)),stat=store.get('stat',{bet:0,won:0,spins:0,best:0,coins:0});
 let event=null,boardHit=[0,0,0],win=0,busy=false,auto=false,stops=store.get('stops',[3,7,11]),lastWins=[],mode='game',idleAt=Date.now(),note='PUSH BET',noteT=0;
 const DBL={hist:store.get('dhist',[]),card:null,flip:0,state:'wait',msg:'',pick:null,half:0};
+const MAXLINE=8;   // 줄마다 최대 8개, 8줄 합쳐 최대 64개
+LN.forEach(k=>{if(bets[k]>MAXLINE)bets[k]=MAXLINE;});
 const totalBet=()=>LN.reduce((a,k)=>a+(bets[k]||0),0);
 function save(){store.set('credit',credit);store.set('bets',bets);store.set('counters',counters);store.set('stat',stat);store.set('stops',stops);store.set('dhist',DBL.hist.slice(-8));}
 
@@ -503,10 +505,10 @@ function lights(){
   $('stat').innerHTML=`돌린 횟수 ${stat.spins.toLocaleString()} · 건 크레딧 ${stat.bet.toLocaleString()} · 받은 크레딧 ${stat.won.toLocaleString()} · 실제 환수율 <b>${stat.bet?Math.round(stat.won/stat.bet*1000)/10:0}%</b> · 최고 당첨 ${stat.best}`;}
 
 /* ---------- 베팅 ---------- */
-function pushBet(){if(wake()||busy||win>0||mode!=='game')return;const mx=Math.max(...LN.map(k=>bets[k]));LN.forEach(k=>bets[k]=mx>=9?1:Math.min(9,(bets[k]||0)+1));
+function pushBet(){if(wake()||busy||win>0||mode!=='game')return;const mx=Math.max(...LN.map(k=>bets[k]));LN.forEach(k=>bets[k]=mx>=MAXLINE?1:Math.min(MAXLINE,(bets[k]||0)+1));
   if(totalBet()>credit)LN.forEach(k=>bets[k]=Math.max(0,Math.min(bets[k],Math.floor(credit/8))));SND.bet();lastWins=[];note='PUSH START';save();lights();}
-function maxBet(){if(wake()||busy||win>0||mode!=='game')return;const per=Math.max(1,Math.min(9,Math.floor(credit/8)));LN.forEach(k=>bets[k]=per);SND.bet();lastWins=[];note='PUSH START';save();lights();}
-function lineClick(k){if(busy||win>0||mode!=='game')return;bets[k]=((bets[k]||0)+1)%10;SND.bet();lastWins=[];save();lights();}
+function maxBet(){if(wake()||busy||win>0||mode!=='game')return;const per=Math.max(1,Math.min(MAXLINE,Math.floor(credit/8)));LN.forEach(k=>bets[k]=per);SND.bet();lastWins=[];note='PUSH START';save();lights();}
+function lineClick(k){if(busy||win>0||mode!=='game')return;bets[k]=((bets[k]||0)+1)%(MAXLINE+1);SND.bet();lastWins=[];save();lights();}
 scr.addEventListener('click',e=>{if(wake())return;const b=scr.getBoundingClientRect(),x=(e.clientX-b.left)*320/b.width,y=(e.clientY-b.top)*240/b.height;
   if(mode==='double'){if(DBL.state!=='wait')return;if(x<110)dblPick('small');else if(x>210)dblPick('big');return;}
   const hit=Object.values(LBL).find(L=>x>=L.x&&x<=L.x+L.w&&y>=L.y&&y<=L.y+L.h);if(hit)lineClick(hit.k);});
