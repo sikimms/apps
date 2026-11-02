@@ -59,6 +59,7 @@ body{margin:0;background-color:var(--bg);color:var(--ink);font-family:var(--f);m
 .ab.big i{width:66px;height:66px}
 .coinrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
 #bCoin,#casCoin{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.cchip{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .slotbox{display:flex;align-items:center;gap:10px;cursor:pointer;background:linear-gradient(#2b2b33,#15151b);border-radius:10px;padding:8px 12px;box-shadow:inset 0 0 0 2px #000,inset 0 2px 0 #ffffff12}
 .cslot{width:12px;height:44px;border-radius:6px;background:linear-gradient(90deg,#000,#333,#000);box-shadow:0 0 0 3px #c9a23a,0 0 10px #ff3d00aa}
 .slotbox b{font:9px/1.6 var(--px);color:#ff7043;animation:bk 1s steps(2) infinite}
@@ -168,7 +169,7 @@ const LN=Object.keys(LINES);
 // 같은 그림 3개일 때 건 돈의 몇 배
 const PAY=[15,15,20,30,60,80,250,750];
 const CHERRY1=1;   // 왼쪽 릴에 체리 1개: 그 칸의 가로줄만 받음
-const CHERRY2=2;   // 가로줄은 어느 칸이든 체리 2개. 대각선은 왼쪽부터, 세로는 위부터 두 칸
+const CHERRY2=2;   // 가로줄은 어느 칸이든 체리 2개 (첫 칸이 BAR·세븐이면 안 줌). 대각선은 왼쪽부터, 세로는 위부터 두 칸
 // 보너스: 맞을 때마다 숫자가 하나씩 줄고 0이 되면 공짜판 (건 돈을 안 내고 돌리고, 당첨금에 배수)
 // 체리판은 체리 2개로 숫자가 줄고, 체리 3개는 바로 보너스. 종·BAR판은 그림 3개로 숫자가 줆
 const BONUS=[{sym:0,count:20,free:5,mult:2,name:'체리 보너스'},{sym:3,count:5,free:10,mult:3,name:'종 보너스'},{sym:5,count:3,free:10,mult:3,name:'BAR 보너스'}];
@@ -182,7 +183,7 @@ function grid(stops){const g=[[],[],[]];for(let c=0;c<3;c++){const R=REELS[c],n=
 function lineWin(g,k){const s=LINES[k].map(([r,c])=>g[r][c]);
   if(s[0]===s[1]&&s[1]===s[2])return{mult:PAY[s[0]],sym:s[0],three:true,cells:[0,1,2]};
   const ch=[0,1,2].filter(i=>s[i]===0);
-  if(ch.length===2&&("ABC".includes(k)||(ch[0]===0&&ch[1]===1)))return{mult:CHERRY2,sym:0,three:false,cells:ch};
+  if(ch.length===2&&(("ABC".includes(k)&&s[0]!==5&&s[0]!==6)||(ch[0]===0&&ch[1]===1)))return{mult:CHERRY2,sym:0,three:false,cells:ch};
   if(ch[0]===0&&"ABC".includes(k))return{mult:CHERRY1,sym:0,three:false,cells:[0]};
   return null;}
 // bets: {A:1,...} → {wins:[{line,mult,amount,sym,three}], total}
@@ -623,7 +624,7 @@ function renderPay(){
     `<div class="pr"><span class="ps">${ART.sym(0)}${ART.sym(0)}<em>?</em></span><b>×${SL.CHERRY2}</b></div><div class="pr"><span class="ps">${ART.sym(0)}<em>?</em><em>?</em></span><b>×${SL.CHERRY1}</b></div>`;
   const r=SL.exactRTP();
   $('payBody').innerHTML=`<div class="paygrid">${rows}</div>
-    <p>건 크레딧 × 배수만큼 받아요. 체리 2개는 가로줄이면 어느 칸이든, 대각선은 왼쪽부터 두 칸, 세로줄은 위부터 두 칸일 때 ×${SL.CHERRY2}예요. 왼쪽 릴에 체리가 1개 있으면 그 칸의 가로줄이 ×${SL.CHERRY1}이에요. 체리 2개가 나온 줄마다 체리판 숫자가 1씩 줄고(0이 되면 보너스), <b>체리 3개는 바로 공짜판</b>이에요.</p>
+    <p>건 크레딧 × 배수만큼 받아요. 체리 2개는 가로줄이면 어느 칸이든(첫 칸이 BAR나 세븐이면 안 줘요), 대각선은 왼쪽부터 두 칸, 세로줄은 위부터 두 칸일 때 ×${SL.CHERRY2}예요. 왼쪽 릴에 체리가 1개 있으면 그 칸의 가로줄이 ×${SL.CHERRY1}이에요. 체리 2개가 나온 줄마다 체리판 숫자가 1씩 줄고(0이 되면 보너스), <b>체리 3개는 바로 공짜판</b>이에요.</p>
     <h3>8줄</h3><div class="linesmap">${LN.map(k=>`<span><svg viewBox="0 0 30 30">${[0,1,2].map(rr=>[0,1,2].map(c=>`<rect x="${c*10+1}" y="${rr*10+1}" width="8" height="8" fill="#333" opacity=".25"/>`).join('')).join('')}<polyline points="${SL.LINES[k].map(([rr,c])=>`${c*10+5},${rr*10+5}`).join(' ')}" stroke="${LCOL[k]}" stroke-width="3" fill="none"/></svg>${k}</span>`).join('')}</div>
     <h3>세븐</h3><p>세븐은 줄과 상관없이 화면에 <b>2개면 건 돈의 절반, 3개면 건 돈의 ${SL.SEVEN.scatter[3]}배</b>를 받아요. 한가운데 칸(5번)에 세븐이 나오면 건 돈만큼 <b>7 POOL</b>에 쌓이고(공짜판 중에도), 세븐이 <b>한 줄</b>로 맞으면 쌓인 돈을 모두 받고 <b>공짜판 ${SL.SEVEN.free}번 ×${SL.SEVEN.mult}</b>이 시작돼요.</p><h3>보너스</h3><p><b>이벤트는 공짜판이에요.</b> 건 돈을 안 내고 자동으로 돌고, 당첨금에 배수가 붙어요.<br><b>과일 이벤트</b>: 화면 9칸이 모두 과일(체리·오렌지·자두·수박)이면 공짜판 ${SL.ALL_FRUIT.free}번 ×${SL.ALL_FRUIT.mult}<br>${SL.BONUS.map(b=>`<b>${b.name}</b>: ${b.sym===0?`체리 2개가 ${b.count}번 맞거나 체리 3개가 나오면 바로`:`${SL.NAME[b.sym]} 3개가 ${b.count}번 맞으면`} 공짜판 ${b.free}번 ×${b.mult}`).join('<br>')}<br>모두 합쳐 <b>${SL.MIN_BONUS_BET} 크레딧 이상</b> 걸었을 때만 숫자가 줄어요.</p>
     <h3>더블업</h3><p>다음 카드가 BIG(8~K)인지 SMALL(A~6)인지 맞히면 두 배, 틀리면 잃어요. 7은 무승부. HALF는 절반을 먼저 받고 나머지만 걸어요. 맞힐 확률은 반반이라 환수율에는 영향이 없어요.</p>
@@ -693,8 +694,9 @@ const chipsBar=sel=>`<div class="cchips">${[1,5,10,25,50,100].map(v=>`<button cl
 function bjSeats(){const B=BJ;if(!B.others.length)bjSeatUp();return `<div class="bjseats">${B.others.map((g,i)=>`<div class="bjs${B.turn===i?' cur':''}"><span class="r">${g.cards.length?bjVal(g.cards):''}</span><b>${g.name}</b><small>${g.credit.toLocaleString()} 크레딧${g.bet?' · 건 '+g.bet:''}${g.res?' · <b>'+g.res+'</b>':''}</small><div class="ccards">${g.cards.map(c=>cardSvg(c)).join('')}</div></div>`).join('')}</div>`;}
 function bjRank(){const B=BJ,t=[{name:'나',s:B.score,me:1},...B.others.map(g=>({name:g.name,s:g.score}))].sort((x,y)=>y.s-x.s);
   return `<div class="bjrank">${t.map((x,i)=>`<span class="${x.me?'me':''}">${i+1}위 ${x.name} ${x.s>=0?'+':''}${x.s}</span>`).join('')}</div>`;}
+let chipHeld=null;
 function render(){
-  const box=$('casino');if(mode==='bj'){
+  const box=$('casino'),keep=chipHeld&&box.querySelector('.cchips');if(mode==='bj'){
     const B=BJ,showD=B.state==='done'||B.state==='dealer';
     box.innerHTML=`<div class="felt"><div class="ctitle">BLACKJACK <small>블랙잭이면 3:2 · 딜러는 17에서 멈춤 · 누적 손익으로 경쟁</small></div>
       <div class="crow"><span class="clbl">딜러 ${showD?bjVal(B.dealer):B.dealer.length?'?':''}</span><div class="ccards">${B.dealer.map((c,i)=>cardSvg(c,i===1&&!showD)).join('')}</div></div>
@@ -712,6 +714,7 @@ function render(){
       <div class="road">${A.road.slice(-30).map(r=>`<i class="${r}">${r==='T'?'T':''}</i>`).join('')}</div>
       <div class="cmsg">${A.msg}</div>
       <div class="cbar">${A.state!=='deal'?`${chipsBar()}<div class="cbtns"><span class="cbet">걸기 <b>${tot}</b></span><button class="cb" data-bac="clear">지우기</button><button class="cb go" data-bac="deal"${tot&&tot<=cr()?'':' disabled'}>DEAL</button></div>`:''}</div></div>`;}
+  if(keep){const fresh=box.querySelector('.cchips');if(fresh&&fresh!==keep)fresh.replaceWith(keep);}
   const m=$('casCredit');if(m)m.textContent=credit;}
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 // 블랙잭 진행
@@ -781,13 +784,24 @@ async function bacDeal(){const A=BAC,tot=A.bets.P+A.bets.B+A.bets.T;if(!tot||tot
   const nm={P:'플레이어',B:'뱅커',T:'타이'}[w];A.msg=`${nm} ${w==='T'?'':'승 '}(${pv} : ${bv}) · ${got>tot?`🎉 <b>+${got-tot}</b> 크레딧`:got===tot?'본전':`-${tot-got}`}`;
   if(got>tot){SND.win(got-tot>=50);}else if(got<tot)SND.lose();if(typeof VOICE!=='undefined')VOICE.say(nm+(w==='T'?'':' 승'));
   A.state='done';render();if(typeof lights==='function')lights();}
+// 칩 한 번 더하기: 더 못 걸면 false
+function addChip(){let ok=false;
+  if(mode==='bj'&&(BJ.state==='bet'||BJ.state==='done')){if(BJ.state==='done'){BJ.state='bet';BJ.hands=[];BJ.dealer=[];BJ.bet=0;BJ.others.forEach(bjReset);}if(BJ.bet+chip<=cr()){BJ.bet+=chip;ok=true;}BJ.msg='DEAL을 누르면 시작해요.';}
+  if(mode==='bac'&&BAC.state!=='deal'){if(BAC.state==='done'){BAC.state='bet';BAC.p=[];BAC.b=[];BAC.bets={P:0,B:0,T:0};}const tot=BAC.bets.P+BAC.bets.B+BAC.bets.T;if(tot+chip<=cr()){BAC.bets[BAC.pick]+=chip;ok=true;}BAC.msg='DEAL을 누르면 시작해요.';}
+  if(ok)SND.bet();return ok;}
+// 칩을 누르고 있으면 점점 빠르게 계속 더함
+document.addEventListener('pointerdown',e=>{const ch=e.target.closest&&e.target.closest('#casWrap [data-chip]');if(!ch)return;e.preventDefault();
+  chip=+ch.dataset.chip;ch.parentNode.querySelectorAll('.cchip').forEach(b=>b.classList.toggle('on',b===ch));
+  chipHeld=ch;let n=0,timer=null;
+  const stop=()=>{clearTimeout(timer);chipHeld=null;['pointerup','pointercancel','touchend','touchcancel'].forEach(t=>{ch.removeEventListener(t,stop);document.removeEventListener(t,stop);});render();};
+  ['pointerup','pointercancel','touchend','touchcancel'].forEach(t=>{ch.addEventListener(t,stop);document.addEventListener(t,stop);});
+  const tick=()=>{if(chipHeld!==ch)return;const ok=addChip();render();if(!ok)return;n++;timer=setTimeout(tick,n===1?350:Math.max(50,200-n*15));};
+  tick();});
+document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('#casWrap [data-chip]'))e.preventDefault();});
 document.addEventListener('click',e=>{
   const md=e.target.closest('#modes [data-mode]');if(md){setMode(md.dataset.mode);return;}
   if(!$('casWrap')||$('casWrap').hidden||!e.target.closest('#casWrap'))return;
-  const ch=e.target.closest('[data-chip]');if(ch){chip=+ch.dataset.chip;SND.bet();
-    if(mode==='bj'&&(BJ.state==='bet'||BJ.state==='done')){if(BJ.state==='done'){BJ.state='bet';BJ.hands=[];BJ.dealer=[];BJ.bet=0;BJ.others.forEach(bjReset);}if(BJ.bet+chip<=cr())BJ.bet+=chip;BJ.msg='DEAL을 누르면 시작해요.';}
-    if(mode==='bac'&&BAC.state!=='deal'){if(BAC.state==='done'){BAC.state='bet';BAC.p=[];BAC.b=[];BAC.bets={P:0,B:0,T:0};}const tot=BAC.bets.P+BAC.bets.B+BAC.bets.T;if(tot+chip<=cr())BAC.bets[BAC.pick]+=chip;BAC.msg='DEAL을 누르면 시작해요.';}
-    render();return;}
+  const ch=e.target.closest('[data-chip]');if(ch){if(e.detail===0){chip=+ch.dataset.chip;addChip();render();}return;}   // 마우스·손가락은 아래 pointerdown에서 처리, 여기는 키보드
   const bn=e.target.closest('[data-bjn]');if(bn&&(BJ.state==='bet'||BJ.state==='done')){BJ.n=+bn.dataset.bjn;BJ.others=BJ.others.slice(0,BJ.n);bjSeatUp();bjSave();render();return;}
   const bj=e.target.closest('[data-bj]');if(bj){const a=bj.dataset.bj;if(a==='deal')bjDeal();else if(a==='clear'){if(BJ.state==='deal'||BJ.state==='play'||BJ.state==='dealer')return;BJ.bet=0;BJ.state='bet';BJ.hands=[];BJ.dealer=[];BJ.others.forEach(bjReset);render();}else bjAct(a);return;}
   const bz=e.target.closest('[data-bz]');if(bz&&BAC.state!=='deal'){BAC.pick=bz.dataset.bz;render();return;}
