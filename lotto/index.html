@@ -968,7 +968,10 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .qrhead{font-size:15px}.qrwin{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .qrwin .ball{width:30px;height:30px;font-size:12.5px}
 .qrsum{padding:8px 12px;border-radius:8px;background:var(--card);font-weight:500}.qrsum.win{background:var(--ok-soft)}
-.ball.bon{box-shadow:0 0 0 3px #e0a400}
+.ball.bon{position:relative;opacity:.75;box-shadow:none;outline:2px dashed #e0a400;outline-offset:2px}
+.ball.bon::after,.ball.bonw::after{content:"B";position:absolute;right:-7px;top:-7px;width:15px;height:15px;border-radius:50%;background:#e0a400;color:#fff;font:700 10px/15px sans-serif;text-align:center}
+.ball.bonw{position:relative}
+.bontag{display:inline-block;margin-left:4px;padding:0 6px;border-radius:9px;background:#fff3cc;color:#8a6400;font-size:12px}
 #qrRes .row .ball{width:32px;height:32px;font-size:13px}
 #qrRes .row .balls{gap:4px}
 .qrview{position:relative;width:100%;aspect-ratio:3/4;max-height:65vh;background:#000;border-radius:10px;overflow:hidden}
@@ -11398,7 +11401,7 @@ function histDetail(nums){
   const r=histCheck(nums),set=new Set(nums),H=HIST(),first=H[0],last=H[H.length-1];
   const row=(h,k)=>{const main=h.slice(2,8);
     return `<div class="hrow"><div class="hmeta"><b>${h[0]}회</b> ${fmtDate(h[1])} <span class="prize">${k}등</span>${k===1&&h[9]?` <span class="note">1등 ${h[10]}명 · 1인당 ${won(h[9])}</span>`:''}</div>
-      <div class="balls">${main.map(n=>ballHtml(n,set.has(n)?' hit':' miss')).join('')}<span class="plus">+</span>${ballHtml(h[8],set.has(h[8])?' hit':' miss')}</div></div>`;};
+      <div class="balls">${main.map(n=>ballHtml(n,set.has(n)?' hit':' miss')).join('')}<span class="plus">+</span>${ballHtml(h[8],set.has(h[8])?' bon':' miss bonw')}</div></div>`;};
   const list=[1,2,3].flatMap(k=>r[k].map(h=>row(h,k)));
   return `<div class="hsum"><div class="balls">${nums.map(n=>ballHtml(n)).join('')}</div>
     <div class="hcount">
@@ -11444,7 +11447,7 @@ function renderPrize(){
 function renderHdr(){setTimeout(renderPrize,0);const H=HIST(),h=H[H.length-1],el=document.getElementById("hdrLast");if(!el||!h)return;
   const d=String(h[1]),dt=d.length===8?new Date(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6)):null,days=dt?(Date.now()-dt)/864e5:99;
   const when=days<8?"지난주":"최근",won=wonText(h[9]);
-  el.innerHTML=`<div class="hl1">${when} 당첨번호 · ${h[0]}회${d.length===8?" ("+(+d.slice(4,6))+"/"+(+d.slice(6))+")":""}</div><div class="hlb">${h.slice(2,8).map(n=>ballHtml(n)).join("")}<span class="plus">+</span>${ballHtml(h[8])}</div>`+
+  el.innerHTML=`<div class="hl1">${when} 당첨번호 · ${h[0]}회${d.length===8?" ("+(+d.slice(4,6))+"/"+(+d.slice(6))+")":""}</div><div class="hlb">${h.slice(2,8).map(n=>ballHtml(n)).join("")}<span class="plus">+</span>${ballHtml(h[8],' bonw')}</div>`+
     `<div class="hlp">${won?`1등 <b>${won}</b>${h[10]?` · ${h[10]}명`:""}`:"1등 금액은 발표 후 들어와요"}</div>`;}
 function savedNotice(){
   const el=document.getElementById('sBanner');if(!el)return;
@@ -11464,7 +11467,7 @@ function savedNotice(){
     setTimeout(()=>{const s=document.getElementById('saved');if(s)s.scrollIntoView({block:'center',behavior:'smooth'});},120);};
 }
 function renderLatest(){renderHdr();setTimeout(savedNotice,0);const H=HIST(),h=H[H.length-1];
-  $('hlatest').innerHTML=`<span class="note"><b>최근 ${h[0]}회</b> ${fmtDate(h[1])}</span><span class="balls">${h.slice(2,8).map(n=>ballHtml(n)).join('')}<span class="plus">+</span>${ballHtml(h[8])}</span>`+
+  $('hlatest').innerHTML=`<span class="note"><b>최근 ${h[0]}회</b> ${fmtDate(h[1])}</span><span class="balls">${h.slice(2,8).map(n=>ballHtml(n)).join('')}<span class="plus">+</span>${ballHtml(h[8],' bonw')}</span>`+
     `<button class="mini" id="useLatest">이 번호로 맞춰보기</button>`;
   $('useLatest').onclick=()=>{h.slice(2,8).forEach((n,k)=>$('w'+(k+1)).value=n);$('wb').value=h[8];
     store.set('win',h.slice(2,9).map(String));renderRows(false);$('winMore').open=true;showMsg(`${h[0]}회 당첨 번호를 맞춰보기 칸에 넣었어요.`,true);};
@@ -11643,12 +11646,12 @@ function showQR(res){
   const ranks=res.games.map(g=>rank(g.nums,W));
   const best=['1등','2등','3등','4등','5등'].find(r=>ranks.includes(r));
   const won=ranks.filter(r=>r!=='낙첨').length;
-  head+=`<div class="qrwin"><span class="note">${res.round}회 당첨 번호 ${fmtDate(h[1])}</span><span class="balls">${h.slice(2,8).map(n=>ballHtml(n)).join('')}<span class="plus">+</span>${ballHtml(h[8])}</span></div>
+  head+=`<div class="qrwin"><span class="note">${res.round}회 당첨 번호 ${fmtDate(h[1])}</span><span class="balls">${h.slice(2,8).map(n=>ballHtml(n)).join('')}<span class="plus">+</span>${ballHtml(h[8],' bonw')}</span></div>
     <div class="qrsum ${best?'win':''}">${best?`${won}게임 당첨! 가장 높은 등수 <b>${best}</b>`:'아쉽지만 모두 낙첨이에요.'}</div>`;
   box.innerHTML=head+res.games.map((g,i)=>{const r=ranks[i];
     return `<div class="row"><div class="lab">${'ABCDE'[i]}</div><div class="balls">${g.nums.map(n=>ballHtml(n,W.main.has(n)?' hit':(n===W.bonus?' bon':' miss'))).join('')}</div>
       <div class="act"><button class="mini" data-qsave="${i}">보관</button></div>
-      <div class="rinfo"><span class="ty">${g.type}</span>${r==='낙첨'?'<span class="note">낙첨</span>':`<span class="prize">${r}</span>`}<span class="note">${g.nums.filter(n=>W.main.has(n)).length}개 일치${r==='2등'?' + 보너스':''}</span></div></div>`;}).join('')+
+      <div class="rinfo"><span class="ty">${g.type}</span>${r==='낙첨'?'<span class="note">낙첨</span>':`<span class="prize">${r}</span>`}<span class="note">${g.nums.filter(n=>W.main.has(n)).length}개 일치</span>${g.nums.includes(W.bonus)?`<span class="bontag">보너스 ${W.bonus}${r==='2등'?' → 2등':' (등수엔 안 들어가요)'}</span>`:''}</div></div>`;}).join('')+
     `<div class="opt" style="margin-top:8px">${res.url?`<a class="btn" href="${res.url}" target="_blank" rel="noopener">동행복권에서 확인</a>`:''}<span class="note">실물 용지와 공식 발표로 한 번 더 확인해 주세요.</span></div>`;
 }
 function toastMsg(t){showMsg(t);}
