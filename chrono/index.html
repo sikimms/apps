@@ -10854,7 +10854,7 @@ function modelHuman(key,height,o={}){const a=ASSET[key];if(!a||!a.anims)return n
   acts.slash=find(/Sword_?Slash/i,/Punch/);acts.shoot=find(/Shoot_OneHanded/,/^Gun_Shoot$/,/Idle_Gun_Shoot/,/Punch/);acts.punch=find(/^Punch_Right$/,/^Punch$/,/Punch/);
   acts.hit=find(/RecieveHit|HitRecieve$|ReceiveHit/i,/HitRec/i);acts.death=find(/^Death$/);acts.roll=find(/^Roll$/);
   ['slash','shoot','punch','hit','roll','death'].forEach(k=>{if(acts[k]){acts[k].setLoop(THREE.LoopOnce,1);acts[k].clampWhenFinished=true;}});
-  const hn=m.getObjectByName('Fist.R')?'Fist.R':m.getObjectByName('Wrist.R')?'Wrist.R':'Hand.R',ln=hn.replace('.R','.L');
+  const pickB=c=>c.find(n=>m.getObjectByName(n))||c[0];const hn=pickB(['FistR','Fist.R','WristR','Wrist.R','HandR','Hand.R','hand_r']),ln=pickB(['FistL','Fist.L','WristL','Wrist.L','HandL','Hand.L','hand_l']);
   const rig={root:g,kind:'model',mixer,acts,cur:null,model:m,key,handR:m.getObjectByName(hn),handL:m.getObjectByName(ln),hn,ln,S:height/1.8,pAtk:-1};
   if(acts.idle){acts.idle.play();mixer.update(Math.random());rig.cur='idle';}
   if(o.weapon)setWeaponMesh(rig,o.weapon);return rig;}
@@ -11139,8 +11139,8 @@ function enemyShoot(e,T){const S=e.D.shoot,from=new THREE.Vector3(e.x+Math.sin(e
   const n=S.burst||1;for(let k=0;k<n;k++)setTimeout(()=>{if(e.dead||state!=='play')return;const d=to.distanceTo(from),tt=d/S.spd,v=to.clone().sub(from).divideScalar(tt);v.y+=.5*S.grav*tt;shots.push(makeProj(from.clone(),v,S.grav,S.dmg,S.kind,false));
     S.kind==='laser'?SFX.laser():S.kind==='arrow'?SFX.bow():SFX.shot();},k*140);}
 function makeProj(from,vel,grav,dmg,kind,mine){const g=new THREE.Group();const col={stone:0xd8d0c0,arrow:0xc08a50,bullet:0xffe08a,laser:mine?0x5ff0ff:0xff5ad8,dyna:0xff4a20,orb:0xff5ad8,fire:0xff7a2a}[kind]||0xffffff;
-  if(kind==='arrow'){const m=mesh(G.cyl(.02,.02,.8,5),mc(0x8a6a40),0,0,0,g);m.rotation.x=Math.PI/2;}else if(kind==='dyna'){mesh(G.cyl(.05,.05,.25,6),mc(0xc02a20),0,0,0,g);g.add(glowSprite(0xffa040,.5,.9));}
-  else{const m=mesh(G.sph(kind==='orb'?.28:.1,8,6),new THREE.MeshBasicMaterial({color:0xffffff}),0,0,0,g);m.castShadow=false;g.add(glowSprite(col,kind==='orb'?1.4:kind==='stone'?.25:.7,.9));}
+  if(kind==='arrow'){const m=mesh(G.cyl(.045,.045,1.1,6),mc(0xc8a060),0,0,0,g);m.rotation.x=Math.PI/2;const tip=mesh(G.cone(.09,.22,6),mc(0xdfe6ee,{metal:.8}),0,0,.6,g);tip.rotation.x=Math.PI/2;g.add(glowSprite(mine?0xffe6a0:0xff8060,.7,.8));}else if(kind==='dyna'){mesh(G.cyl(.05,.05,.25,6),mc(0xc02a20),0,0,0,g);g.add(glowSprite(0xffa040,.5,.9));}
+  else{const m=mesh(G.sph(kind==='orb'?.28:kind==='stone'?.16:.1,8,6),new THREE.MeshBasicMaterial({color:0xffffff}),0,0,0,g);m.castShadow=false;g.add(glowSprite(col,kind==='orb'?1.4:kind==='stone'?.6:.7,.9));}
   g.position.copy(from);scene.add(g);return{g,v:vel.clone(),grav,dmg,kind,mine,life:4,id:eid++,r:kind==='orb'?.5:.25};}
 function tickProj(list,dt,auth){for(let i=list.length-1;i>=0;i--){const s=list[i],p=s.g.position;s.life-=dt;s.v.y-=s.grav*dt;p.addScaledVector(s.v,dt);if(s.kind==='arrow')s.g.lookAt(p.clone().add(s.v));
     let gone=s.life<=0||p.y<0||Math.abs(p.x)>halfW(p.z)+.3;
@@ -11366,7 +11366,7 @@ function openBrief(i){state='brief';const E=ERAS[i];let n=1;
     <div class="cta">${n<E.brief.length?'<button class="btn" id="bNext" type="button">다음 무전 ▸</button><button class="btn" id="bSkip" type="button">모두 보기</button>':''}<button class="btn go" id="bGo" type="button">시간 이동</button><button class="btn" id="bBack" type="button">시대 목록</button></div>`;
     const nx=$('bNext');if(nx){nx.onclick=()=>{n++;SFX.radio();draw();};$('bSkip').onclick=()=>{n=E.brief.length;draw();};}
     $('bGo').onclick=()=>{if(net&&net.host){roomEach(()=>({t:'start',era:i}));}startStage(i);};$('bBack').onclick=toMenu;};draw();show('sBrief');}
-function startStage(i,fromNet){audioInit();const need=(ERA_SETS[i]||[]).filter(k=>!ASSET[k]&&!LOADING[k]);if(need.length&&!startStage.wait){startStage.wait=1;toast('3D 모델 불러오는 중…');loadEra(i).then(()=>{startStage.wait=0;startStage(i,fromNet);});return;}
+function startStage(i,fromNet,loaded){audioInit();const need=(ERA_SETS[i]||[]).filter(k=>!ASSET[k]);if(need.length&&!loaded){if(startStage.wait)return;startStage.wait=1;toast('3D 모델 불러오는 중…');loadEra(i).then(()=>{startStage.wait=0;startStage(i,fromNet,true);});return;}
   if(!net)me.gi=0;else if(net.host)me.gi=0;
   for(const k in others)delete others[k];
   buildStage(i);menuBuilt=-1;initMe();mission={t:0,kills:0,hits:0,taken:0,done:false,cp:0};state='play';show(null);resize();radioQ=[];radioT=0;SFX.warp();
