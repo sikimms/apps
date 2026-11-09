@@ -100,11 +100,13 @@ button{font-family:var(--f-body);color:inherit;cursor:pointer}button:focus-visib
       <button type="button" class="game" data-g="bowl" style="--c1:#5a1e4a;--c2:#140a18"><span class="t">볼링</span><small>공을 좌우로 옮기고 위로 휙 밀어 굴려요. 휘게 밀면 훅이 걸려요. 10프레임, 최대 4명.</small></button>
       <button type="button" class="game" data-g="pool" style="--c1:#1f5a4a;--c2:#081814"><span class="t">포켓볼 (8볼)</span><small>단색·줄무늬 공을 먼저 다 넣고 마지막에 8번 공을 넣으면 승리.</small></button>
       <button type="button" class="game" data-g="carom" style="--c1:#1e3a6a;--c2:#08101e"><span class="t">4구</span><small>내 공으로 빨간 공 두 개를 모두 맞히면 1점. 상대 공을 맞히면 파울.</small></button>
+      <button type="button" class="game" data-g="three" style="--c1:#5a3a12;--c2:#180e04"><span class="t">3구</span><small>빨간 공 하나 + 흰 공·노란 공. 내 공으로 나머지 두 공을 맞히면 1점. 쓰리쿠션은 두 번째 공 전에 쿠션 3번!</small></button>
     </div>
     <div class="box"><h2>누구와 할까요?</h2>
       <div class="row"><span class="lab">상대</span><span class="seg" id="setMode"><button type="button" data-v="cpu">컴퓨터와</button><button type="button" data-v="local">한 폰으로 번갈아</button></span></div>
       <div class="row" id="rowCount"><span class="lab">사람 수</span><span class="seg" id="setCount"><button type="button" data-v="2">2명</button><button type="button" data-v="3">3명</button><button type="button" data-v="4">4명</button></span></div>
       <div class="row" id="rowNames"><span class="lab">이름</span><div class="names" id="names"></div></div>
+      <div class="row" id="rowR3"><span class="lab">3구 규칙</span><span class="seg" id="setR3"><button type="button" data-v="3c">쓰리쿠션 (5점)</button><button type="button" data-v="easy">쉬운 3구 (10점)</button></span></div>
       <div class="row" id="rowCpu"><span class="lab">컴퓨터 실력</span><span class="seg" id="setCpu"><button type="button" data-v="0">쉬움</button><button type="button" data-v="1">보통</button><button type="button" data-v="2">잘함</button></span></div>
       <div class="row"><button class="btn go" id="bStart" type="button">시작</button></div>
     </div>
@@ -440,7 +442,7 @@ function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>c
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t;
-const SKEY='loungeClub.v1';let save={gfx:1,game:'bowl',mode:'cpu',count:2,cpu:1,guide:1,names:['나','친구','손님 3','손님 4']};
+const SKEY='loungeClub.v1';let save={gfx:1,game:'bowl',mode:'cpu',count:2,cpu:1,guide:1,r3:'3c',names:['나','친구','손님 3','손님 4']};
 try{const s=JSON.parse(localStorage.getItem(SKEY)||'null');if(s)save=Object.assign(save,s);}catch(e){}
 const persist=()=>{try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}};
 
@@ -454,6 +456,8 @@ const SFX={clack(v){const n=performance.now();if(n-lastClack<25)return;lastClack
  cushion(v){noise(.08,500,.25*clamp(v/3,.05,1),1.5);},pocket(){noise(.25,300,.4,1,'lowpass');tone(180,90,.2,.15);},cueHit(v){noise(.04,2400,.35*clamp(v,.2,1),3);tone(900,600,.04,.1,'triangle');},
  roll(){},pin(v){const k=clamp(v/4,.1,1);noise(.18,1600+Math.random()*900,.5*k,2);tone(700+Math.random()*300,300,.12,.15*k,'triangle');},
  strike(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,f,.25,.15,'triangle'),i*90));},spare(){[523,784].forEach((f,i)=>setTimeout(()=>tone(f,f,.25,.14,'triangle'),i*110));},
+ crowd(big){const n=big?60:30;for(let i=0;i<n;i++)setTimeout(()=>noise(.035,1800+Math.random()*2600,.06+Math.random()*.05,2.5),Math.random()*(big?2200:1300));noise(big?1.6:1,700,big?.16:.1,.6);setTimeout(()=>noise(big?1.2:.7,1100,big?.1:.06,.8),120);},
+ aww(){for(let i=0;i<4;i++){const f=170+Math.random()*90;setTimeout(()=>tone(f*1.25,f,.7,.025,'sawtooth'),i*40);}noise(.6,450,.06,.7,'lowpass');},
  rumble(t){noise(t,140,.22,.6,'lowpass');},gutter(){noise(.6,220,.2,.7,'lowpass');},ding(){tone(880,880,.12,.1,'triangle');}};
 
 /* ================= 렌더러 ================= */
@@ -476,7 +480,7 @@ function woodTex(w,h,base,lines,boards){return canvasTex(w,h,(g)=>{for(let i=0;i
   g.strokeStyle='rgba(60,30,10,.12)';for(let k=0;k<lines;k++){g.beginPath();const xx=x+Math.random()*w/boards;g.moveTo(xx,0);for(let y=0;y<h;y+=40)g.lineTo(xx+Math.sin(y*.01+k)*3,y);g.stroke();}g.fillStyle='rgba(0,0,0,.25)';g.fillRect(x,0,1,h);}});}
 
 /* ================= 상태 ================= */
-let state='menu',G=null,players=[],cur=0,net=null,myIdx=0,lastT=0,camGoal={p:new THREE.Vector3(),l:new THREE.Vector3()},camLook=new THREE.Vector3();
+let state='menu',G=null,players=[],cur=0,net=null,myIdx=0,lastT=0,camGoal={p:new THREE.Vector3(),l:new THREE.Vector3(),up:new THREE.Vector3(0,1,0)},camLook=new THREE.Vector3();
 function isMyTurn(){if(!G)return false;const p=players[cur];if(!p)return false;if(net)return p.dev===myIdx;return !p.cpu;}
 function toastMsg(t,ms=1600){const el=$('msg');el.textContent=t;el.classList.add('on');clearTimeout(toastMsg.t);toastMsg.t=setTimeout(()=>el.classList.remove('on'),ms);}
 function tip(t){$('tip').textContent=t;$('tip').style.display=t?'block':'none';}
@@ -525,13 +529,116 @@ function buildPoolScene(carom){scene=new THREE.Scene();scene.environment=makeEnv
   // 조명: 테이블 위 등 3개
   scene.add(new THREE.HemisphereLight(0x8a7a9a,0x201810,.25));
   const lampM=new THREE.MeshStandardMaterial({color:0x123a2a,metalness:.6,roughness:.35});
-  for(const x of [-L/3,0,L/3]){const shade=new THREE.Mesh(new THREE.ConeGeometry(.22,.18,28,1,true),lampM);shade.position.set(x,T.H+1.05,0);shade.material.side=THREE.DoubleSide;scene.add(shade);
-    const bulb=new THREE.Mesh(new THREE.SphereGeometry(.05,12,8),new THREE.MeshBasicMaterial({color:0xfff2d0}));bulb.position.set(x,T.H+.98,0);scene.add(bulb);
+  poolLamps=[];for(const x of [-L/3,0,L/3]){const shade=new THREE.Mesh(new THREE.ConeGeometry(.22,.18,28,1,true),lampM);shade.position.set(x,T.H+1.05,0);shade.material.side=THREE.DoubleSide;scene.add(shade);
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(.05,12,8),new THREE.MeshBasicMaterial({color:0xfff2d0}));bulb.position.set(x,T.H+.98,0);scene.add(bulb);poolLamps.push(shade,bulb);
     const sp=new THREE.SpotLight(0xffeccc,4.2,4,.8,.6,2);sp.position.set(x,T.H+.95,0);sp.target.position.set(x,T.H,0);scene.add(sp);scene.add(sp.target);
     if(save.gfx>=1&&x===0){sp.castShadow=true;sp.shadow.mapSize.set(save.gfx>=2?2048:1024,save.gfx>=2?2048:1024);sp.shadow.bias=-.0004;sp.shadow.radius=4;}
-    const cord=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,1.2),lampM);cord.position.set(x,T.H+1.75,0);scene.add(cord);}
+    const cord=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,1.2),lampM);cord.position.set(x,T.H+1.75,0);scene.add(cord);poolLamps.push(cord);}
+  buildGallery(T);
   return tab;}
 function pockets(T){const L=T.L,W=T.W;return[{x:-L/2,z:-W/2,r:.062},{x:L/2,z:-W/2,r:.062},{x:-L/2,z:W/2,r:.062},{x:L/2,z:W/2,r:.062},{x:0,z:-W/2-.012,r:.058},{x:0,z:W/2+.012,r:.058}];}
+
+/* --- 관중석(갤러리) --- */
+let poolLamps=null,crowd=null;
+const _gm={};function gMat(col,r=.8,m=0){const k=col+'_'+r+'_'+m;return _gm[k]||(_gm[k]=new THREE.MeshStandardMaterial({color:col,roughness:r,metalness:m}));}
+const _gg={};function gGeo(k,f){return _gg[k]||(_gg[k]=f());}
+function makePerson(o){const g=new THREE.Group(),skin=gMat(o.skin,.7),top=gMat(o.top,.85),pants=gMat(o.pants,.9),shoe=gMat(0x141414,.5),hair=gMat(o.hair,.9);
+  const seat=!!o.seat,hipY=seat?.47:.9;
+  const legGeo=gGeo('leg',()=>new THREE.CylinderGeometry(.062,.055,.44,10)),shoeGeo=gGeo('shoe',()=>new THREE.BoxGeometry(.1,.07,.24));
+  for(const sx of [-1,1]){const th=new THREE.Mesh(legGeo,pants),sh=new THREE.Mesh(legGeo,pants),ft=new THREE.Mesh(shoeGeo,shoe);
+    if(seat){th.rotation.x=Math.PI/2;th.position.set(sx*.09,hipY,.2);sh.position.set(sx*.09,hipY-.22,.42);ft.position.set(sx*.09,.035,.47);}
+    else{th.position.set(sx*.09,hipY-.22,0);sh.position.set(sx*.09,hipY-.66,0);ft.position.set(sx*.09,.035,.05);}
+    g.add(th,sh,ft);}
+  const body=new THREE.Group();body.position.y=hipY;g.add(body);
+  const tor=new THREE.Mesh(gGeo('tor',()=>new THREE.CylinderGeometry(.17,.14,.56,14)),top);tor.position.y=.3;body.add(tor);
+  const sh=new THREE.Mesh(gGeo('shd',()=>new THREE.SphereGeometry(.17,14,8,0,Math.PI*2,0,Math.PI/2)),top);sh.position.y=.57;sh.scale.y=.5;body.add(sh);
+  const hips=new THREE.Mesh(gGeo('hip',()=>new THREE.SphereGeometry(.145,12,8)),pants);hips.scale.y=.5;hips.position.y=.02;body.add(hips);
+  const neck=new THREE.Mesh(gGeo('neck',()=>new THREE.CylinderGeometry(.045,.05,.08,8)),skin);neck.position.y=.66;body.add(neck);
+  const head=new THREE.Group();head.position.y=.79;body.add(head);
+  const hd=new THREE.Mesh(gGeo('head',()=>new THREE.SphereGeometry(.105,16,12)),skin);hd.scale.set(.92,1.08,1);head.add(hd);
+  const hr=new THREE.Mesh(gGeo(o.long?'hairL':'hairS',()=>new THREE.SphereGeometry(.112,16,10,0,Math.PI*2,0,o.long?Math.PI*.62:Math.PI*.48)),hair);hr.position.set(0,.012,-.008);hr.scale.set(.95,1.1,1.02);head.add(hr);
+  if(o.long){const tail=new THREE.Mesh(gGeo('tail',()=>new THREE.CylinderGeometry(.07,.05,.22,10)),hair);tail.position.set(0,-.1,-.07);head.add(tail);}
+  const eyeGeo=gGeo('eye',()=>new THREE.SphereGeometry(.012,6,4)),eyeM=gMat(0x111111,.4);for(const sx of [-1,1]){const e=new THREE.Mesh(eyeGeo,eyeM);e.position.set(sx*.035,.015,.095);head.add(e);}
+  const arms=[];for(const sx of [-1,1]){const a=new THREE.Group();a.position.set(sx*.2,.54,0);body.add(a);
+    const up=new THREE.Mesh(gGeo('arm',()=>new THREE.CylinderGeometry(.048,.04,.56,8)),top);up.position.y=-.28;a.add(up);
+    const hand=new THREE.Mesh(gGeo('hand',()=>new THREE.SphereGeometry(.045,8,6)),skin);hand.position.y=-.58;a.add(hand);
+    a.rotation.z=sx*.12;arms.push(a);}
+  if(o.drink){const gl=new THREE.Mesh(gGeo('glass',()=>new THREE.CylinderGeometry(.035,.028,.12,12)),new THREE.MeshPhysicalMaterial({color:0xffd27a,roughness:.1,transmission:0,transparent:true,opacity:.75,clearcoat:1}));gl.position.set(0,-.6,.05);arms[1].add(gl);}
+  if(o.cue){const c=new THREE.Mesh(gGeo('pcue',()=>new THREE.CylinderGeometry(.007,.014,1.45,8)),gMat(0x6b4426,.4));c.position.set(0,-.1,.12);c.rotation.x=.08;arms[1].add(c);}
+  g.traverse(m=>{if(m.isMesh)m.castShadow=false;});
+  return{g,body,head,arms,seat,ph:Math.random()*6.28,react:0,kind:'',rest:o.rest||0,lean:o.lean||0};}
+function buildGallery(T){const P=[];crowd={scene,P,t:0,target:new THREE.Vector3(0,T.H,0)};
+  const skins=[0xf1c9a5,0xe0ac80,0xc68a62,0x8d5a3b,0xf6d7bf],tops=[0x2d4a8a,0x8a2d3b,0x3a6b3a,0xd8d2c4,0x23232a,0x6b3a8a,0xc8892d,0x2d7a7a,0x9a9a9a],pants=[0x22252e,0x3a3226,0x1d2a44,0x4a4a50],hairs=[0x1a1410,0x3a2616,0x0e0e0e,0x6b4a2a,0xb8b0a0];
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  const person=(x,z,face,o={})=>{const p=makePerson(Object.assign({skin:pick(skins),top:pick(tops),pants:pick(pants),hair:pick(hairs),long:Math.random()<.4},o));p.g.position.set(x,0,z);p.g.rotation.y=face;p.face=face;scene.add(p.g);P.push(p);return p;};
+  const faceTo=(x,z)=>Math.atan2(-x,-z);
+  const low=save.gfx===0;
+  // 벽 아래 나무 판넬
+  const panM=new THREE.MeshPhysicalMaterial({map:woodTex(512,128,[20,45,14],5,8),roughness:.45,clearcoat:.5});
+  for(const [x,z,ry,w] of [[0,-4.97,0,12],[0,4.97,Math.PI,12],[-5.97,0,Math.PI/2,10],[5.97,0,-Math.PI/2,10]]){const p=new THREE.Mesh(new THREE.PlaneGeometry(w,1.05),panM);p.position.set(x,.525,z);p.rotation.y=ry;scene.add(p);
+    const rl=new THREE.Mesh(new THREE.BoxGeometry(w,.05,.04),panM);rl.position.set(x,1.06,z);rl.rotation.y=ry;scene.add(rl);}
+  // 액자
+  const frameM=gMat(0x8a6a2a,.35,.6);
+  const art=(seed)=>canvasTex(256,192,(g,w,h)=>{const hue=seed*67%360;g.fillStyle=`hsl(${hue},35%,18%)`;g.fillRect(0,0,w,h);for(let i=0;i<7;i++){g.fillStyle=`hsla(${(hue+i*40)%360},60%,${40+i*5}%,.7)`;g.beginPath();g.arc(Math.random()*w,Math.random()*h,15+Math.random()*50,0,7);g.fill();}g.strokeStyle='rgba(255,255,255,.4)';g.lineWidth=3;g.beginPath();g.moveTo(0,h*.7);for(let x=0;x<=w;x+=16)g.lineTo(x,h*.6+Math.sin(x*.05+seed)*14);g.stroke();});
+  const frames=[[-5.95,1.75,-2.2,Math.PI/2],[-5.95,1.75,2.2,Math.PI/2],[5.95,1.75,-2.6,-Math.PI/2],[0,1.75,4.95,Math.PI],[-3,1.75,4.95,Math.PI],[3,1.75,4.95,Math.PI]];
+  frames.forEach(([x,y,z,ry],i)=>{const f=new THREE.Mesh(new THREE.BoxGeometry(1.0,.78,.04),frameM);f.position.set(x,y,z);f.rotation.y=ry;scene.add(f);const pc=new THREE.Mesh(new THREE.PlaneGeometry(.88,.66),new THREE.MeshStandardMaterial({map:art(i+3),roughness:.7}));pc.position.set(0,0,.022);f.add(pc);});
+  // 큐 거치대
+  const rack=new THREE.Mesh(new THREE.BoxGeometry(.06,1.5,1.2),panM);rack.position.set(-5.92,1.0,0);scene.add(rack);
+  for(let i=0;i<7;i++){const c=new THREE.Mesh(gGeo('pcue',()=>new THREE.CylinderGeometry(.007,.014,1.45,8)),gMat([0x6b4426,0x2a1a10,0x8a5a2a][i%3],.35));c.position.set(-5.86,.86,-.48+i*.16);scene.add(c);}
+  // 소파 (먼 쪽 긴 변)
+  const sofaM=new THREE.MeshPhysicalMaterial({color:0x5a1e22,roughness:.55,clearcoat:.4,clearcoatRoughness:.4});
+  const sofa=(x,z,face,n)=>{const s=new THREE.Group();s.position.set(x,0,z);s.rotation.y=face;scene.add(s);const w=n*.62+.2;
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(w,.2,.62),sofaM);seat.position.set(0,.36,.04);s.add(seat);
+    const base=new THREE.Mesh(new THREE.BoxGeometry(w,.26,.7),gMat(0x1a1210,.6));base.position.y=.13;s.add(base);
+    const back=new THREE.Mesh(new THREE.BoxGeometry(w,.55,.16),sofaM);back.position.set(0,.68,-.27);s.add(back);
+    for(const sx of [-1,1]){const arm=new THREE.Mesh(new THREE.BoxGeometry(.14,.5,.7),sofaM);arm.position.set(sx*(w/2-.07),.45,0);s.add(arm);}
+    return s;};
+  const zF=-(T.W/2+2.2),zN=T.W/2+2.3;
+  sofa(-1.25,zF,0,2);sofa(1.25,zF,0,2);
+  for(const [sx,dx] of [[-1.25,-.3],[-1.25,.3],[1.25,-.3],[1.25,.3]]){if(low&&dx>0)continue;const x=sx+dx;person(x,zF-.12,faceTo(x,zF)*0,{seat:true,rest:Math.random()<.5?1:0});}
+  // 작은 탁자 + 술잔
+  const ctab=new THREE.Mesh(new THREE.CylinderGeometry(.32,.32,.04,24),new THREE.MeshPhysicalMaterial({color:0x111111,roughness:.15,clearcoat:1}));ctab.position.set(0,.45,zF+.1);scene.add(ctab);
+  const cleg=new THREE.Mesh(new THREE.CylinderGeometry(.03,.05,.45,10),gMat(0x8a6a2a,.3,.8));cleg.position.set(0,.225,zF+.1);scene.add(cleg);
+  // 바 테이블 + 서 있는 관중 (가까운 긴 변)
+  const btM=new THREE.MeshPhysicalMaterial({color:0x1a120c,roughness:.25,clearcoat:.8}),brass=gMat(0xb08a3a,.3,.9);
+  for(const bx of [-1.7,1.7]){const top=new THREE.Mesh(new THREE.CylinderGeometry(.34,.34,.04,24),btM);top.position.set(bx,1.05,zN+.35);scene.add(top);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,1.03,10),brass);pole.position.set(bx,.52,zN+.35);scene.add(pole);
+    const ft=new THREE.Mesh(new THREE.CylinderGeometry(.22,.24,.03,20),brass);ft.position.set(bx,.015,zN+.35);scene.add(ft);
+    for(let k=0;k<2;k++){const g=new THREE.Mesh(gGeo('glass2',()=>new THREE.CylinderGeometry(.03,.025,.11,12)),new THREE.MeshPhysicalMaterial({color:k?0xffcf6a:0xb0342a,roughness:.1,transparent:true,opacity:.8,clearcoat:1}));g.position.set(bx+(k?.1:-.12),1.125,zN+.3+k*.08);scene.add(g);}
+    person(bx-.42,zN,faceTo(bx-.42,zN),{drink:true});if(!low)person(bx+.42,zN+.05,faceTo(bx+.42,zN),{drink:Math.random()<.5,lean:.06});}
+  // 짧은 변: 큐 들고 기다리는 사람 + 의자
+  const stoolM=gMat(0x2a1a14,.5);
+  for(const sx of [-1,1]){const x=sx*(T.L/2+1.55);const p=person(x,sx*.5,faceTo(x,sx*.5),{cue:true});
+    if(!low){const st=new THREE.Group();st.position.set(x+sx*.15,0,-sx*.55);scene.add(st);const seat=new THREE.Mesh(new THREE.CylinderGeometry(.19,.17,.07,20),sofaM);seat.position.y=.72;st.add(seat);
+      const pl=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.72,8),brass);pl.position.y=.36;st.add(pl);const rg=new THREE.Mesh(new THREE.TorusGeometry(.15,.012,6,20),brass);rg.rotation.x=Math.PI/2;rg.position.y=.3;st.add(rg);
+      const sp=person(x+sx*.15,-sx*.55,faceTo(x+sx*.15,-sx*.55),{seat:true});sp.g.position.y=.27;}}
+  // 관중석 조명 (따뜻한 펜던트)
+  const pend=(x,y,z,inten)=>{const l=new THREE.PointLight(0xffc98a,inten,7,2);l.position.set(x,y,z);scene.add(l);const b=new THREE.Mesh(gGeo('pb',()=>new THREE.SphereGeometry(.06,12,8)),new THREE.MeshBasicMaterial({color:0xffe2b0}));b.position.set(x,y+.05,z);scene.add(b);const gl=glow(0xffb070,.9,.55);gl.position.copy(b.position);scene.add(gl);
+    const cd=new THREE.Mesh(gGeo('pc',()=>new THREE.CylinderGeometry(.004,.004,1.6)),gMat(0x111111));cd.position.set(x,y+.85,z);scene.add(cd);};
+  pend(0,2.3,zF+.1,7);pend(-1.7,2.2,zN+.35,5);pend(1.7,2.2,zN+.35,5);
+  return crowd;}
+function tickCrowd(dt){if(!crowd||crowd.scene!==scene)return;crowd.t+=dt;const t=crowd.t;
+  if(PS&&pg&&G&&G.kind!=='bowl'){const c=PS.balls.find(b=>b.id===PS.cueId&&!b.out)||PS.balls.find(b=>!b.out);if(c)crowd.target.set(c.x,PS.T.H,c.z);}
+  const tg=crowd.target,v=new THREE.Vector3();
+  for(const p of crowd.P){const s=t+p.ph;
+    // 고개: 흰 공 쪽으로
+    p.head.getWorldPosition(v);const yaw=Math.atan2(tg.x-v.x,tg.z-v.z)-p.face;let dy=((yaw+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;dy=clamp(dy,-.9,.9);
+    const pitch=clamp(Math.atan2(v.y-tg.y,Math.hypot(tg.x-v.x,tg.z-v.z))*.6,-.3,.5);
+    p.head.rotation.y+= (dy-p.head.rotation.y)*Math.min(1,dt*3);p.head.rotation.x+=(pitch-p.head.rotation.x)*Math.min(1,dt*3);
+    p.body.scale.y=1+Math.sin(s*1.6)*.008;p.body.rotation.z=Math.sin(s*.5)*.025;p.body.rotation.x=p.lean+(p.seat?-.06:0);
+    const [aL,aR]=p.arms;let lx=p.seat?-.5:0,lz=-.12,rx=p.seat?-.5:(p.arms[1].children.length>2?-.9:0),rz=.12,jump=0;
+    if(p.react>0){p.react-=dt;const k=Math.min(1,p.react*2);
+      if(p.kind==='raise'){lx=-.3;lz=-2.6*k;rx=-.3;rz=2.6*k;jump=Math.abs(Math.sin(s*9))*.05*k;}
+      else if(p.kind==='clap'){const c=Math.sin(s*22)*.5+.5;lx=rx=-1.25;lz=-.25-c*.4;rz=.25+c*.4;lz=lz*k+(-.12)*(1-k);rz=rz*k+.12*(1-k);}
+      else if(p.kind==='groan'){lx=rx=-2.5*k;lz=-.75*k;rz=.75*k;}}
+    else if(p.rest&&p.seat){lx=-.9;rx=-.9;lz=-.05;rz=.05;}
+    const f=Math.min(1,dt*8);aL.rotation.x+=(lx-aL.rotation.x)*f;aL.rotation.z+=(lz-aL.rotation.z)*f;aR.rotation.x+=(rx-aR.rotation.x)*f;aR.rotation.z+=(rz-aR.rotation.z)*f;
+    if(!p.seat)p.g.position.y=jump;}}
+function crowdReact(r){if(!crowd||crowd.scene!==scene||!r.msg)return;const m=r.msg;let kind='';
+  if(/파울|너무 일찍|못 맞|하나만|뿐이에요/.test(m))kind='groan';else if(r.win!=null||/득점|들어갔|내 공|성공/.test(m))kind='cheer';if(!kind)return;
+  const big=r.win!=null;
+  for(const p of crowd.P){if(kind==='groan'&&Math.random()<.45)continue;p.react=(big?2.6:1.6)+Math.random()*.4;p.kind=kind==='groan'?'groan':(Math.random()<(big?.6:.3)?'raise':'clap');}
+  if(kind==='cheer')SFX.crowd(big);else SFX.aww();}
 
 /* --- 당구 물리 (순수 계산: 컴퓨터 생각에도 씀) --- */
 function simStep(S,dt,ev){const T=S.T,R=T.R,L=T.L,W=T.W,B=S.balls,mu=.14,carom=S.carom;
@@ -557,18 +664,19 @@ function simStep(S,dt,ev){const T=S.T,R=T.R,L=T.L,W=T.W,B=S.balls,mu=.14,carom=S
 function moving(S){return S.balls.some(b=>!b.out&&(Math.abs(b.vx)>.002||Math.abs(b.vz)>.002||b.px||b.pz));}
 function shotApply(S,shot){const c=S.balls.find(b=>b.id===S.cueId);const v=shot.power*(S.carom?5.2:6.2),dx=Math.sin(shot.ang),dz=Math.cos(shot.ang);
   c.vx=dx*v;c.vz=dz*v;c.spin={dx,dz,top:shot.top,side:shot.side};c.shot=v;c.spun=0;c.cushSpun=0;c.px=c.pz=0;S.balls.forEach(b=>{if(b!==c){b.spin=null;}});}
-function cloneS(S){return{T:S.T,carom:S.carom,pk:S.pk,cueId:S.cueId,balls:S.balls.map(b=>({id:b.id,x:b.x,z:b.z,vx:0,vz:0,px:0,pz:0,out:b.out}))};}
+function cloneS(S){return{T:S.T,carom:S.carom,three:S.three,pk:S.pk,cueId:S.cueId,balls:S.balls.map(b=>({id:b.id,x:b.x,z:b.z,vx:0,vz:0,px:0,pz:0,out:b.out}))};}
 function simulateShot(S0,shot,maxT=12){const S=cloneS(S0),ev=[];shotApply(S,shot);let t=0;const dt=1/400;while(t<maxT){simStep(S,dt,ev);t+=dt;if(!moving(S))break;}return{S,ev};}
 
 /* --- 당구 게임 --- */
-function newPool(carom){const T=carom?CAROM:POOL,R=T.R;const S={T,carom,pk:carom?[]:pockets(T),balls:[],cueId:0};
-  if(carom){S.balls.push({id:102,x:-T.L/4,z:-.18},{id:103,x:-T.L/4,z:.18},{id:100,x:T.L/4,z:0},{id:101,x:-T.L/4-.42,z:0});S.cueId=102;}
+function newPool(carom,three){const T=carom?CAROM:POOL,R=T.R;const S={T,carom,three:!!three,pk:carom?[]:pockets(T),balls:[],cueId:0};
+  if(three){S.balls.push({id:102,x:-T.L/4,z:-.16},{id:103,x:-T.L/4,z:0},{id:100,x:T.L/4,z:0});S.cueId=102;}
+  else if(carom){S.balls.push({id:102,x:-T.L/4,z:-.18},{id:103,x:-T.L/4,z:.18},{id:100,x:T.L/4,z:0},{id:101,x:-T.L/4-.42,z:0});S.cueId=102;}
   else{S.balls.push({id:0,x:-T.L/4,z:0});const order=[1,9,2,10,8,3,11,4,12,13,5,14,6,15,7],rx=T.L/4;let k=0;for(let r=0;r<5;r++)for(let i=0;i<=r;i++){S.balls.push({id:order[k++],x:rx+r*R*1.74,z:(i-r/2)*R*2.02});}}
   S.balls.forEach(b=>{b.vx=b.vz=b.px=b.pz=0;b.out=0;});return S;}
 let PS=null,pg=null; // pg: 화면·진행 정보
-function startPool(carom){G={kind:carom?'carom':'pool'};const tab=buildPoolScene(carom);PS=newPool(carom);
+function startPool(game){const carom=game!=='pool',three=game==='three';G={kind:carom?'carom':'pool',three,rule:three?save.r3:''};const tab=buildPoolScene(carom);PS=newPool(carom,three);
   pg={tab,meshes:{},shadows:{},ang:carom?Math.PI/2:Math.PI/2,power:0,top:0,side:0,fine:false,top3:false,moving:false,inHand:!carom,ev:[],shooter:0,
-    groups:{},score:players.map(()=>0),target:carom?10:0,lastShot:null,aimCue:null,cueStick:null,breakShot:!carom,phase:'aim',simAcc:0};
+    groups:{},score:players.map(()=>0),target:carom?(three&&G.rule==='3c'?5:10):0,lastShot:null,aimCue:null,cueStick:null,breakShot:!carom,phase:'aim',simAcc:0};
   PS.balls.forEach(b=>{const m=ballMesh(b.id,PS.T.R);tab.add(m);pg.meshes[b.id]=m;const s=blob(PS.T.R*3.2);tab.add(s);pg.shadows[b.id]=s;});
   // 큐
   const cue=new THREE.Group(),shaft=new THREE.Mesh(new THREE.CylinderGeometry(.0065,.014,1.45,16),new THREE.MeshPhysicalMaterial({map:woodTex(64,512,[30,50,55],3,1),roughness:.3,clearcoat:1}));shaft.rotation.x=Math.PI/2;shaft.position.z=-.725;cue.add(shaft);
@@ -621,11 +729,21 @@ function tickPool(dt){const R=PS.T.R;
   else cue.visible=false;
   if(pg.phase==='aim'&&isMyTurn())poolAimGuide();else{pg.aimLine.visible=pg.objLine.visible=pg.ghost.visible=false;}
   // 카메라
-  const T=PS.T,H=T.H;if(pg.phase==='aim'&&c&&!pg.top3){const a=pg.ang;camGoal.p.set(c.x-Math.sin(a)*.9,H+.42,c.z-Math.cos(a)*.9);camGoal.l.set(c.x+Math.sin(a)*.6,H,c.z+Math.cos(a)*.6);}
-  else if(pg.top3){camGoal.p.set(0,H+2.9,.02);camGoal.l.set(0,H,0);}
-  else{camGoal.p.set(-T.L*.15,H+1.65,T.W*1.15);camGoal.l.set(0,H,0);}}
+  const T=PS.T,H=T.H;const topMode=pg.top3||pg.phase!=='aim'||!c||c.out;
+  if(!topMode){const a=pg.ang;camGoal.p.set(c.x-Math.sin(a)*.9,H+.42,c.z-Math.cos(a)*.9);camGoal.l.set(c.x+Math.sin(a)*.6,H,c.z+Math.cos(a)*.6);camGoal.up.set(0,1,0);}
+  else{const asp=camera.aspect,tf=Math.tan(camera.fov*Math.PI/360),Lx=T.L+.42,Wz=T.W+.42,port=asp<1;
+    const vert=port?Lx:Wz,hor=port?Wz:Lx,d=Math.max(vert/2/tf,hor/2/(tf*asp))*1.04;camGoal.p.set(0,H+d,0);camGoal.l.set(0,H,0);if(port)camGoal.up.set(1,0,0);else camGoal.up.set(0,0,-1);}
+  if(poolLamps)for(const o of poolLamps)o.visible=!topMode;}
+function caromEval(ev,mine,opp,three){const objs=three?[100,opp]:[100,101],hit=[];let cush=0,cushAt2=-1,hitOpp=false;
+  for(const e of ev){if(e.k==='cush'&&e.a===mine&&hit.length<2)cush++;
+    if(e.k==='hit'&&(e.a===mine||e.b===mine)){const o=e.a===mine?e.b:e.a;if(o===opp)hitOpp=true;if(objs.includes(o)&&!hit.includes(o)){hit.push(o);if(hit.length===2)cushAt2=cush;}}}
+  return{hit,both:hit.length===2,cush:hit.length===2?cushAt2:cush,hitOpp};}
 function resolvePool(){if(pg.phase!=='roll')return;pg.phase='done';const ev=pg.ev,p=cur;let msg='',keep=false,foul=false,win=null;
-  if(PS.carom){const mine=PS.cueId,opp=pg.cueOf[(cur+1)%2],hitBy=new Set();for(const e of ev)if(e.k==='hit'&&(e.a===mine||e.b===mine))hitBy.add(e.a===mine?e.b:e.a);
+  if(PS.three){const r=caromEval(ev,PS.cueId,pg.cueOf[(cur+1)%2],true),easy=G.rule==='easy';
+    if(r.both&&(easy||r.cush>=3)){pg.score[p]++;keep=true;msg=easy?'득점!':'쓰리쿠션 득점!';SFX.ding();if(pg.score[p]>=pg.target)win=p;}
+    else if(r.both)msg='두 공은 맞혔지만 쿠션이 '+r.cush+'번뿐이에요';
+    else msg=r.hit.length?'공 하나만 맞았어요':'아무것도 못 맞혔어요';}
+  else if(PS.carom){const mine=PS.cueId,opp=pg.cueOf[(cur+1)%2],hitBy=new Set();for(const e of ev)if(e.k==='hit'&&(e.a===mine||e.b===mine))hitBy.add(e.a===mine?e.b:e.a);
     if(hitBy.has(opp)){foul=true;pg.score[p]=Math.max(0,pg.score[p]-1);msg='파울! 상대 공을 맞혔어요';}
     else if(hitBy.has(100)&&hitBy.has(101)){pg.score[p]++;keep=true;msg='득점!';SFX.ding();if(pg.score[p]>=pg.target)win=p;}
     else msg=hitBy.size?'빨간 공 하나만 맞았어요':'아무것도 못 맞혔어요';}
@@ -648,18 +766,19 @@ function resolvePool(){if(pg.phase!=='roll')return;pg.phase='done';const ev=pg.e
   const res={t:'pres',balls:PS.balls.map(b=>[b.id,+b.x.toFixed(4),+b.z.toFixed(4),b.out]),groups:pg.groups,score:pg.score,next,msg,win,inHand:pg.inHand};
   applyPoolRes(res);if(net)netSend(res);}
 function applyPoolRes(r){r.balls.forEach(([id,x,z,o])=>{const b=PS.balls.find(q=>q.id===id);if(b){b.x=x;b.z=z;b.out=o;b.vx=b.vz=b.px=b.pz=0;}});pg.groups=r.groups;pg.score=r.score;pg.inHand=r.inHand;pg.phase='wait';
-  if(r.msg)toastMsg(r.msg);updateBoard();
+  if(r.msg)toastMsg(r.msg);updateBoard();crowdReact(r);
   if(r.win!=null){setTimeout(()=>gameOver(players.map((p,i)=>({name:p.name,score:PS.carom?pg.score[i]:(i===r.win?1:0)})).sort((a,b)=>b.score-a.score),`${players[r.win].name} 승리!`),1400);return;}
   setTimeout(()=>{cur=r.next;beginTurn();},900);}
 /* 컴퓨터: 여러 샷을 미리 굴려 보고 고르기 */
 function cpuPool(){if(state!=='play'||pg.phase!=='aim')return;tip('컴퓨터가 생각 중…');const lvl=save.cpu,c=PS.balls.find(b=>b.id===PS.cueId),R=PS.T.R;const cands=[];
-  if(PS.carom){for(let i=0;i<[24,48,90][lvl];i++)cands.push({ang:rand(0,Math.PI*2),power:rand(.35,.85),top:rand(-.4,.6),side:rand(-.6,.6)});
-    for(const id of [100,101]){const t=PS.balls.find(b=>b.id===id);const a0=Math.atan2(t.x-c.x,t.z-c.z);for(const da of [-.12,-.06,0,.06,.12])for(const pw of [.45,.65,.85])cands.push({ang:a0+da,power:pw,top:.2,side:0});}}
+  if(PS.carom){const nr=PS.three&&G.rule==='3c'?[50,110,200][lvl]:[24,48,90][lvl];for(let i=0;i<nr;i++)cands.push({ang:rand(0,Math.PI*2),power:rand(.35,.85),top:rand(-.4,.6),side:rand(-.6,.6)});
+    for(const id of (PS.three?[100,pg.cueOf[(cur+1)%2]]:[100,101])){const t=PS.balls.find(b=>b.id===id);const a0=Math.atan2(t.x-c.x,t.z-c.z);for(const da of [-.12,-.06,0,.06,.12])for(const pw of [.45,.65,.85])cands.push({ang:a0+da,power:pw,top:.2,side:0});}}
   else{for(const t of legalTargets())for(const p of PS.pk){const tx=p.x-t.x,tz=p.z-t.z,tl=Math.hypot(tx,tz),gx=t.x-tx/tl*2*R,gz=t.z-tz/tl*2*R,a=Math.atan2(gx-c.x,gz-c.z);
       const cut=Math.abs(Math.atan2(Math.sin(a-Math.atan2(tx,tz)),Math.cos(a-Math.atan2(tx,tz))));if(cut>1.25)continue;for(const pw of [.35,.55,.8])cands.push({ang:a,power:pw,top:0,side:0});}
     for(let i=0;i<10;i++)cands.push({ang:rand(0,6.28),power:rand(.3,.9),top:0,side:0});if(pg.breakShot)cands.unshift({ang:Math.PI/2+rand(-.02,.02),power:1,top:0,side:0});}
   let best=null,bs=-1e9,i=0;const g=pg.groups[cur],own=b=>g?(g==='solid'?b<8&&b>0:b>8):(b!==8&&b>0);
   function score(o){const ev=o.ev;let s=0,fh=null;for(const e of ev)if(e.k==='hit'&&fh==null&&(e.a===PS.cueId||e.b===PS.cueId))fh=e.a===PS.cueId?e.b:e.a;
+    if(PS.three){const r=caromEval(ev,PS.cueId,pg.cueOf[(cur+1)%2],true);if(G.rule==='easy')return r.hit.length*40+(r.both?200:0);return r.hit.length*25+Math.min(r.cush,3)*30+(r.both&&r.cush>=3?400:0);}
     if(PS.carom){const hit=new Set();for(const e of ev)if(e.k==='hit'&&(e.a===PS.cueId||e.b===PS.cueId))hit.add(e.a===PS.cueId?e.b:e.a);const opp=pg.cueOf[(cur+1)%2];if(hit.has(opp))return -100;s=(hit.has(100)?40:0)+(hit.has(101)?40:0)+(hit.has(100)&&hit.has(101)?200:0);return s;}
     const pk=ev.filter(e=>e.k==='pocket').map(e=>e.a);if(pk.includes(0))return -300;if(fh==null)return -200;if(g&&!own(fh)&&fh!==8)return -150;if(pk.includes(8))return legalTargets().every(b=>b.id===8)?1000:-1000;
     s+=pk.filter(own).length*120-pk.filter(b=>!own(b)&&b>0).length*30;const cb=o.S.balls.find(b=>b.id===PS.cueId);const rest=o.S.balls.filter(b=>!b.out&&own(b.id));if(rest.length){const d=Math.min(...rest.map(b=>Math.hypot(b.x-cb.x,b.z-cb.z)));s+=20-d*10;}return s;}
@@ -683,7 +802,7 @@ function laneTex(){const t=canvasTex(512,2048,(g,w,h)=>{const n=39;for(let i=0;i
 function ballTexB(hue){return canvasTex(512,256,(g,w,h)=>{const gr=g.createLinearGradient(0,0,w,h);gr.addColorStop(0,`hsl(${hue},80%,38%)`);gr.addColorStop(1,`hsl(${hue+30},80%,22%)`);g.fillStyle=gr;g.fillRect(0,0,w,h);
   for(let i=0;i<70;i++){g.strokeStyle=`hsla(${hue+rand(-30,40)},90%,${rand(40,75)}%,.35)`;g.lineWidth=rand(2,9);g.beginPath();let x=rand(0,w),y=rand(0,h);g.moveTo(x,y);for(let k=0;k<6;k++){x+=rand(-60,60);y+=rand(-30,30);g.lineTo(x,y);}g.stroke();}
   g.fillStyle='#0b0b0b';[[230,96],[262,96],[246,140]].forEach(([x,y],i)=>{g.beginPath();g.ellipse(x,y,i<2?9:11,i<2?12:14,0,0,7);g.fill();});});}
-function buildBowlScene(){scene=new THREE.Scene();scene.environment=makeEnv();scene.background=new THREE.Color(0x05040a);scene.fog=new THREE.Fog(0x05040a,14,40);
+function buildBowlScene(){scene=new THREE.Scene();camGoal.up.set(0,1,0);scene.environment=makeEnv();scene.background=new THREE.Color(0x05040a);scene.fog=new THREE.Fog(0x05040a,14,40);
   const L=LANE,laneM=new THREE.MeshPhysicalMaterial({map:laneTex(),roughness:.22,clearcoat:1,clearcoatRoughness:.04,envMapIntensity:.9});
   const sideM=new THREE.MeshPhysicalMaterial({map:laneTex(),roughness:.3,clearcoat:.8,color:0xcccccc});
   const gutM=new THREE.MeshStandardMaterial({color:0x22232a,metalness:.6,roughness:.35}),capM=new THREE.MeshPhysicalMaterial({color:0x1a1622,roughness:.4,clearcoat:.6});
@@ -835,18 +954,18 @@ function setupPlayers(){const g=save.game;let n=save.mode==='cpu'?2:(g==='bowl'?
   if(net){const devs=[0,...roomGuests()];players=devs.slice(0,g==='bowl'?4:2).map((d,i)=>({name:d===0?(LOBBY.nick()||'방장'):roomName(d),dev:d,cpu:false}));if(players.length<2&&g!=='bowl')players.push({name:'컴퓨터',cpu:true,dev:-1});return;}
   players=[];for(let i=0;i<n;i++)players.push({name:save.names[i]||('플레이어 '+(i+1)),cpu:save.mode==='cpu'&&i===1});if(save.mode==='cpu')players[1].name='컴퓨터';}
 function startGame(game,fromNet,plist){audioInit();state='play';show(null);resize();if(plist)players=plist;else setupPlayers();cur=0;pg=null;bowl=null;BW=null;
-  if(game==='bowl')startBowl();else startPool(game==='carom');lastT=performance.now();
-  if(netHost()&&!fromNet)roomEach(gi=>({t:'start',game,players,dev:gi}));}
+  if(game==='bowl')startBowl();else startPool(game);lastT=performance.now();
+  if(netHost()&&!fromNet)roomEach(gi=>({t:'start',game,players,dev:gi,r3:save.r3}));}
 function gameOver(rank,title){state='over';show('sEnd');$('endBody').innerHTML=`<div class="ttl">${esc(title)}</div><div class="rank">${rank.map((r,i)=>`<div><span>${i+1}. ${esc(r.name)}</span><span>${r.score}</span></div>`).join('')}</div>
   <div class="row"><button class="btn go" id="bAgain" type="button">다시 하기</button><button class="btn" id="bMenu" type="button">메뉴</button></div>`;
   $('bAgain').onclick=()=>{if(net&&!net.host){toastMsg('방장이 다시 시작해요');return;}startGame(save.game);};$('bMenu').onclick=()=>{state='menu';show('sMenu');};}
 $('bPause').onclick=()=>{if(net){toastMsg('온라인 중에는 메뉴로 나가면 연결이 끊길 수 있어요');}state='menu';show('sMenu');};
 function renderMenu(){document.querySelectorAll('#games .game').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.g===save.game)));
-  [['setMode','mode'],['setCount','count'],['setCpu','cpu'],['setGfx','gfx'],['setGuide','guide']].forEach(([id,k])=>$(id).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v==String(save[k])))));
-  $('rowCount').hidden=save.mode!=='local'||save.game!=='bowl';$('rowCpu').hidden=save.mode!=='cpu';const n=save.mode==='cpu'?1:(save.game==='bowl'?save.count:2);
+  [['setMode','mode'],['setCount','count'],['setCpu','cpu'],['setGfx','gfx'],['setGuide','guide'],['setR3','r3']].forEach(([id,k])=>$(id).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v==String(save[k])))));
+  $('rowCount').hidden=save.mode!=='local'||save.game!=='bowl';$('rowR3').hidden=save.game!=='three';$('rowCpu').hidden=save.mode!=='cpu';const n=save.mode==='cpu'?1:(save.game==='bowl'?save.count:2);
   $('names').innerHTML=Array.from({length:n},(_,i)=>`<input type="text" maxlength="8" data-i="${i}" value="${esc(save.names[i]||'')}" aria-label="플레이어 ${i+1} 이름">`).join('');}
 $('games').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b)return;save.game=b.dataset.g;persist();renderMenu();});
-[['setMode','mode',v=>v],['setCount','count',Number],['setCpu','cpu',Number],['setGfx','gfx',Number],['setGuide','guide',Number]].forEach(([id,k,f])=>$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;save[k]=f(b.dataset.v);persist();renderMenu();if(k==='gfx'){applyGfx();ballMat.clear();envTex=null;}}));
+[['setMode','mode',v=>v],['setCount','count',Number],['setCpu','cpu',Number],['setGfx','gfx',Number],['setGuide','guide',Number],['setR3','r3',v=>v]].forEach(([id,k,f])=>$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;save[k]=f(b.dataset.v);persist();renderMenu();if(k==='gfx'){applyGfx();ballMat.clear();envTex=null;}}));
 $('names').addEventListener('input',e=>{const i=+e.target.dataset.i;save.names[i]=e.target.value.trim();persist();});
 $('bStart').onclick=()=>{if(net&&!net.host){toastMsg('방장이 시작할 때까지 기다려 주세요');return;}if(net&&net.host){startGame(save.game);return;}startGame(save.game);};
 
@@ -855,7 +974,7 @@ const netHost=()=>!!(net&&net.host);
 function netSend(d){if(!net)return;if(net.host)roomEach(()=>d);else roomToHost(d);}
 function onNet(gi,d){if(!d||!d.t)return;
   if(netHost()&&gi>0&&d.t!=='hello'){for(const g of roomGuests())if(g!==gi)roomSend(g,d);} // 방장이 다른 친구에게 전달
-  if(d.t==='start'){myIdx=d.dev||ROOM.gi||1;save.game=d.game;startGame(d.game,true,d.players);return;}
+  if(d.t==='start'){myIdx=d.dev||ROOM.gi||1;save.game=d.game;if(d.r3)save.r3=d.r3;startGame(d.game,true,d.players);return;}
   if(state!=='play')return;
   if(d.t==='pshot'&&pg){d.balls.forEach(([id,x,z,o])=>{const b=PS.balls.find(q=>q.id===id);if(b){b.x=x;b.z=z;b.out=o;}});pg.phase='aim';doPoolShot(d.shot,false);}
   else if(d.t==='pres'&&pg)applyPoolRes(d);
@@ -869,13 +988,13 @@ let aimSendT=0;
 /* ================= 루프 ================= */
 function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-lastT)/1000||0);lastT=t;
   if(state==='play'&&G){if(G.kind==='bowl')tickBowl(dt);else{tickPool(dt);if(net&&isMyTurn()&&pg.phase==='aim'){aimSendT-=dt;if(aimSendT<=0){aimSendT=.15;netSend({t:'paim',a:+pg.ang.toFixed(4),p:+pg.power.toFixed(2)});}}}
-    camera.position.lerp(camGoal.p,Math.min(1,dt*3.2));camLook.lerp(camGoal.l,Math.min(1,dt*3.6));camera.lookAt(camLook);renderer.render(scene,camera);}
+    camera.position.lerp(camGoal.p,Math.min(1,dt*3.2));camLook.lerp(camGoal.l,Math.min(1,dt*3.6));camera.up.lerp(camGoal.up,Math.min(1,dt*3.6)).normalize();camera.lookAt(camLook);tickCrowd(dt);renderer.render(scene,camera);}
   else if(state==='menu'||state==='over'){menuSpin(dt);}}
 let menuT=0,menuBuilt=false;
 function menuSpin(dt){if(!menuBuilt){menuBuilt=true;buildPoolScene(false);const tb=scene.children.find(o=>o.isGroup);if(tb){const S=newPool(false);S.balls.forEach(b=>{const m=ballMesh(b.id,POOL.R);m.position.set(b.x,POOL.R,b.z);tb.add(m);});}}
-  menuT+=dt;camera.position.set(Math.cos(menuT*.12)*2.6,POOL.H+1.3,Math.sin(menuT*.12)*2.6);camera.lookAt(0,POOL.H,0);renderer.render(scene,camera);}
+  menuT+=dt;tickCrowd(dt);camera.up.set(0,1,0);camera.position.set(Math.cos(menuT*.12)*2.6,POOL.H+1.3,Math.sin(menuT*.12)*2.6);camera.lookAt(0,POOL.H,0);renderer.render(scene,camera);}
 requestAnimationFrame(loop);
-window.__L={frame(n=1,dt=1/60){for(let i=0;i<n;i++){if(G.kind==='bowl')tickBowl(dt);else tickPool(dt);camera.position.lerp(camGoal.p,Math.min(1,dt*3.2));camLook.lerp(camGoal.l,Math.min(1,dt*3.6));}camera.lookAt(camLook);renderer.render(scene,camera);},get pg(){return pg},get PS(){return PS},get bowl(){return bowl},get players(){return players},get cur(){return cur},startGame,poolShoot,bowlThrow,tickPool:d=>tickPool(d),tickBowl:d=>tickBowl(d),simulateShot,bowlScore};
+window.__L={frame(n=1,dt=1/60){for(let i=0;i<n;i++){if(G.kind==='bowl')tickBowl(dt);else tickPool(dt);camera.position.lerp(camGoal.p,Math.min(1,dt*3.2));camLook.lerp(camGoal.l,Math.min(1,dt*3.6));camera.up.lerp(camGoal.up,Math.min(1,dt*3.6)).normalize();}camera.lookAt(camLook);renderer.render(scene,camera);},get pg(){return pg},get PS(){return PS},get bowl(){return bowl},get players(){return players},get cur(){return cur},startGame,poolShoot,bowlThrow,tickPool:d=>tickPool(d),tickBowl:d=>tickBowl(d),simulateShot,bowlScore};
 applyGfx();renderMenu();show('sMenu');
 })();
 </script>
