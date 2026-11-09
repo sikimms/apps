@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#070b10">
 <meta name="mobile-web-app-capable" content="yes">
@@ -127,6 +127,10 @@ body.aimtap #bAim{display:none}
 #bPause{position:fixed;z-index:12;left:50%;top:calc(6px + env(safe-area-inset-top,0px));transform:translateX(-50%);width:auto;height:auto;border-radius:6px;padding:4px 12px;font-size:12px;background:#0008;border:1px solid #ffffff33;color:#fff;display:none}
 body.touch #ammo{right:auto;left:calc(214px + env(safe-area-inset-left,0px));text-align:left}
 @media (prefers-reduced-motion:reduce){.msg{animation:none}}
+/* 화면 끌림 방지 */
+html,body{position:fixed;inset:0;width:100%;overscroll-behavior:none;-webkit-touch-callout:none;-webkit-text-size-adjust:100%}
+body.playing{touch-action:none}
+.screen{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 </style>
 
 <div id="view"></div>
@@ -6142,6 +6146,17 @@ function missionFail(){mission.done=true;state='end';firing=false;
 
 if(save.stars[4]&&save.unlocked<6)save.unlocked=6;
 applyGfx();renderMenu();show('sMenu');loadAssets().then(()=>{menuScene=null;});
+
+/* 화면 끌림·확대 방지: 플레이 중에는 손동작이 페이지를 움직이지 않게 */
+(function(){const playing=()=>!document.getElementById('hud').hidden;
+  document.addEventListener('touchmove',e=>{if(playing()&&e.cancelable)e.preventDefault();},{passive:false});
+  document.addEventListener('touchstart',e=>{if(playing()&&e.touches.length>1&&e.cancelable)e.preventDefault();},{passive:false});
+  ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+  let last=0;document.addEventListener('touchend',e=>{const n=Date.now();if(playing()&&n-last<350&&e.cancelable)e.preventDefault();last=n;},{passive:false});
+  document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+  document.addEventListener('contextmenu',e=>{if(playing())e.preventDefault();});
+  new MutationObserver(()=>document.body.classList.toggle('playing',playing())).observe(document.getElementById('hud'),{attributes:true,attributeFilter:['hidden']});
+  addEventListener('scroll',()=>{if(playing()&&(scrollX||scrollY))scrollTo(0,0);});})();
 })();
 </script>
 
