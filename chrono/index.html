@@ -149,6 +149,7 @@ body.playing{touch-action:none}
       <div><b>공격</b> 근접 무기는 연타로 3단 콤보, 원거리 무기는 가까운 적을 자동 조준</div>
       <div><b>구르기</b> 구르는 순간엔 맞지 않아요. 빨간 경고 표시를 보면 굴러서 피하세요</div>
       <div><b>무기</b> 시대마다 그 시대 무기 두 가지. 탄이 떨어지면 근접 무기로 바뀌어요</div>
+      <div><b>상자</b> 반짝이는 상자를 부수면 회복·탄약·힘 2배(분홍 수정)가 나와요</div>
       <div><b>PC</b> WASD 이동 · 마우스 카메라 · 클릭 공격 · 스페이스 구르기 · Q 무기 · Esc 정지</div>
       <div style="color:var(--dim)">3D 모델: Quaternius (CC0 무료 자료)</div></div></div>
   </div>
@@ -10906,7 +10907,7 @@ let state='menu',era=0,stage=null,mission=null,net=null;
 const me={x:0,z:0,y:0,yaw:0,hp:100,vx:0,vz:0,rig:null,anim:{t:0,move:0,atk:-1,atkKind:'',combo:0,hurt:0,dead:0,roll:0,aim:false},
   wi:0,ammo:{},atkT:0,cd:0,combo:0,comboT:0,rollT:0,rollCd:0,inv:0,down:false,downT:0,gi:0,revT:0};
 let others={}; // 다른 플레이어 gi -> {x,z,yaw,hp,anim,rig,down,wpn,name,tx,tz}
-let enemies=[],eid=1,shots=[],myShots=[],parts=[],tgs=[],pickups=[],obstacles=[],segs=[],gates=[],portal=null;
+let crates=[],enemies=[],eid=1,shots=[],myShots=[],parts=[],tgs=[],pickups=[],obstacles=[],segs=[],gates=[],portal=null;
 let camYaw=0,camPitch=.32,shake=0,hitStop=0,lastTime=0,toastT=0,radioQ=[],radioT=0,hurtT=0;
 let input={mx:0,my:0},keys={},atkHeld=false;
 let sunL=null,weather=null,flash=null;
@@ -10916,14 +10917,15 @@ const ray=new THREE.Raycaster();
 function eraWeapons(){return ERAS[era].weapons;}
 function segAt(z){for(const s of segs)if(z>=s.z0&&z<s.z1)return s;return z<0?segs[0]:segs[segs.length-1];}
 function halfW(z){return segAt(z).w/2;}
+function segX(z){const s=segAt(z);return[s.cx-s.w/2,s.cx+s.w/2];}
 function blockedZ(z0,z1){// 닫힌 문이나 시작·끝 벽
   if(z1<.6)return true;const last=segs[segs.length-1];if(z1>last.z1-.6)return true;
   for(const g of gates)if(g.closed&&((z0<=g.z-.5&&z1>g.z-.5)))return true;return false;}
 function moveBody(o,dx,dz,r){const nz=o.z+dz;
-  if(!blockedZ(o.z,nz)){const hw=Math.min(halfW(o.z),halfW(nz))-r;if(Math.abs(o.x)<=hw+.01||Math.abs(o.x+dx)<=halfW(nz)-r)o.z=nz;}
-  o.x=clamp(o.x+dx,-(halfW(o.z)-r),halfW(o.z)-r);
+  if(!blockedZ(o.z,nz)){const B=segX(nz),nx=o.x+dx;if(segAt(nz)===segAt(o.z)||(nx>=B[0]+r&&nx<=B[1]-r)||(o.x>=B[0]+r&&o.x<=B[1]-r))o.z=nz;}
+  {const A=segX(o.z);o.x=clamp(o.x+dx,A[0]+r,A[1]-r);}
   for(const ob of obstacles){const ex=o.x-ob.x,ez=o.z-ob.z,d=Math.hypot(ex,ez),m=ob.r+r;if(d<m&&d>0){o.x=ob.x+ex/d*m;o.z=ob.z+ez/d*m;}}
-  o.x=clamp(o.x,-(halfW(o.z)-r),halfW(o.z)-r);}
+  {const A=segX(o.z);o.x=clamp(o.x,A[0]+r,A[1]-r);}}
 
 function buildStage(i){
   era=i;const E=ERAS[i],T=E.theme;seed=1000+i*77;
@@ -10939,32 +10941,38 @@ function buildStage(i){
     scene.environment=pm.fromScene(es,.03).texture;pm.dispose();}
   flash=new THREE.PointLight(0xffd9a0,0,10,2);scene.add(flash);
   enemies=[];shots=[];myShots=[];parts=[];tgs=[];pickups=[];obstacles=[];segs=[];gates=[];portal=null;
-  let z=0;E.segs.forEach((S,k)=>{const s=Object.assign({},S,{k,z0:z,z1:z+S.len,triggered:false,waveI:0,live:[],done:!S.wave&&!S.boss});segs.push(s);z+=S.len;
+  const SL=[];E.segs.forEach((S,k)=>{SL.push(S);const nx=E.segs[k+1];if(nx&&!S.portal&&!nx.portal)SL.push({len:12,w:11,deco:S.deco==='arena'||S.deco==='hall'||S.deco==='core'?nx.deco:S.deco,bend:true});});
+  let z=0,cx=0,dir=srand()<.5?1:-1;SL.forEach((S,k)=>{const prev=segs[k-1];
+    if(prev){const room=(prev.w+S.w)/2-6.5;let sh=S.bend?dir*sr(3.5,Math.max(3.6,room)):(S.boss||S.portal?-cx*.6:dir*sr(1.5,Math.max(1.6,room*.6)));
+      if(!S.bend)dir=-dir;cx=clamp(cx+sh,-16,16);const lo=Math.max(prev.cx-prev.w/2,cx-S.w/2),hi=Math.min(prev.cx+prev.w/2,cx+S.w/2);if(hi-lo<6){cx=prev.cx+Math.sign(cx-prev.cx)*((prev.w+S.w)/2-6);}}
+    const s=Object.assign({},S,{k,z0:z,z1:z+S.len,cx,triggered:false,waveI:0,live:[],done:!S.wave&&!S.boss});segs.push(s);z+=S.len;
     if(S.gate||S.boss)gates.push({z:s.z1,seg:s,closed:true,mesh:null});});
   const total=z;
   // 바닥
   const fl=TX[T.floor].clone();fl.needsUpdate=true;fl.repeat.set(4,total/6);
-  const maxW=Math.max(...segs.map(s=>s.w));
+  const maxW=2*Math.max(...segs.map(s=>Math.abs(s.cx)+s.w/2));
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(maxW+80,total+80),matL({map:fl,color:0x9a9a9a},{roughness:.85,metalness:T.floor==='metal'?.4:0}));
   floor.rotation.x=-Math.PI/2;floor.position.set(0,0,total/2);floor.receiveShadow=true;fl.repeat.set((maxW+80)/6,(total+80)/6);scene.add(floor);
   // 벽 (구간마다 양옆)
   const wallTex={cliff:TX.rock,castle:TX.brick,western:TX.wood,lab:TX.panel}[T.wall];
   const wm=matL({map:wallTex,color:0xb4b4b4,emissive:T.wall==='lab'?T.acc:0x000000,emissiveMap:T.wall==='lab'?TX.panelE:null,emissiveIntensity:T.wall==='lab'?1.3:0},{roughness:.8,metalness:T.wall==='lab'?.4:0});
   const WH=T.wall==='western'?4.2:T.wall==='castle'?6:T.wall==='cliff'?7:5.5;
-  segs.forEach((s,k)=>{for(const side of [-1,1]){const m=new THREE.Mesh(G.box(2,WH,s.len),wm);m.position.set(side*(s.w/2+1),WH/2,(s.z0+s.z1)/2);m.castShadow=m.receiveShadow=true;
+  segs.forEach((s,k)=>{for(const side of [-1,1]){const m=new THREE.Mesh(G.box(2,WH,s.len),wm);m.position.set(s.cx+side*(s.w/2+1),WH/2,(s.z0+s.z1)/2);m.castShadow=m.receiveShadow=true;
       if(T.wall==='cliff'){m.scale.y=sr(.8,1.4);m.position.y=WH*m.scale.y/2;}scene.add(m);}
-    const nx=segs[k+1];if(nx&&nx.w!==s.w){const a=Math.min(s.w,nx.w)/2,b=Math.max(s.w,nx.w)/2;for(const side of [-1,1]){const m=new THREE.Mesh(G.box(b-a+2,WH,1),wm);m.position.set(side*(a+b)/2+side*1,WH/2,s.z1);m.castShadow=true;scene.add(m);}}});
-  const back=new THREE.Mesh(G.box(segs[0].w+4,WH,1),wm);back.position.set(0,WH/2,-.5);scene.add(back);
-  const endW=new THREE.Mesh(G.box(segs[segs.length-1].w+4,WH,1),wm);endW.position.set(0,WH/2,total+.5);scene.add(endW);
+    const nx=segs[k+1];if(nx){const L=Math.min(s.cx-s.w/2,nx.cx-nx.w/2)-2,R=Math.max(s.cx+s.w/2,nx.cx+nx.w/2)+2,ol=Math.max(s.cx-s.w/2,nx.cx-nx.w/2),orr=Math.min(s.cx+s.w/2,nx.cx+nx.w/2);
+      for(const [a,b] of [[L,ol],[orr,R]])if(b-a>.05){const m=new THREE.Mesh(G.box(b-a,WH,1),wm);m.position.set((a+b)/2,WH/2,s.z1);m.castShadow=m.receiveShadow=true;scene.add(m);}}});
+  const back=new THREE.Mesh(G.box(segs[0].w+4,WH,1),wm);back.position.set(segs[0].cx,WH/2,-.5);scene.add(back);
+  const endW=new THREE.Mesh(G.box(segs[segs.length-1].w+4,WH,1),wm);endW.position.set(segs[segs.length-1].cx,WH/2,total+.5);scene.add(endW);
   // 문(시간 장벽)
   gates.forEach(g=>{const w=g.seg.w,m=new THREE.Mesh(new THREE.PlaneGeometry(w,5),new THREE.MeshBasicMaterial({color:T.acc,transparent:true,opacity:.35,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
-    m.position.set(0,2.5,g.z);scene.add(m);g.mesh=m;});
+    m.position.set(g.seg.cx,2.5,g.z);scene.add(m);g.mesh=m;});
   // 끝 포털
   const ps=segs[segs.length-1],pg=new THREE.Group();const ring=new THREE.Mesh(new THREE.TorusGeometry(2.2,.25,12,40),new THREE.MeshBasicMaterial({color:0xffc94a}));pg.add(ring);
   const disc=new THREE.Mesh(new THREE.CircleGeometry(2,32),new THREE.MeshBasicMaterial({color:0xa36bff,transparent:true,opacity:.65,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));pg.add(disc);pg.add(glowSprite(0xffc94a,7,.6));
-  pg.position.set(0,2.6,ps.z1-3);pg.visible=false;scene.add(pg);portal={g:pg,ring,disc,z:ps.z1-3};
+  pg.position.set(ps.cx,2.6,ps.z1-3);pg.visible=false;scene.add(pg);portal={g:pg,ring,disc,z:ps.z1-3,x:ps.cx};
   // 소품
-  segs.forEach(s=>decorate(s,T));
+  crates=[];segs.forEach(s=>{const n0=scene.children.length,o0=obstacles.length,c0=crates.length;decorate(s,T);addCrates(s,T);
+    for(let i=n0;i<scene.children.length;i++)scene.children[i].position.x+=s.cx;for(let i=o0;i<obstacles.length;i++)obstacles[i].x+=s.cx;for(let i=c0;i<crates.length;i++)crates[i].x=crates[i].ob.x;});
   backdrop(T,total,maxW);
   makeWeather(T);
   return total;}
@@ -10972,6 +10980,18 @@ function disposeScene(s){s.traverse(o=>{let p=o;while(p){if(p.userData&&p.userDa
 function noRay(o){o.raycast=()=>{};return o;}
 function glowSprite(color,size,opacity=1){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:TX.glow,color,transparent:true,opacity,blending:THREE.AdditiveBlending,depthWrite:false}));s.scale.set(size,size,1);return noRay(s);}
 function addOb(x,z,r){obstacles.push({x,z,r});}
+/* 부술 수 있는 상자 */
+function addCrates(s,T){const n=s.portal?0:s.bend?2:s.wave||s.boss?3:2;for(let i=0;i<n;i++){const x=sr(-s.w/2+1.6,s.w/2-1.6),z=s.z0+sr(3,s.len-3);addCrate(x,z);}}
+function addCrate(x,z){const sz=era===2?1:1.05,g=new THREE.Group();
+  if(era===2){mesh(G.cyl(.5,.5,1.1,12),mc(0x8a5a30,{map:TX.wood}),0,.55,0,g);for(const y of [.25,.85])mesh(G.cyl(.52,.52,.06,12),mc(0x3a3a40,{metal:.8}),0,y,0,g);}
+  else if(era===3){mesh(G.box(sz,sz,sz),mc(0x3a4458,{metal:.6,rough:.35}),0,sz/2,0,g);const l=mesh(G.box(sz*1.02,.08,sz*1.02),new THREE.MeshBasicMaterial({color:0x5ff0ff}),0,sz*.5,0,g);l.castShadow=false;}
+  else{mesh(G.box(sz,sz,sz),mc(era===0?0x9a7a4a:0x7a5a3a,{map:TX.wood}),0,sz/2,0,g);for(const y of [.12,sz-.12])mesh(G.box(sz*1.03,.08,sz*1.03),mc(0x4a3420),0,y,0,g);}
+  g.position.set(x,0,z);g.rotation.y=sr(0,1.5);scene.add(g);const sp=glowSprite(0xffe08a,.55,.55);sp.position.set(0,sz+.35,0);g.add(sp);
+  const ob={x,z,r:.75};obstacles.push(ob);const c={id:crates.length,x,z,ob,g,sp,hp:18,broken:false};crates.push(c);return c;}
+function hitCrate(c,dmg){if(c.broken)return;c.hp-=dmg;c.g.position.y=.08;setTimeout(()=>{if(c.g)c.g.position.y=0;},60);SFX.hit();if(c.hp<=0)breakCrate(c,true);}
+function breakCrate(c,local){if(c.broken)return;c.broken=true;scene.remove(c.g);const i=obstacles.indexOf(c.ob);if(i>=0)obstacles.splice(i,1);
+  const p=new THREE.Vector3(c.x,.6,c.z);spark(p,era===3?0x5ff0ff:0xc89a5a,12,6,.3);spark(p,0xffe08a,5,4,.2);noise(.25,1200,.4,1,'bandpass');
+  if(!net||netHost()){const r=Math.random();if(r<.85)dropPickup(c.x,c.z,r<.38?'hp':r<.76?'ammo':'pow');}else if(local)roomToHost({t:'crate',id:c.id});}
 function tree(x,z,s,kind){const g=new THREE.Group();
   if(kind==='palm'){const tr=mesh(G.cyl(.18*s,.28*s,4.5*s,7),mc(0x6a4a2a,{flatShading:true}),0,2.25*s,0,g);tr.rotation.z=sr(-.15,.15);
     for(let i=0;i<7;i++){const l=mesh(G.box(.5*s,.05,2.4*s),mc(0x3a7a2a,{flatShading:true}),0,4.5*s,0,g);l.rotation.y=i/7*Math.PI*2;l.rotation.x=.5;l.translateZ(1.1*s);}}
@@ -11014,7 +11034,7 @@ function makeWeather(T){const N=[350,700,1200][save.gfx]||350,geo=new THREE.Buff
 /* ================= 플레이어 ================= */
 function heroRig(i){const L=LOOK.hero(i);const mr=modelHuman('hero',1.8,{tint:L.acc});if(mr){const ring=glowSprite(L.acc,1.4,.35);ring.position.y=.05;mr.root.add(ring);return mr;}const r=makeHuman(L);r.root.traverse(o=>{if(o.isMesh)o.raycast=()=>{};});return r;}
 function initMe(){if(me.rig)scene.remove(me.rig.root);me.rig=heroRig(me.gi);scene.add(me.rig.root);
-  me.x=(me.gi%2?1.5:-1.5)*(me.gi?1:0);me.z=3+me.gi*.8;me.yaw=0;me.hp=100;me.down=false;me.inv=0;me.wi=0;me.atkT=0;me.cd=0;me.rollT=0;
+  me.x=segs[0].cx+(me.gi%2?1.5:-1.5)*(me.gi?1:0);me.z=3+me.gi*.8;me.powT=0;me.yaw=0;me.hp=100;me.down=false;me.inv=0;me.wi=0;me.atkT=0;me.cd=0;me.rollT=0;
   me.ammo={};eraWeapons().forEach(k=>{if(WPN[k].ammo)me.ammo[k]=WPN[k].ammo;});setWeaponMesh(me.rig,eraWeapons()[0]);camYaw=0;}
 function curW(){return WPN[eraWeapons()[me.wi]];}
 function curWk(){return eraWeapons()[me.wi];}
@@ -11035,13 +11055,15 @@ function attack(){if(me.down||me.cd>0||me.rollT>0||state!=='play')return;const w
     if(W.hitscan){(W.kind==='laser'||wk==='laser')?SFX.laser():(W.pel?SFX.big():SFX.shot());flash.position.copy(from);flash.color.setHex(W.col);flash.intensity=2.5;
       const n=W.pel||1;for(let p=0;p<n;p++){const dir=aim.clone().sub(from);dir.x+=rand(-1,1)*(W.spread||.02)*dir.length();dir.y+=rand(-1,1)*(W.spread||.02)*dir.length()*.5;dir.normalize();
         const hit=hitscan(from,dir,W.range);tracer(from,hit.p,W.col,wk==='laser'?.04:.025,wk==='laser'?.08:.05);
-        if(hit.e)playerHit(hit.e,W.dmg,hit.p,dir.x,dir.z);else spark(hit.p,W.col,3,4,.15);}}
+        if(hit.e)playerHit(hit.e,W.dmg*(me.powT>0?2:1),hit.p,dir.x,dir.z);else if(hit.c)hitCrate(hit.c,W.dmg);else spark(hit.p,W.col,3,4,.15);}}
     else{SFX[W.kind==='arrow'?'bow':'throw']();const d=aim.distanceTo(from),tt=d/W.spd;const v=aim.clone().sub(from).divideScalar(tt);v.y+=.5*W.grav*tt;
       myShots.push(makeProj(from,v,W.grav,W.dmg,W.kind,true));}}}
-function hitscan(from,dir,range){let best=null,bd=range;for(const e of enemies){if(e.dead)continue;const c=new THREE.Vector3(e.x,e.hh||1.1,e.z),rr=(e.D.r||.5)+.25;
+function hitscan(from,dir,range){let best=null,bd=range,bc=null;
+  for(const c of crates){if(c.broken)continue;const cc=new THREE.Vector3(c.x,.55,c.z),oc=cc.clone().sub(from),t=oc.dot(dir);if(t<0||t>bd)continue;if(from.clone().addScaledVector(dir,t).distanceTo(cc)<.7){bd=t;bc=c;}}for(const e of enemies){if(e.dead)continue;const c=new THREE.Vector3(e.x,e.hh||1.1,e.z),rr=(e.D.r||.5)+.25;
     const oc=c.clone().sub(from),t=oc.dot(dir);if(t<0||t>bd)continue;const closest=from.clone().addScaledVector(dir,t);if(closest.distanceTo(c)<rr+(e.D.boss?.6:0)){bd=t;best=e;}}
-  return{e:best,p:from.clone().addScaledVector(dir,bd)};}
-function meleeHits(){const W=curW(),dmg=W.dmg*(me.combo===2?1.6:1);let any=false;
+  if(best)bc=null;return{e:best,c:bc,p:from.clone().addScaledVector(dir,bd)};}
+function meleeHits(){const W=curW(),dmg=W.dmg*(me.combo===2?1.6:1)*(me.powT>0?2:1);let any=false;
+  for(const c of crates){if(c.broken)continue;const dx=c.x-me.x,dz=c.z-me.z,d=Math.hypot(dx,dz);if(d<W.range+.6&&Math.abs(angDiff(me.yaw,Math.atan2(dx,dz)))<W.arc){hitCrate(c,dmg);any=true;}}
   for(const e of enemies){if(e.dead)continue;const dx=e.x-me.x,dz=e.z-me.z,d=Math.hypot(dx,dz);if(d>W.range+(e.D.r||.5))continue;
     if(Math.abs(angDiff(me.yaw,Math.atan2(dx,dz)))>W.arc*(me.combo===2?1.3:1))continue;any=true;playerHit(e,dmg,new THREE.Vector3(e.x,e.hh||1.1,e.z),dx/(d||1),dz/(d||1));}
   if(any){hitStop=.06;shake=Math.max(shake,.12);}}
@@ -11087,9 +11109,10 @@ function damageEnemy(e,dmg,kx,kz,by){if(e.dead)return;if(e.shield>0)dmg*=.3;e.hp
 function killEnemy(e){e.dead=.001;e.hp=0;const p=new THREE.Vector3(e.x,e.hh,e.z);
   if(e.rig.kind==='mech'&&e.rig.acts.death){setMechAnim(e.rig,'death');}
   boomFx(p,e.D.boss?2.5:e.rig.kind==='drone'||e.rig.kind==='mech'?1:.6,e.rig.kind==='mech'||e.rig.kind==='drone'||e.rig.kind==='phantom');
-  if(!e.D.boss&&Math.random()<.22&&(netHost()||!net))dropPickup(e.x,e.z);}
+  if(!e.D.boss&&Math.random()<.1&&(netHost()||!net))dropPickup(e.x,e.z);}
 function removeEnemy(e){scene.remove(e.rig.root);enemies.splice(enemies.indexOf(e),1);}
-function dropPickup(x,z,kind){kind=kind||(Math.random()<.5?'hp':'ammo');const g=new THREE.Group(),col=kind==='hp'?0x5fe3a1:0xffc94a;
+function dropPickup(x,z,kind){kind=kind||(Math.random()<.5?'hp':'ammo');const g=new THREE.Group(),col=kind==='hp'?0x5fe3a1:kind==='pow'?0xff5ad8:0xffc94a;
+  if(kind==='pow'){mesh(new THREE.OctahedronGeometry(.32),matP({color:0x301030,emissive:col,emissiveIntensity:1}),0,0,0,g);g.add(glowSprite(col,1.6,.7));g.position.set(x,.6,z);scene.add(g);pickups.push({g,kind,x,z,t:0,id:eid++});return;}
   mesh(G.box(.45,.35,.35),matP({color:0x222,emissive:col,emissiveIntensity:.8}),0,0,0,g);if(kind==='hp'){mesh(G.box(.5,.1,.1),new THREE.MeshBasicMaterial({color:0xffffff}),0,0,.18,g);mesh(G.box(.1,.3,.1),new THREE.MeshBasicMaterial({color:0xffffff}),0,0,.18,g);}
   g.add(glowSprite(col,1.3,.6));g.position.set(x,.6,z);scene.add(g);pickups.push({g,kind,x,z,t:0,id:eid++});}
 
@@ -11143,10 +11166,11 @@ function makeProj(from,vel,grav,dmg,kind,mine){const g=new THREE.Group();const c
   else{const m=mesh(G.sph(kind==='orb'?.28:kind==='stone'?.16:.1,8,6),new THREE.MeshBasicMaterial({color:0xffffff}),0,0,0,g);m.castShadow=false;g.add(glowSprite(col,kind==='orb'?1.4:kind==='stone'?.6:.7,.9));}
   g.position.copy(from);scene.add(g);return{g,v:vel.clone(),grav,dmg,kind,mine,life:4,id:eid++,r:kind==='orb'?.5:.25};}
 function tickProj(list,dt,auth){for(let i=list.length-1;i>=0;i--){const s=list[i],p=s.g.position;s.life-=dt;s.v.y-=s.grav*dt;p.addScaledVector(s.v,dt);if(s.kind==='arrow')s.g.lookAt(p.clone().add(s.v));
-    let gone=s.life<=0||p.y<0||Math.abs(p.x)>halfW(p.z)+.3;
+    const PB=segX(p.z);let gone=s.life<=0||p.y<0||p.x<PB[0]-.3||p.x>PB[1]+.3;
+    if(!gone&&s.mine)for(const c of crates)if(!c.broken&&p.y<1.4&&Math.hypot(p.x-c.x,p.z-c.z)<.8){hitCrate(c,s.dmg);gone=true;break;}
     for(const ob of obstacles)if(!gone&&p.y<1.6&&Math.hypot(p.x-ob.x,p.z-ob.z)<ob.r){gone=true;}
     for(const g of gates)if(!gone&&g.closed&&Math.abs(p.z-g.z)<.4)gone=true;
-    if(!gone&&s.mine){for(const e of enemies){if(e.dead)continue;if(Math.hypot(p.x-e.x,p.z-e.z)<(e.D.r||.5)+.3&&Math.abs(p.y-e.hh)<(e.D.boss?3:1.2)){playerHit(e,s.dmg,p.clone(),s.v.x/20,s.v.z/20);gone=true;break;}}}
+    if(!gone&&s.mine){for(const e of enemies){if(e.dead)continue;if(Math.hypot(p.x-e.x,p.z-e.z)<(e.D.r||.5)+.3&&Math.abs(p.y-e.hh)<(e.D.boss?3:1.2)){playerHit(e,s.dmg*(me.powT>0?2:1),p.clone(),s.v.x/20,s.v.z/20);gone=true;break;}}}
     if(!gone&&!s.mine&&s.kind!=='dyna'&&auth){for(const t of targets()){if(Math.hypot(p.x-t.x,p.z-t.z)<s.r+.4&&p.y<2.2){hurtPlayerAt(t.gi,s.dmg);gone=true;break;}}}
     if(gone){if(s.kind!=='dyna')spark(p.clone(),0xffd0a0,3,3,.15);scene.remove(s.g);list.splice(i,1);}}}
 function poseEnemy(e,dt,move){const r=e.rig,st={t:e.t,move,atk:e.atk,atkKind:e.atkKind,combo:0,hurt:Math.max(0,e.hurt),dead:e.dead,aim:!!(e.D.shoot&&e.atk<0&&move<.3)||e.type==='gatling'};
@@ -11163,7 +11187,7 @@ function tickBoss(e,dt,T){const D=e.D,r=e.hp/e.hpMax;if(!T)return 0;const dx=T.x
   if(e.atk>=0){e.atkT+=dt;e.atk=Math.min(.999,e.atkT/e.atkDur);if(e.atkT>=e.atkDur){e.atk=-1;}return 0;}
   e.cd-=dt;e.yaw=lerpAng(e.yaw,a,dt*(e.type==='phantom'?0:2.5));
   const start=(kind,dur)=>{e.atk=0;e.atkT=0;e.atkKind=kind;e.atkDur=dur;};
-  const summon=(types)=>{toast(D.n+'이(가) 부하를 불렀어요');for(const t of types){const ang=rand(0,6.3);spawnEnemy(t,clamp(e.x+Math.cos(ang)*5,-halfW(e.z)+1,halfW(e.z)-1),e.z+Math.sin(ang)*4);}};
+  const summon=(types)=>{toast(D.n+'이(가) 부하를 불렀어요');for(const t of types){const ang=rand(0,6.3);{const B=segX(e.z);spawnEnemy(t,clamp(e.x+Math.cos(ang)*5,B[0]+1,B[1]-1),e.z+Math.sin(ang)*4);}}};
   if(e.type==='trex'){if(r<.5&&e.spawned<1){e.spawned=1;start('roar',1.2);SFX.roar();summon(['raptor','raptor','raptor']);shake=.4;return 0;}
     if(e.cd<=0){if(d<5){start('bite',1.0);addWarn({kind:'cone',x:e.x,z:e.z,a:e.yaw,r:6,arc:.7,t:.6,dmg:24});e.cd=1.4;}
       else if(Math.random()<.45){start('stomp',1.2);const w=addWarn({kind:'ring',x:e.x,z:e.z,r:1.5,r0:1.5,grow:12,t:1.4,dmg:0});w.wave=true;e.cd=2.2;shake=.3;SFX.roar();}
@@ -11204,14 +11228,14 @@ function tickFx(dt){for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=
 function anyoneIn(s){if(me.z>s.z0+2)return true;for(const k in others)if(others[k].z>s.z0+2)return true;return false;}
 function tickProgress(){const auth=!net||netHost();
   for(const s of segs){if(!s.triggered&&anyoneIn(s)){s.triggered=true;mission.cp=s.k;(s.say||[]).forEach(l=>radio(l[0],l[1]));
-      if(auth){if(s.wave)spawnWave(s);if(s.boss){const b=spawnEnemy(s.boss,0,s.z0+s.len*.6);b.yaw=Math.PI;s.live=[b.id];$('bossbar').style.display='block';$('bossn').textContent=ETYPE[s.boss].n;if(s.boss==='trex')SFX.roar();}}
+      if(auth){if(s.wave)spawnWave(s);if(s.boss){const b=spawnEnemy(s.boss,s.cx,s.z0+s.len*.6);b.yaw=Math.PI;s.live=[b.id];$('bossbar').style.display='block';$('bossn').textContent=ETYPE[s.boss].n;if(s.boss==='trex')SFX.roar();}}
       if(net&&netHost())roomEach(()=>({t:'seg',k:s.k}));}
     if(auth&&s.triggered&&!s.done){const alive=enemies.filter(e=>!e.dead).length;
       if(alive===0){if(s.wave&&s.waveI<s.wave.length){spawnWave(s);}else{s.done=true;openGate(s);}}}}
   const bossE=enemies.find(e=>e.D.boss&&!e.dead);if(bossE)$('bossi').style.width=(bossE.hp/bossE.hpMax*100)+'%';
   // 포털
-  if(gates.every(g=>!g.closed)&&portal){portal.g.visible=true;const near=Math.hypot(me.x,me.z-portal.z)<2.6;if(auth&&near&&!mission.done)stageClear();}}
-function spawnWave(s){const w=s.wave[s.waveI++];for(const [type,n] of w)for(let k=0;k<n;k++){const x=rand(-s.w/2+2,s.w/2-2),z=s.z1-rand(2,Math.min(10,s.len*.4));spawnEnemy(type,x,z);}}
+  if(gates.every(g=>!g.closed)&&portal){portal.g.visible=true;const near=Math.hypot(me.x-portal.x,me.z-portal.z)<2.6;if(auth&&near&&!mission.done)stageClear();}}
+function spawnWave(s){const w=s.wave[s.waveI++];for(const [type,n] of w)for(let k=0;k<n;k++){const x=s.cx+rand(-s.w/2+2,s.w/2-2),z=s.z1-rand(2,Math.min(10,s.len*.4));spawnEnemy(type,x,z);}}
 function openGate(s){const g=gates.find(g=>g.seg===s);if(g&&g.closed){g.closed=false;g.mesh.visible=false;SFX.gate();toast('길이 열렸어요');$('bossbar').style.display='none';if(net&&netHost())roomEach(()=>({t:'gate',k:s.k}));}}
 function updateObjText(){let s='앞으로 나아가기';const cur=segAt(me.z);
   const g=gates.find(g=>g.closed);if(g&&g.seg.triggered){const n=enemies.filter(e=>!e.dead).length;s=g.seg.boss?`${ETYPE[g.seg.boss].n} 쓰러뜨리기`:`적을 모두 물리치기 · 남은 적 ${n}`;}
@@ -11248,7 +11272,7 @@ $('bPause').onclick=()=>pauseGame();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'&&!net)pauseGame();});
 
 /* ================= 내 캐릭터 갱신 ================= */
-function updateMe(dt){if(me.inv>0)me.inv-=dt;me.rollCd-=dt;me.cd-=dt;me.comboT-=dt;if(me.anim.hurt>0)me.anim.hurt-=dt;
+function updateMe(dt){if(me.inv>0)me.inv-=dt;if(me.powT>0){me.powT-=dt;if(me.rig&&me.rig.root&&Math.random()<dt*20)spark(new THREE.Vector3(me.x+rand(-.3,.3),rand(.5,1.6),me.z+rand(-.3,.3)),0xff5ad8,1,1.5,.18);}me.rollCd-=dt;me.cd-=dt;me.comboT-=dt;if(me.anim.hurt>0)me.anim.hurt-=dt;
   if(me.down){me.downT+=dt;me.anim.dead=Math.min(1,me.downT);poseRig(me.rig,me.anim,dt);me.rig.root.position.set(me.x,0,me.z);return;}
   me.anim.dead=0;
   let mx=input.mx,my=input.my;if(keys.KeyW||keys.ArrowUp)my=1;if(keys.KeyS||keys.ArrowDown)my=-1;if(keys.KeyA||keys.ArrowLeft)mx=-1;if(keys.KeyD||keys.ArrowRight)mx=1;
@@ -11265,10 +11289,10 @@ function updateMe(dt){if(me.inv>0)me.inv-=dt;me.rollCd-=dt;me.cd-=dt;me.comboT-=
   me.anim.gun=!curW().melee;poseRig(me.rig,me.anim,dt);me.rig.root.position.set(me.x,0,me.z);me.rig.root.rotation.y=me.yaw;
   // 줍기
   for(let i=pickups.length-1;i>=0;i--){const p=pickups[i];p.t+=dt;p.g.rotation.y+=dt*2;p.g.position.y=.6+Math.sin(p.t*3)*.12;
-    if(Math.hypot(p.x-me.x,p.z-me.z)<1.2){if(p.kind==='hp'){if(me.hp>=100)continue;me.hp=Math.min(100,me.hp+35);toast('체력 +35');}else{eraWeapons().forEach(k=>{if(WPN[k].ammo)me.ammo[k]=Math.min(WPN[k].ammo*1.5,(me.ammo[k]||0)+Math.ceil(WPN[k].ammo*.5));});toast('탄 보충');}
+    if(Math.hypot(p.x-me.x,p.z-me.z)<1.2){if(p.kind==='pow'){me.powT=12;toast('힘 2배! 12초');SFX.warp();}else if(p.kind==='hp'){if(me.hp>=100)continue;me.hp=Math.min(100,me.hp+35);toast('체력 +35');}else{eraWeapons().forEach(k=>{if(WPN[k].ammo)me.ammo[k]=Math.min(WPN[k].ammo*1.5,(me.ammo[k]||0)+Math.ceil(WPN[k].ammo*.5));});toast('탄 보충');}
       SFX.pick();scene.remove(p.g);pickups.splice(i,1);if(net)netSend({t:'pick',id:p.id});}}}
 function updateCamera(dt){const dist=6.2,h=1.4;const cx=me.x-Math.sin(camYaw)*Math.cos(camPitch)*dist,cz=me.z-Math.cos(camYaw)*Math.cos(camPitch)*dist,cy=h+Math.sin(camPitch)*dist;
-  const hw=halfW(cz)+.6;camera.position.set(clamp(cx,-hw,hw)+rand(-1,1)*shake*.3,cy+rand(-1,1)*shake*.3,Math.max(-1.5,cz));camera.lookAt(me.x,h,me.z);shake=Math.max(0,shake-dt*1.6);
+  const CB=segX(cz);camera.position.set(clamp(cx,CB[0]-.6,CB[1]+.6)+rand(-1,1)*shake*.3,cy+rand(-1,1)*shake*.3,Math.max(-1.5,cz));camera.lookAt(me.x,h,me.z);shake=Math.max(0,shake-dt*1.6);
   if(sunL&&HI()){sunL.position.set(me.x+20,40,me.z+10);sunL.target.position.set(me.x,0,me.z+6);}}
 
 /* ================= 온라인 협동 ================= */
@@ -11284,7 +11308,7 @@ function tickOthers(dt){for(const k in others){const o=others[k];if(o.tx==null)c
 function snapshot(){return{t:'s',e:enemies.map(e=>[e.id,e.type,+e.x.toFixed(2),+e.z.toFixed(2),+e.yaw.toFixed(2),Math.round(e.hp),Math.round(e.hpMax),+(e.atk).toFixed(2),e.atkKind,e.dead?1:0,e.shieldUp?1:0]),
   s:shots.map(s=>[s.id,s.kind,+s.g.position.x.toFixed(2),+s.g.position.y.toFixed(2),+s.g.position.z.toFixed(2),+s.v.x.toFixed(1),+s.v.y.toFixed(1),+s.v.z.toFixed(1),s.grav]),
   w:tgs.map(o=>[o.id,o.kind,+o.x.toFixed(2),+o.z.toFixed(2),+(o.r).toFixed(2),+o.t.toFixed(2),+(o.a||0).toFixed(2),o.len||0,o.arc||0,o.grow||0,o.r0||0]),
-  p:pickups.map(p=>[p.id,p.kind,+p.x.toFixed(1),+p.z.toFixed(1)]),pl:[myState()].concat(Object.keys(others).map(k=>{const o=others[k];return{t:'p',gi:+k,x:o.tx,z:o.tz,yaw:o.tyaw,hp:o.hp,down:o.down,mv:o.anim.move,atk:o.anim.atk,ak:o.anim.atkKind,cb:o.anim.combo,roll:o.anim.roll,wk:o.wk,nm:o.name};}))};}
+  cr:crates.filter(c=>c.broken).map(c=>c.id),p:pickups.map(p=>[p.id,p.kind,+p.x.toFixed(1),+p.z.toFixed(1)]),pl:[myState()].concat(Object.keys(others).map(k=>{const o=others[k];return{t:'p',gi:+k,x:o.tx,z:o.tz,yaw:o.tyaw,hp:o.hp,down:o.down,mv:o.anim.move,atk:o.anim.atk,ak:o.anim.atkKind,cb:o.anim.combo,roll:o.anim.roll,wk:o.wk,nm:o.name};}))};}
 function applySnap(d){const seen=new Set();
   for(const a of d.e){const [id,type,x,z,yaw,hp,hpMax,atk,ak,dead,sh]=a;seen.add(id);let e=enemies.find(q=>q.id===id);
     if(!e){if(dead)continue;e=spawnEnemy(type,x,z,id);}
@@ -11294,6 +11318,7 @@ function applySnap(d){const seen=new Set();
   for(let i=shots.length-1;i>=0;i--)if(!sseen.has(shots[i].id)){scene.remove(shots[i].g);shots.splice(i,1);}
   const wseen=new Set();for(const a of d.w){const [id,kind,x,z,r,t,an,len,arc,grow,r0]=a;wseen.add(id);let o=tgs.find(q=>q.id===id);if(!o){o={id,kind,x,z,r,t,max:t,a:an,len,arc,grow,r0};tgs.push(o);makeWarnMesh(o);}else{o.t=t;}}
   for(let i=tgs.length-1;i>=0;i--)if(!wseen.has(tgs[i].id)){scene.remove(tgs[i].g);tgs.splice(i,1);}
+  (d.cr||[]).forEach(id=>{const c=crates[id];if(c&&!c.broken)breakCrate(c,false);});
   const pseen=new Set();for(const [id,kind,x,z] of d.p){pseen.add(id);if(!pickups.find(p=>p.id===id)){dropPickup(x,z,kind);pickups[pickups.length-1].id=id;}}
   for(let i=pickups.length-1;i>=0;i--)if(!pseen.has(pickups[i].id)){scene.remove(pickups[i].g);pickups.splice(i,1);}
   for(const p of d.pl)applyPlayer(p);
@@ -11307,6 +11332,7 @@ function guestTickEnemies(dt){for(let i=enemies.length-1;i>=0;i--){const e=enemi
 function onNetMsg(gi,d){if(!d||!d.t)return;
   if(netHost()){if(d.t==='p'){d.gi=gi;applyPlayer(d);}
     else if(d.t==='hit'){const e=enemies.find(q=>q.id===d.id);if(e)damageEnemy(e,d.dmg,d.kx,d.kz,gi);}
+    else if(d.t==='crate'){const c=crates[d.id];if(c)breakCrate(c,false);}
     else if(d.t==='pick'){const i=pickups.findIndex(p=>p.id===d.id);if(i>=0){scene.remove(pickups[i].g);pickups.splice(i,1);}}}
   else{if(d.t==='start'){me.gi=ROOM.gi||1;others={};startStage(d.era,true);}
     else if(state!=='play'&&state!=='end')return;
@@ -11336,7 +11362,7 @@ function update(dt){mission.t+=dt;
   if(net){netT-=dt;if(netT<=0){netT=.066;if(net.host){snapT-=.066;roomEach(()=>snapshot());}else roomToHost(myState());}}
   // HUD
   if(state!=='play')return;updateObjText();
-  const wk=curWk(),W=WPN[wk];$('wname').textContent=W.n;$('ammo').textContent=W.melee?'∞':(me.ammo[wk]||0);
+  const wk=curWk(),W=WPN[wk];$('wname').textContent=W.n+(me.powT>0?' · 힘 2배 '+Math.ceil(me.powT)+'초':'');$('ammo').textContent=W.melee?'∞':(me.ammo[wk]||0);
   $('hpn').textContent=Math.ceil(me.hp);const hi=$('hpi');hi.style.width=me.hp+'%';hi.style.background=me.hp<30?'var(--hot)':me.hp<60?'var(--chrono)':'var(--ok)';
   $('down').style.display=me.down?'grid':'none';
   if(hurtT>0)hurtT-=dt;const vv=Math.max(hurtT*1.6,me.hp<30&&!me.down?.3+Math.sin(mission.t*5)*.1:0);if(finalPass){finalPass.uniforms.hurt.value=vv*.8;finalPass.uniforms.ab.value=hurtT+shake;$('vig').style.opacity=0;}else $('vig').style.opacity=vv;
@@ -11395,7 +11421,7 @@ function stageFail(fromNet){if(mission.done)return;mission.done=true;state='end'
 function retryCp(fromNet){const s=segs[mission.cp]||segs[0];
   for(const e of enemies.slice()){if(e.z>=s.z0-1){removeEnemy(e);}}shots.forEach(x=>scene.remove(x.g));shots=[];tgs.forEach(o=>scene.remove(o.g));tgs=[];
   for(const q of segs)if(q.k>=s.k){q.triggered=false;q.waveI=0;q.done=!q.wave&&!q.boss;const g=gates.find(g=>g.seg===q);if(g){g.closed=true;g.mesh.visible=true;}}
-  me.x=0;me.z=s.z0+1.5;me.hp=100;me.down=false;me.inv=1;mission.done=false;state='play';show(null);lastTime=performance.now();toast('체크포인트에서 다시 시작');$('bossbar').style.display='none';}
+  me.x=s.cx;me.z=s.z0+1.5;me.hp=100;me.down=false;me.inv=1;mission.done=false;state='play';show(null);lastTime=performance.now();toast('체크포인트에서 다시 시작');$('bossbar').style.display='none';}
 
 /* ================= 온라인 방 붙이기 ================= */
 try{if(typeof roomMount==='function'&&typeof LOBBY!=='undefined'){roomMount($('netMount'),{game:'chrono',max:3,
