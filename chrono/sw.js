@@ -1,5 +1,5 @@
-// 오프라인 저장 (버전 7133a70940)
-const CACHE='chrono-7133a70940',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","models/Base_Large.gltf","models/Cowboy_Male.gltf","models/Elf.gltf","models/GeodesicDome.gltf","models/Knight_Golden_Male.gltf","models/Knight_Male.gltf","models/Mech_FinnTheFrog.gltf","models/Mech_RaeTheRedPanda.gltf","models/Pirate_Male.gltf","models/Roof_Radar.gltf","models/SolarPanel_Structure.gltf","models/Spaceship_BarbaraTheBee.gltf","models/Spacesuit.gltf","models/Trex.fbx","models/Velociraptor.fbx","models/Viking_Male.gltf","models/weapons/Axe_Small.mtl","models/weapons/Axe_Small.obj","models/weapons/Bow_Wooden.mtl","models/weapons/Bow_Wooden.obj","models/weapons/Hammer_Small.mtl","models/weapons/Hammer_Small.obj","models/weapons/Spear.mtl","models/weapons/Spear.obj","models/weapons/Sword.mtl","models/weapons/Sword.obj","models/weapons/Sword_Big.mtl","models/weapons/Sword_Big.obj"];
+// 오프라인 저장 (버전 9a91f1ed62)
+const CACHE='chrono-9a91f1ed62',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","models/Spacesuit.gltf"];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})))));});
 self.addEventListener('message',e=>{if(e.data==='SKIP')self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('chrono-')&&k!==CACHE&&k!=='chrono-font').map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -14,5 +14,5 @@ self.addEventListener('fetch',e=>{
     const net=fetch(e.request,{cache:'no-cache'}).then(res=>{if(res.ok){const c=res.clone();caches.open(CACHE).then(k=>k.put(e.request,c));}return res;});
     const saved=()=>caches.match(e.request,{ignoreSearch:true});
     e.respondWith(Promise.race([net.catch(()=>null),new Promise(r=>setTimeout(()=>r(null),3000))]).then(r=>r||saved().then(s=>s||net)));return;}
-  e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(r=>r||fetch(e.request)));
+  e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(r=>r||fetch(e.request).then(res=>{if(true&&res.ok){const c=res.clone();caches.open(CACHE).then(k=>k.put(e.request,c));}return res;})));
 });

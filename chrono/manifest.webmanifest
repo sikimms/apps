@@ -1,7 +1,7 @@
 {
   "name": "크로노 헌터",
   "short_name": "크로노 헌터",
-  "description": "네 시대를 넘나드는 3인칭 액션, 친구와 온라인 협동",
+  "description": "여덟 시대를 넘나드는 3인칭 액션, 친구와 온라인 협동",
   "lang": "ko",
   "start_url": "./index.html",
   "scope": "./",
