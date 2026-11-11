@@ -1,5 +1,5 @@
-// 오프라인 저장 (버전 02647609f4)
-const CACHE='club-02647609f4',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","models/Michelle.glb","models/readyplayer.me.glb"];
+// 오프라인 저장 (버전 8565da8563)
+const CACHE='club-8565da8563',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html","models/Michelle.glb","models/readyplayer.me.glb"];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})))));});
 self.addEventListener('message',e=>{if(e.data==='SKIP')self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('club-')&&k!==CACHE&&k!=='club-font').map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});

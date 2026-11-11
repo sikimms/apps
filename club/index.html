@@ -80,6 +80,9 @@ button{font-family:var(--f-body);color:inherit;cursor:pointer}button:focus-visib
 #spin small{position:absolute;left:0;right:0;top:-18px;text-align:center;font:600 11px var(--f-body);color:var(--dim)}
 .cbtn{position:absolute;pointer-events:auto;border:1px solid var(--line);background:#0b0a10cc;border-radius:999px;padding:8px 12px;font:600 12px var(--f-body);color:var(--ink)}
 #bView{left:calc(14px + env(safe-area-inset-left,0px));top:calc(64px + env(safe-area-inset-top,0px))}
+#bHint{left:calc(14px + env(safe-area-inset-left,0px));top:calc(144px + env(safe-area-inset-top,0px));color:#ffcf5a}
+#bPath{left:calc(14px + env(safe-area-inset-left,0px));top:calc(184px + env(safe-area-inset-top,0px))}
+#pmark{position:absolute;left:-6px;right:-6px;height:3px;background:#ffcf5a;box-shadow:0 0 8px #ffcf5a;border-radius:2px}
 #bFine{left:calc(14px + env(safe-area-inset-left,0px));top:calc(104px + env(safe-area-inset-top,0px))}
 #bPause{position:fixed;z-index:12;right:calc(10px + env(safe-area-inset-right,0px));top:calc(8px + env(safe-area-inset-top,0px));border-radius:6px;padding:5px 10px;font-size:12px;background:#0008;border:1px solid #ffffff33;color:#fff;display:none}
 /* 결과 */
@@ -90,8 +93,8 @@ button{font-family:var(--f-body);color:inherit;cursor:pointer}button:focus-visib
 
 <div id="view"></div>
 <div id="hud" hidden><div id="board"></div><div id="msg"></div><div id="tip"></div></div>
-<div id="cue"><div id="power"><span>힘</span><i></i></div><div id="spin"><small>회전</small><b></b></div>
-  <button class="cbtn" id="bView" type="button">위에서 보기</button><button class="cbtn" id="bFine" type="button">미세 조준</button></div>
+<div id="cue"><div id="power"><span>힘</span><i></i><em id="pmark" hidden></em></div><div id="spin"><small>회전</small><b></b></div>
+  <button class="cbtn" id="bView" type="button">위에서 보기</button><button class="cbtn" id="bFine" type="button">미세 조준</button><button class="cbtn" id="bHint" type="button">힌트</button><button class="cbtn" id="bPath" type="button">공 길 보기</button></div>
 <button id="bPause" type="button">메뉴</button>
 
 <section class="screen" id="sMenu">
@@ -4886,7 +4889,7 @@ function startPool(game){const carom=game!=='pool',three=game==='three';G={kind:
   cur=0;syncPoolMeshes(0);beginTurn();}
 function poolCueId(){return PS.carom?pg.cueOf[cur%2]:0;}
 function legalTargets(){const p=cur,g=pg.groups[p];const on=PS.balls.filter(b=>!b.out&&b.id>0&&b.id<16);if(!g)return on.filter(b=>b.id!==8);const mine=on.filter(b=>g==='solid'?b.id<8:b.id>8);return mine.length?mine:on.filter(b=>b.id===8);}
-function beginTurn(){pg.phase='aim';pg.power=0;$('power').firstElementChild.style.height='0';PS.cueId=poolCueId();
+function beginTurn(){pg.phase='aim';pg.hintOn=false;pg.hintPower=0;pg.pathKey='';$('pmark').hidden=true;pg.showPath=!!save.path;$('bPath').style.background=pg.showPath?'#4fe6ff55':'';$('bHint').style.display=$('bPath').style.display=isMyTurn()?'':'none';pg.power=0;$('power').firstElementChild.style.height='0';PS.cueId=poolCueId();
   const c=PS.balls.find(b=>b.id===PS.cueId);if(c&&c.out){c.out=0;c.x=-PS.T.L/4;c.z=0;pg.inHand=true;}
   // 기본 조준: 가장 가까운 목표
   // 정면(앞쪽 긴 변에서 먼 쪽을 보는 방향, ang=π) 기준으로 가장 가까운 목표 공을 겨눔
@@ -4927,6 +4930,7 @@ function tickPool(dt){const R=PS.T.R;
      const el=Math.max(.09,Math.atan2(.1-(R+.02),Math.max(.02,dw-R-back)));cue.rotation.order='YXZ';cue.rotation.set(Math.min(.6,el),a,0);cue.visible=true;}}
   else cue.visible=false;
   if(pg.phase==='aim'&&isMyTurn())poolAimGuide();else{pg.aimLine.visible=pg.objLine.visible=pg.ghost.visible=false;}
+  updatePaths(dt);
   // 카메라
   const T=PS.T,H=T.H;const topMode=pg.top3||pg.phase!=='aim'||!c||c.out;
   if(!topMode){const a=pg.ang;camGoal.p.set(c.x-Math.sin(a)*.9,H+.42,c.z-Math.cos(a)*.9);camGoal.l.set(c.x+Math.sin(a)*.6,H,c.z+Math.cos(a)*.6);camGoal.up.set(0,1,0);}
@@ -4969,7 +4973,10 @@ function applyPoolRes(r){r.balls.forEach(([id,x,z,o])=>{const b=PS.balls.find(q=
   if(r.win!=null){setTimeout(()=>gameOver(players.map((p,i)=>({name:p.name,score:PS.carom?pg.score[i]:(i===r.win?1:0)})).sort((a,b)=>b.score-a.score),`${players[r.win].name} 승리!`),1400);return;}
   setTimeout(()=>{cur=r.next;beginTurn();},900);}
 /* 컴퓨터: 여러 샷을 미리 굴려 보고 고르기 */
-function cpuPool(){if(state!=='play'||pg.phase!=='aim')return;tip('컴퓨터가 생각 중…');const lvl=save.cpu,c=PS.balls.find(b=>b.id===PS.cueId),R=PS.T.R;const cands=[];
+function cpuPool(){if(state!=='play'||pg.phase!=='aim')return;tip('컴퓨터가 생각 중…');const lvl=save.cpu;
+  planShot(lvl,best=>{if(state!=='play'||pg.phase!=='aim')return;const err=[.05,.022,.008][lvl];const shot=Object.assign({},best);shot.ang+=rand(-err,err);shot.power=clamp(shot.power*rand(.95,1.05),.1,1);
+    pg.ang=shot.ang;pg.power=shot.power;let k=0;const pull=setInterval(()=>{k++;pg.power=shot.power*k/14;if(k>=14){clearInterval(pull);doPoolShot(shot,!!net);}},45);});}
+function planShot(lvl,done){const c=PS.balls.find(b=>b.id===PS.cueId),R=PS.T.R;const cands=[];
   if(PS.carom){const nr=PS.three&&G.rule==='3c'?[50,110,200][lvl]:[24,48,90][lvl];for(let i=0;i<nr;i++)cands.push({ang:rand(0,Math.PI*2),power:rand(.35,.85),top:rand(-.4,.6),side:rand(-.6,.6)});
     for(const id of (PS.three?[100,pg.cueOf[(cur+1)%2]]:[100,101])){const t=PS.balls.find(b=>b.id===id);const a0=Math.atan2(t.x-c.x,t.z-c.z);for(const da of [-.12,-.06,0,.06,.12])for(const pw of [.45,.65,.85])cands.push({ang:a0+da,power:pw,top:.2,side:0});}}
   else{for(const t of legalTargets())for(const p of PS.pk){const tx=p.x-t.x,tz=p.z-t.z,tl=Math.hypot(tx,tz),gx=t.x-tx/tl*2*R,gz=t.z-tz/tl*2*R,a=Math.atan2(gx-c.x,gz-c.z);
@@ -4982,9 +4989,35 @@ function cpuPool(){if(state!=='play'||pg.phase!=='aim')return;tip('컴퓨터가 
     const pk=ev.filter(e=>e.k==='pocket').map(e=>e.a);if(pk.includes(0))return -300;if(fh==null)return -200;if(g&&!own(fh)&&fh!==8)return -150;if(pk.includes(8))return legalTargets().every(b=>b.id===8)?1000:-1000;
     s+=pk.filter(own).length*120-pk.filter(b=>!own(b)&&b>0).length*30;const cb=o.S.balls.find(b=>b.id===PS.cueId);const rest=o.S.balls.filter(b=>!b.out&&own(b.id));if(rest.length){const d=Math.min(...rest.map(b=>Math.hypot(b.x-cb.x,b.z-cb.z)));s+=20-d*10;}return s;}
   function chunk(){const t0=performance.now();while(i<cands.length&&performance.now()-t0<20){const o=simulateShot(PS,cands[i]);const s=score(o);if(s>bs){bs=s;best=cands[i];}i++;}
-    if(i<cands.length)setTimeout(chunk,0);else{const err=[.05,.022,.008][lvl];const shot=Object.assign({},best||cands[0]);shot.ang+=rand(-err,err);shot.power=clamp(shot.power*rand(.95,1.05),.1,1);
-      pg.ang=shot.ang;pg.power=shot.power;let k=0;const pull=setInterval(()=>{k++;pg.power=shot.power*k/14;if(k>=14){clearInterval(pull);doPoolShot(shot,!!net);}},45);}}
+    if(i<cands.length)setTimeout(chunk,0);else done(best||cands[0],bs);}
   chunk();}
+/* --- 힌트·공 길 보기 --- */
+function simulatePath(S0,shot){const S=cloneS(S0);shotApply(S,shot);const tr={};S.balls.forEach(b=>tr[b.id]=[[b.x,b.z]]);let n=0;
+  while(n<4800){simStep(S,SIM_DT,null);n++;if(n%6===0)for(const b of S.balls){if(b.out)continue;const t=tr[b.id],l=t[t.length-1];if((b.x-l[0])**2+(b.z-l[1])**2>1e-6)t.push([b.x,b.z]);}if(!moving(S))break;}
+  for(const b of S.balls){const t=tr[b.id],l=t[t.length-1];if(!b.out&&(b.x!==l[0]||b.z!==l[1]))t.push([b.x,b.z]);if(b.out)t.out=1;}return tr;}
+const PATHCOL={me:0x4fe6ff,red:0xff5a5a,other:0xffcf5a};
+function pathColor(id){if(id===PS.cueId)return PATHCOL.me;if(id===100||id===101)return PATHCOL.red;return PATHCOL.other;}
+function hidePaths(){if(pg&&pg.paths)for(const k in pg.paths){pg.paths[k].line.visible=false;pg.paths[k].end.visible=false;}}
+function updatePaths(dt){if(!pg)return;const on=(pg.showPath||pg.hintOn)&&pg.phase==='aim'&&isMyTurn()&&!pg.inHand;if(!on){hidePaths();return;}
+  pg.pathT=(pg.pathT||0)-dt;const pw=pg.power>.03?pg.power:(pg.hintPower||.5);const key=[pg.ang.toFixed(4),pg.top.toFixed(2),pg.side.toFixed(2),pw.toFixed(2)].join();
+  if(key===pg.pathKey||pg.pathT>0)return;pg.pathKey=key;pg.pathT=.12;
+  const tr=simulatePath(PS,{ang:pg.ang,power:pw,top:pg.top,side:pg.side});const y=PS.T.R*.35;pg.paths=pg.paths||{};
+  for(const id in tr){const t=tr[id];let P=pg.paths[id];
+    if(!P){const col=pathColor(+id);P={line:new THREE.Line(new THREE.BufferGeometry(),new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.95,depthTest:false,toneMapped:false})),end:new THREE.Mesh(new THREE.RingGeometry(PS.T.R*.75,PS.T.R*1.0,28),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.9,side:THREE.DoubleSide,depthTest:false,toneMapped:false}))};
+      P.line.renderOrder=5;P.end.renderOrder=5;P.end.rotation.x=-Math.PI/2;pg.tab.add(P.line);pg.tab.add(P.end);pg.paths[id]=P;}
+    P.line.material.color.setHex(pathColor(+id));P.end.material.color.setHex(pathColor(+id));
+    if(t.length<2){P.line.visible=P.end.visible=false;continue;}
+    P.line.geometry.dispose();P.line.geometry=new THREE.BufferGeometry().setFromPoints(t.map(([x,z])=>new THREE.Vector3(x,y,z)));P.line.visible=true;
+    const l=t[t.length-1];P.end.position.set(l[0],.002,l[1]);P.end.visible=!t.out;}}
+function setSpinUI(){const dot=$('spin').querySelector('b');dot.style.left=(50+pg.side*50)+'%';dot.style.top=(50-pg.top*50)+'%';}
+function showHint(){if(!pg||pg.phase!=='aim'||!isMyTurn()){toastMsg('내 차례에만 힌트를 볼 수 있어요');return;}if(pg.hinting)return;pg.hinting=true;$('bHint').textContent='생각 중…';
+  planShot(2,(best,bs)=>{pg.hinting=false;$('bHint').textContent='힌트';if(pg.phase!=='aim'||!isMyTurn())return;
+    pg.ang=best.ang;pg.top=clamp(best.top,-.8,.8);pg.side=clamp(best.side,-.8,.8);pg.hintPower=best.power;pg.hintOn=true;pg.pathKey='';setSpinUI();
+    const mk=$('pmark');mk.style.bottom=`calc(6px + ${(best.power*96).toFixed(1)}%)`;mk.hidden=false;
+    const sp=[];if(pg.top>.15)sp.push('밀어치기');else if(pg.top<-.15)sp.push('끌어치기');if(pg.side>.15)sp.push('오른쪽 회전');else if(pg.side<-.15)sp.push('왼쪽 회전');
+    const good=PS.carom?bs>=200:bs>=100;
+    tip(`💡 ${good?'이렇게 치면 성공할 가능성이 높아요':'어려운 배치예요. 그래도 가장 나은 샷이에요'} · 힘 ${Math.round(best.power*100)}%${sp.length?' · '+sp.join(' · '):''} — 힘 막대의 노란 표시까지 당겼다 놓아요`);});}
+
 
 /* =====================================================================
    볼링 — cannon.js 물리 + 반짝이는 레인
@@ -5130,7 +5163,9 @@ function screenToTable(cx,cy){const v=new THREE.Vector2(cx/innerWidth*2-1,-(cy/i
   el.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(pg)set(e);el.setPointerCapture&&el.setPointerCapture(e.pointerId);});el.addEventListener('pointermove',e=>{if(e.buttons&&pg)set(e);});})();
 $('bView').onclick=e=>{e.stopPropagation();if(!pg)return;pg.top3=!pg.top3;$('bView').textContent=pg.top3?'큐 뒤에서 보기':'위에서 보기';};
 $('bFine').onclick=e=>{e.stopPropagation();if(!pg)return;pg.fine=!pg.fine;$('bFine').style.background=pg.fine?'#4fe6ff55':'';};
-['bView','bFine','power','spin'].forEach(id=>$(id).addEventListener('pointerdown',e=>e.stopPropagation()));
+$('bHint').onclick=e=>{e.stopPropagation();showHint();};
+$('bPath').onclick=e=>{e.stopPropagation();if(!pg)return;pg.showPath=!pg.showPath;save.path=pg.showPath?1:0;persist();$('bPath').style.background=pg.showPath?'#4fe6ff55':'';pg.pathKey='';};
+['bView','bFine','bHint','bPath','power','spin'].forEach(id=>$(id).addEventListener('pointerdown',e=>e.stopPropagation()));
 document.addEventListener('touchmove',e=>{if(state==='play'&&e.cancelable)e.preventDefault();},{passive:false});
 ['gesturestart','gesturechange'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
 addEventListener('keydown',e=>{if(state!=='play'||!pg||pg.phase!=='aim'||!isMyTurn())return;if(e.code==='ArrowLeft')pg.ang+=e.shiftKey?.002:.02;if(e.code==='ArrowRight')pg.ang-=e.shiftKey?.002:.02;if(e.code==='Space'){pg.power=clamp(pg.power+.04,0,1);$('power').firstElementChild.style.height=pg.power*100+'%';}});
