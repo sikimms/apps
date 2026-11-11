@@ -4889,7 +4889,10 @@ function legalTargets(){const p=cur,g=pg.groups[p];const on=PS.balls.filter(b=>!
 function beginTurn(){pg.phase='aim';pg.power=0;$('power').firstElementChild.style.height='0';PS.cueId=poolCueId();
   const c=PS.balls.find(b=>b.id===PS.cueId);if(c&&c.out){c.out=0;c.x=-PS.T.L/4;c.z=0;pg.inHand=true;}
   // 기본 조준: 가장 가까운 목표
-  const tg=PS.carom?PS.balls.find(b=>b.id===100):legalTargets()[0];if(tg&&c)pg.ang=Math.atan2(tg.x-c.x,tg.z-c.z);
+  // 정면(앞쪽 긴 변에서 먼 쪽을 보는 방향, ang=π) 기준으로 가장 가까운 목표 공을 겨눔
+  if(c){const cands=PS.carom?PS.balls.filter(b=>!b.out&&b.id!==PS.cueId&&(PS.three?true:b.id===100||b.id===101)):legalTargets();let best=null,bs=1e9;
+    for(const t of cands){const an=Math.atan2(t.x-c.x,t.z-c.z);let d=Math.abs(((an-Math.PI)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI);const sc=d+Math.sqrt((t.x-c.x)**2+(t.z-c.z)**2)*.12;if(sc<bs){bs=sc;best=an;}}
+    pg.ang=best!=null?best:Math.PI;}
   updateBoard();const p=players[cur];
   tip(isMyTurn()?(pg.inHand?'흰 공을 끌어서 놓고, 힘 막대를 당겼다 놓아 치세요':'좌우로 문질러 조준 · 힘 막대를 당겼다 놓기'):(p.cpu?'컴퓨터 차례…':`${p.name} 차례`));
   $('cue').style.display=isMyTurn()?'block':'none';
