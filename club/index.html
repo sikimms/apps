@@ -34,6 +34,7 @@ button{font-family:var(--f-body);color:inherit;cursor:pointer}button:focus-visib
 .sign h1{margin:0;font:400 clamp(38px,8vw,70px)/.95 var(--f-disp);text-shadow:0 0 18px #ff4fa388,0 0 2px #fff}
 .sign h1 b{color:var(--cyan);font-weight:400;text-shadow:0 0 18px #4fe6ff99}
 .sign p{margin:0 0 6px;color:var(--dim);font:500 13px var(--f-num);letter-spacing:.14em}
+.suw{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.suw label{display:flex;gap:6px;align-items:center}.susel{font:inherit;padding:6px 8px;border-radius:8px;background:#1b1824;color:#fff;border:1px solid #ffffff33}.suw small{opacity:.7;width:100%}
 .games{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
 .game{text-align:left;display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(150deg,var(--c1),var(--c2));min-width:0}
 .game:hover{border-color:var(--cyan)}.game[aria-pressed="true"]{outline:2px solid var(--gold);outline-offset:2px}
@@ -106,7 +107,8 @@ button{font-family:var(--f-body);color:inherit;cursor:pointer}button:focus-visib
       <div class="row"><span class="lab">상대</span><span class="seg" id="setMode"><button type="button" data-v="cpu">컴퓨터와</button><button type="button" data-v="local">한 폰으로 번갈아</button></span></div>
       <div class="row" id="rowCount"><span class="lab">사람 수</span><span class="seg" id="setCount"><button type="button" data-v="2">2명</button><button type="button" data-v="3">3명</button><button type="button" data-v="4">4명</button></span></div>
       <div class="row" id="rowNames"><span class="lab">이름</span><div class="names" id="names"></div></div>
-      <div class="row" id="rowR3"><span class="lab">3구 규칙</span><span class="seg" id="setR3"><button type="button" data-v="3c">쓰리쿠션 (5점)</button><button type="button" data-v="easy">쉬운 3구 (10점)</button></span></div>
+      <div class="row" id="rowR3"><span class="lab">3구 규칙</span><span class="seg" id="setR3"><button type="button" data-v="3c">쓰리쿠션</button><button type="button" data-v="easy">쉬운 3구 (두 공 맞히기)</button></span></div>
+      <div class="row" id="rowSu"><span class="lab" id="suLab">수지 (점수)</span><span class="suw"><label><span id="suN0">나</span> <select id="su0" class="susel"><option value="30">30</option><option value="50">50</option><option value="100">100</option><option value="150">150</option><option value="200">200</option><option value="300">300</option><option value="500">500</option><option value="1000">1000</option></select></label><label><span id="suN1">상대</span> <select id="su1" class="susel"><option value="30">30</option><option value="50">50</option><option value="100">100</option><option value="150">150</option><option value="200">200</option><option value="300">300</option><option value="500">500</option><option value="1000">1000</option></select></label><small id="suHint">수지÷10 = 칠 점수 (150이면 15점)</small></span></div>
       <div class="row" id="rowCpu"><span class="lab">컴퓨터 실력</span><span class="seg" id="setCpu"><button type="button" data-v="0">쉬움</button><button type="button" data-v="1">보통</button><button type="button" data-v="2">잘함</button></span></div>
       <div class="row"><button class="btn go" id="bStart" type="button">시작</button></div>
     </div>
@@ -4573,7 +4575,8 @@ function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>c
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>v<a?a:v>b?b:v,lerp=(a,b,t)=>a+(b-a)*t;
-const SKEY='loungeClub.v1';let save={gfx:1,game:'bowl',mode:'cpu',count:2,cpu:1,guide:1,r3:'3c',names:['나','친구','손님 3','손님 4']};
+const SU4=[30,50,100,150,200,300,500,1000],SU3C=[3,5,10,15,20,25,30,40,50];
+const SKEY='loungeClub.v1';let save={gfx:1,game:'bowl',mode:'cpu',count:2,cpu:1,guide:1,r3:'3c',su:[100,100],su3:[10,10],names:['나','친구','손님 3','손님 4']};
 try{const s=JSON.parse(localStorage.getItem(SKEY)||'null');if(s)save=Object.assign(save,s);}catch(e){}
 const persist=()=>{try{localStorage.setItem(SKEY,JSON.stringify(save));}catch(e){}};
 
@@ -4831,8 +4834,9 @@ function tickReal(p,dt,s,tg){const b=p.b,L=(k,x,y,z)=>{const c=p.cur[k]||(p.cur[
   if(p.glass){b.RightHand.getWorldPosition(_v1);p.g.worldToLocal(_v1);p.glass.position.copy(_v1).add(_v2.set(0,.02,.03));}}
 
 /* --- 당구 물리 (순수 계산: 컴퓨터 생각에도 씀) --- */
+const SIM_DT=1/400;
 function simStep(S,dt,ev){const T=S.T,R=T.R,L=T.L,W=T.W,B=S.balls,mu=.14,carom=S.carom;
-  for(const b of B){if(b.out)continue;const sp=Math.hypot(b.vx,b.vz);
+  for(const b of B){if(b.out)continue;const sp=Math.sqrt(b.vx*b.vx+b.vz*b.vz);
     if(sp>0){const d=Math.min(sp,mu*dt+ (sp>2.5?.02*dt:0));b.vx-=b.vx/sp*d;b.vz-=b.vz/sp*d;}
     if(b.px||b.pz){const k=Math.min(1,dt*5);b.vx+=b.px*k;b.vz+=b.pz*k;b.px*=1-k;b.pz*=1-k;if(Math.abs(b.px)+Math.abs(b.pz)<1e-3){b.px=b.pz=0;}}
     b.x+=b.vx*dt;b.z+=b.vz*dt;}
@@ -4852,10 +4856,10 @@ function simStep(S,dt,ev){const T=S.T,R=T.R,L=T.L,W=T.W,B=S.balls,mu=.14,carom=S
     if(b.x>xl+ext&&b.vx>0){b.x=xl+ext;cush('x');}else if(b.x<-xl-ext&&b.vx<0){b.x=-xl-ext;cush('x');}
     if(b.z>zl+ext&&b.vz>0){b.z=zl+ext;cush('z');}else if(b.z<-zl-ext&&b.vz<0){b.z=-zl-ext;cush('z');}}}
 function moving(S){return S.balls.some(b=>!b.out&&(Math.abs(b.vx)>.002||Math.abs(b.vz)>.002||b.px||b.pz));}
-function shotApply(S,shot){const c=S.balls.find(b=>b.id===S.cueId);const v=shot.power*(S.carom?5.2:6.2),dx=Math.sin(shot.ang),dz=Math.cos(shot.ang);
+function shotApply(S,shot){const c=S.balls.find(b=>b.id===S.cueId);const v=shot.power*(S.carom?5.2:6.2),dx=shot.dx!=null?shot.dx:Math.sin(shot.ang),dz=shot.dz!=null?shot.dz:Math.cos(shot.ang);
   c.vx=dx*v;c.vz=dz*v;c.spin={dx,dz,top:shot.top,side:shot.side};c.shot=v;c.spun=0;c.cushSpun=0;c.px=c.pz=0;S.balls.forEach(b=>{if(b!==c){b.spin=null;}});}
 function cloneS(S){return{T:S.T,carom:S.carom,three:S.three,pk:S.pk,cueId:S.cueId,balls:S.balls.map(b=>({id:b.id,x:b.x,z:b.z,vx:0,vz:0,px:0,pz:0,out:b.out}))};}
-function simulateShot(S0,shot,maxT=12){const S=cloneS(S0),ev=[];shotApply(S,shot);let t=0;const dt=1/400;while(t<maxT){simStep(S,dt,ev);t+=dt;if(!moving(S))break;}return{S,ev};}
+function simulateShot(S0,shot,maxT=12){const S=cloneS(S0),ev=[];shotApply(S,shot);let t=0;const dt=SIM_DT;while(t<maxT){simStep(S,dt,ev);t+=dt;if(!moving(S))break;}return{S,ev};}
 
 /* --- 당구 게임 --- */
 function newPool(carom,three){const T=carom?CAROM:POOL,R=T.R;const S={T,carom,three:!!three,pk:carom?[]:pockets(T),balls:[],cueId:0};
@@ -4866,7 +4870,7 @@ function newPool(carom,three){const T=carom?CAROM:POOL,R=T.R;const S={T,carom,th
 let PS=null,pg=null; // pg: 화면·진행 정보
 function startPool(game){const carom=game!=='pool',three=game==='three';G={kind:carom?'carom':'pool',three,rule:three?save.r3:''};const tab=buildPoolScene(carom);PS=newPool(carom,three);
   pg={tab,meshes:{},shadows:{},ang:carom?Math.PI/2:Math.PI/2,power:0,top:0,side:0,fine:false,top3:false,moving:false,inHand:!carom,ev:[],shooter:0,
-    groups:{},score:players.map(()=>0),target:carom?(three&&G.rule==='3c'?5:10):0,lastShot:null,aimCue:null,cueStick:null,breakShot:!carom,phase:'aim',simAcc:0};
+    groups:{},score:players.map(()=>0),target:carom?10:0,targets:players.map(p=>p.c3?(p.su||10):Math.max(1,Math.round((p.su||100)/10))),lastShot:null,aimCue:null,cueStick:null,breakShot:!carom,phase:'aim',simAcc:0};
   PS.balls.forEach(b=>{const m=ballMesh(b.id,PS.T.R);tab.add(m);pg.meshes[b.id]=m;const s=blob(PS.T.R*3.2);tab.add(s);pg.shadows[b.id]=s;});
   // 큐
   const cue=new THREE.Group(),shaft=new THREE.Mesh(new THREE.CylinderGeometry(.0065,.014,1.45,16),new THREE.MeshPhysicalMaterial({map:woodTex(64,512,[30,50,55],3,1),roughness:.3,clearcoat:1}));shaft.rotation.x=Math.PI/2;shaft.position.z=-.725;cue.add(shaft);
@@ -4904,18 +4908,20 @@ function poolAimGuide(){const c=PS.balls.find(b=>b.id===PS.cueId),R=PS.T.R;if(!c
     pg.objLine.geometry.setFromPoints([new THREE.Vector3(hit.x,y,hit.z),new THREE.Vector3(hit.x+nx/nl*len,y,hit.z+nz/nl*len)]);pg.objLine.visible=true;}
   else{pg.ghost.visible=false;pg.objLine.visible=false;}}
 function poolShoot(power){if(pg.phase!=='aim')return;const shot={ang:pg.ang,power:clamp(power,.03,1),top:pg.top,side:pg.side};doPoolShot(shot,true);}
-function doPoolShot(shot,local){pg.phase='roll';pg.inHand=false;pg.ev=[];pg.lastShot=shot;pg.firstHit=null;pg.shotT=0;pg.cueAnim=.15;pg.cueShot=shot;
+function doPoolShot(shot,local){if(shot.dx==null){shot=Object.assign({},shot,{dx:Math.sin(shot.ang),dz:Math.cos(shot.ang)});}PS.balls.forEach(b=>{b.vx=b.vz=b.px=b.pz=0;b.spin=null;b.spun=0;b.cushSpun=0;});pg.simAcc=0;pg.simN=0;pg.phase='roll';pg.inHand=false;pg.ev=[];pg.lastShot=shot;pg.firstHit=null;pg.shotT=0;pg.cueAnim=.15;pg.cueShot=shot;
   shotApply(PS,shot);SFX.cueHit(shot.power);$('cue').style.display='none';tip('');
   if(local&&net)netSend({t:'pshot',shot,balls:PS.balls.map(b=>[b.id,b.x,b.z,b.out])});}
 function tickPool(dt){const R=PS.T.R;
-  if(pg.phase==='roll'){pg.shotT+=dt;const ev=[];let n=Math.ceil(dt*400);for(let i=0;i<n;i++)simStep(PS,dt/n,ev);
+  if(pg.phase==='roll'){pg.shotT+=dt;const ev=[];pg.simAcc+=dt;let k=0;while(pg.simAcc>=SIM_DT&&k<60){simStep(PS,SIM_DT,ev);pg.simAcc-=SIM_DT;pg.simN++;k++;if(!moving(PS))break;}
     for(const e of ev){if(e.k==='hit'){SFX.clack(e.v);if(pg.firstHit==null&&(e.a===PS.cueId||e.b===PS.cueId))pg.firstHit=e.a===PS.cueId?e.b:e.a;}else if(e.k==='cush')SFX.cushion(e.v);else if(e.k==='pocket')SFX.pocket();pg.ev.push(e);}
-    if(!moving(PS)||pg.shotT>20){PS.balls.forEach(b=>{b.vx=b.vz=b.px=b.pz=0;});if(!net||isMyTurn()||(net&&netHost()&&players[cur].cpu))resolvePool();}}
+    if(!moving(PS)||pg.simN>8000){PS.balls.forEach(b=>{b.vx=b.vz=b.px=b.pz=0;});if(!net||isMyTurn()||(net&&netHost()&&players[cur].cpu))resolvePool();}}
   syncPoolMeshes(dt);
   // 큐 막대
   const c=PS.balls.find(b=>b.id===PS.cueId),cue=pg.cueStick;
   if(c&&!c.out&&(pg.phase==='aim'||pg.cueAnim>0)){cue.visible=true;const back=pg.phase==='aim'?.03+pg.power*.25:Math.max(0,pg.cueAnim)*.4;if(pg.cueAnim>0)pg.cueAnim-=dt;
-    const a=pg.phase==='aim'?pg.ang:pg.cueShot.ang;cue.position.set(c.x-Math.sin(a)*(R+back),R+.02+ .0,c.z-Math.cos(a)*(R+back));cue.rotation.set(-.06,a,0);}
+    const a=pg.phase==='aim'?pg.ang:pg.cueShot.ang;cue.position.set(c.x-Math.sin(a)*(R+back),R+.02,c.z-Math.cos(a)*(R+back));
+    {const T=PS.T,bx=-Math.sin(a),bz=-Math.cos(a),ex=T.L/2+.05,ez=T.W/2+.05;let dw=9;if(bx>1e-4)dw=Math.min(dw,(ex-c.x)/bx);if(bx<-1e-4)dw=Math.min(dw,(-ex-c.x)/bx);if(bz>1e-4)dw=Math.min(dw,(ez-c.z)/bz);if(bz<-1e-4)dw=Math.min(dw,(-ez-c.z)/bz);
+     const el=Math.max(.09,Math.atan2(.1-(R+.02),Math.max(.02,dw-R-back)));cue.rotation.order='YXZ';cue.rotation.set(Math.min(.6,el),a,0);cue.visible=true;}}
   else cue.visible=false;
   if(pg.phase==='aim'&&isMyTurn())poolAimGuide();else{pg.aimLine.visible=pg.objLine.visible=pg.ghost.visible=false;}
   // 카메라
@@ -4930,12 +4936,12 @@ function caromEval(ev,mine,opp,three){const objs=three?[100,opp]:[100,101],hit=[
   return{hit,both:hit.length===2,cush:hit.length===2?cushAt2:cush,hitOpp};}
 function resolvePool(){if(pg.phase!=='roll')return;pg.phase='done';const ev=pg.ev,p=cur;let msg='',keep=false,foul=false,win=null;
   if(PS.three){const r=caromEval(ev,PS.cueId,pg.cueOf[(cur+1)%2],true),easy=G.rule==='easy';
-    if(r.both&&(easy||r.cush>=3)){pg.score[p]++;keep=true;msg=easy?'득점!':'쓰리쿠션 득점!';SFX.ding();if(pg.score[p]>=pg.target)win=p;}
+    if(r.both&&(easy||r.cush>=3)){pg.score[p]++;keep=true;msg=easy?'득점!':'쓰리쿠션 득점!';SFX.ding();if(pg.score[p]>=pg.targets[p])win=p;}
     else if(r.both)msg='두 공은 맞혔지만 쿠션이 '+r.cush+'번뿐이에요';
     else msg=r.hit.length?'공 하나만 맞았어요':'아무것도 못 맞혔어요';}
   else if(PS.carom){const mine=PS.cueId,opp=pg.cueOf[(cur+1)%2],hitBy=new Set();for(const e of ev)if(e.k==='hit'&&(e.a===mine||e.b===mine))hitBy.add(e.a===mine?e.b:e.a);
     if(hitBy.has(opp)){foul=true;pg.score[p]=Math.max(0,pg.score[p]-1);msg='파울! 상대 공을 맞혔어요';}
-    else if(hitBy.has(100)&&hitBy.has(101)){pg.score[p]++;keep=true;msg='득점!';SFX.ding();if(pg.score[p]>=pg.target)win=p;}
+    else if(hitBy.has(100)&&hitBy.has(101)){pg.score[p]++;keep=true;msg='득점!';SFX.ding();if(pg.score[p]>=pg.targets[p])win=p;}
     else msg=hitBy.size?'빨간 공 하나만 맞았어요':'아무것도 못 맞혔어요';}
   else{const pocketed=ev.filter(e=>e.k==='pocket').map(e=>e.a),scratch=pocketed.includes(0),eight=pocketed.includes(8),g=pg.groups[p],fh=pg.firstHit;
     const own=b=>g?(g==='solid'?b<8&&b>0:b>8):(b!==8&&b>0);
@@ -5136,14 +5142,14 @@ function updateBoard(){const el=$('board');if(!G)return;
     el.innerHTML=`<div class="sc"><table><tr><td class="nm"></td>${[1,2,3,4,5,6,7,8,9,10].map(n=>`<td>${n}</td>`).join('')}<td class="tot">합</td></tr>${rows}</table></div>`;return;}
   if(G.kind==='pool'){el.innerHTML=`<div class="sc pl">${players.map((p,i)=>{const g=pg.groups[i];const left=g?PS.balls.filter(b=>!b.out&&(g==='solid'?b.id>0&&b.id<8:b.id>8)).map(b=>b.id):[];
       return `<div class="p ${i===cur?'cur':''}">${esc(p.name)} ${g?(g==='solid'?'· 단색':'· 줄무늬'):''}<span class="dots">${left.map(id=>`<i style="background:#${BALLCOL[id>8?id-8:id].toString(16).padStart(6,'0')};${id>8?'box-shadow:inset 0 0 0 2px #f4efe2':''}"></i>`).join('')}</span></div>`;}).join('')}</div>`;return;}
-  el.innerHTML=`<div class="sc pl">${players.map((p,i)=>`<div class="p ${i===cur?'cur':''}"><span class="dots"><i style="background:${i%2?'#f0c419':'#f4efe2'}"></i></span>${esc(p.name)} <b style="font-size:16px">${pg.score[i]}</b> / ${pg.target}</div>`).join('')}</div>`;}
+  el.innerHTML=`<div class="sc pl">${players.map((p,i)=>`<div class="p ${i===cur?'cur':''}"><span class="dots"><i style="background:${i%2?'#f0c419':'#f4efe2'}"></i></span>${esc(p.name)} <b style="font-size:16px">${pg.score[i]}</b> / ${pg.targets[i]} <small style="opacity:.65">${p.c3?'':'수지 '+(p.su||100)}</small></div>`).join('')}</div>`;}
 
 /* ================= 진행·메뉴 ================= */
 function show(id){['sMenu','sEnd'].forEach(s=>$(s).hidden=s!==id);$('hud').hidden=id!==null;$('bPause').style.display=id===null?'block':'none';if(id!==null)$('cue').style.display='none';}
 function setupPlayers(){const g=save.game;let n=save.mode==='cpu'?2:(g==='bowl'?save.count:2);
   if(net){const devs=[0,...roomGuests()];players=devs.slice(0,g==='bowl'?4:2).map((d,i)=>({name:d===0?(LOBBY.nick()||'방장'):roomName(d),dev:d,cpu:false}));if(players.length<2&&g!=='bowl')players.push({name:'컴퓨터',cpu:true,dev:-1});return;}
   players=[];for(let i=0;i<n;i++)players.push({name:save.names[i]||('플레이어 '+(i+1)),cpu:save.mode==='cpu'&&i===1});if(save.mode==='cpu')players[1].name='컴퓨터';}
-function startGame(game,fromNet,plist){audioInit();state='play';show(null);resize();if(plist)players=plist;else setupPlayers();cur=0;pg=null;bowl=null;BW=null;
+function startGame(game,fromNet,plist){audioInit();state='play';show(null);resize();if(plist)players=plist;else{setupPlayers();const c3=game==='three'&&save.r3==='3c';players.forEach((p,i)=>{if(c3){p.su=save.su3[i%2]||10;p.c3=1;}else{p.su=save.su[i%2]||100;p.c3=0;}});}cur=0;pg=null;bowl=null;BW=null;
   if(game==='bowl')startBowl();else startPool(game);lastT=performance.now();
   if(netHost()&&!fromNet)roomEach(gi=>({t:'start',game,players,dev:gi,r3:save.r3}));}
 function gameOver(rank,title){state='over';show('sEnd');$('endBody').innerHTML=`<div class="ttl">${esc(title)}</div><div class="rank">${rank.map((r,i)=>`<div><span>${i+1}. ${esc(r.name)}</span><span>${r.score}</span></div>`).join('')}</div>
@@ -5152,10 +5158,12 @@ function gameOver(rank,title){state='over';show('sEnd');$('endBody').innerHTML=`
 $('bPause').onclick=()=>{if(net){toastMsg('온라인 중에는 메뉴로 나가면 연결이 끊길 수 있어요');}state='menu';show('sMenu');};
 function renderMenu(){document.querySelectorAll('#games .game').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.g===save.game)));
   [['setMode','mode'],['setCount','count'],['setCpu','cpu'],['setGfx','gfx'],['setGuide','guide'],['setR3','r3']].forEach(([id,k])=>$(id).querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v==String(save[k])))));
-  $('rowCount').hidden=save.mode!=='local'||save.game!=='bowl';$('rowR3').hidden=save.game!=='three';$('rowCpu').hidden=save.mode!=='cpu';const n=save.mode==='cpu'?1:(save.game==='bowl'?save.count:2);
+  $('rowCount').hidden=save.mode!=='local'||save.game!=='bowl';$('rowR3').hidden=save.game!=='three';$('rowSu').hidden=save.game!=='carom'&&save.game!=='three';{const c3=save.game==='three'&&save.r3==='3c',list=c3?SU3C:SU4,arr=c3?save.su3:save.su;for(const [i,id] of [[0,'su0'],[1,'su1']]){const el=$(id);if(el.dataset.k!==String(c3)){el.dataset.k=String(c3);el.innerHTML=list.map(v=>`<option value="${v}">${v}${c3?'점':''}</option>`).join('');}el.value=String(arr[i]);}
+  $('suLab').textContent=c3?'칠 점수':'수지 (점수)';$('suHint').textContent=c3?'쓰리쿠션은 숫자만큼 치면 이겨요':'수지÷10 = 칠 점수 (150이면 15점)';}$('suN1').textContent=save.mode==='cpu'?'컴퓨터':(save.names[1]||'상대');$('suN0').textContent=save.mode==='cpu'?'나':(save.names[0]||'나');$('rowCpu').hidden=save.mode!=='cpu';const n=save.mode==='cpu'?1:(save.game==='bowl'?save.count:2);
   $('names').innerHTML=Array.from({length:n},(_,i)=>`<input type="text" maxlength="8" data-i="${i}" value="${esc(save.names[i]||'')}" aria-label="플레이어 ${i+1} 이름">`).join('');}
 $('games').addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b)return;save.game=b.dataset.g;persist();renderMenu();});
 [['setMode','mode',v=>v],['setCount','count',Number],['setCpu','cpu',Number],['setGfx','gfx',Number],['setGuide','guide',Number],['setR3','r3',v=>v]].forEach(([id,k,f])=>$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;save[k]=f(b.dataset.v);persist();renderMenu();if(k==='gfx'){applyGfx();ballMat.clear();envTex=null;}}));
+['su0','su1'].forEach((id,i)=>$(id).addEventListener('change',e=>{if(save.game==='three'&&save.r3==='3c')save.su3[i]=+e.target.value;else save.su[i]=+e.target.value;persist();}));
 $('names').addEventListener('input',e=>{const i=+e.target.dataset.i;save.names[i]=e.target.value.trim();persist();});
 $('bStart').onclick=()=>{if(net&&!net.host){toastMsg('방장이 시작할 때까지 기다려 주세요');return;}if(net&&net.host){startGame(save.game);return;}startGame(save.game);};
 
