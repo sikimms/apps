@@ -394,14 +394,17 @@ function vAlbum(){lastAlbum={...T};const f=T.filter||'all',rf=T.rar||'all',N=30,
  <p class="note" style="text-align:center">이 묶음에서 ${gotN} / ${list.length} 장 모음</p>
  ${show.length?'':`<div class="msg">${qs?'찾는 카드가 없어요. 이름으로는 내가 가진 카드만 찾을 수 있어요.':albumOwn&&!kinds()?'아직 카드가 없어요. 카드팩을 뜯어 봐요!':'이 묶음에는 가진 카드가 없어요.'}</div>`}<div class="grid">${show.map(m=>cardHtml(m,{none:!has(m.id),cnt:has(m.id)})).join('')}</div>
  <div class="pager"><button class="btn alt" data-pg="${pg-1}" ${pg?'':'disabled'}>← 이전</button><select id="apg" aria-label="쪽 고르기">${Array.from({length:pages},(_,i)=>`<option value="${i}" ${i===pg?'selected':''}>${i+1} / ${pages}쪽</option>`).join('')}</select><button class="btn alt" data-pg="${pg+1}" ${pg<pages-1?'':'disabled'}>다음 →</button></div>`;}
+const UPC={C:30,U:60,R:150,SR:400,UR:1000};
+function upOf(m){if(m.base!==-1||m.old||m.rar==='SEC')return null;const nr=ODDS_R[ODDS_R.indexOf(m.rar)+1];return MON.find(x=>x.fam===m.fam&&x.tier===m.tier&&x.rar===nr&&x.base===-1&&!x.old)||null;}
 function extras(){let n=0,d=0;MON.forEach(m=>{const c=has(m.id);if(c>1&&!evoOf(m)){n+=c-1;d+=(c-1)*DUST[m.rar];}});return[n,d];}
 function dustAll(){let d=0;MON.forEach(m=>{const c=has(m.id);if(c>1&&!evoOf(m)){d+=(c-1)*DUST[m.rar];me().cards[m.id]=1;}});if(!d)return;me().dust=dust()+d;save();SFX.evo();go('album',T);A.insertAdjacentHTML('beforeend',`<div class="ov" id="ov"><div><h2>✨ 별가루 ${d}개!</h2><p style="font:700 18px var(--b)">겹친 카드를 별가루로 바꿨어요.<br>한 장씩은 그대로 남아 있어요.</p><button class="btn" id="ovClose">좋아요!</button></div></div>`);}
 function evoOf(m){if(m.evo!=null)return byId(m.evo);return m.tier<3&&m.base==null?MON.find(x=>x.fam===m.fam&&x.tier===m.tier+1&&x.base==null):null;}
 function vCard(){const m=byId(T.id),e=evoOf(m),n=has(m.id),can=e&&n>=3,cost=BUY[m.rar],buyBtn=`<div class="row" style="justify-content:center"><button class="btn" id="buy" ${dust()>=cost?'':'disabled'}>✨ 별가루 ${cost}개로 ${n?'1장 더 ':''}얻기</button></div><p class="note" style="text-align:center">${dust()>=cost?`별가루 ${dust()}개 있어요.`:`별가루가 ${cost-dust()}개 더 필요해요.`}</p>`;
  if(!n){A.innerHTML=head('???')+`<div class="row"><button class="btn alt" data-go="album">← 도감으로</button></div><div class="big-card">${cardHtml(m,{none:1})}</div><div class="chart"><b>${RAR[m.rar].n}</b> · ${EL[m.el].n} 속성 · No.${String(m.no).padStart(4,'0')} / ${VIS.length}</div><p class="note" style="text-align:center">아직 없는 카드예요. 별가루로 얻을 수 있어요!</p>${buyBtn}`;return;}
  A.innerHTML=head(m.name)+`<div class="row"><button class="btn alt" data-go="album">← 도감으로</button></div><div class="big-card">${cardHtml(m,{cnt:n})}</div><div class="chart"><b>${RAR[m.rar].n}</b> · ${EL[m.el].n} 속성 · No.${String(m.no).padStart(4,'0')} / ${VIS.length} · HP ${m.hp} · 힘 ${m.atk}</div>
+ ${(()=>{const u=upOf(m);if(!u)return '';const c=UPC[m.rar],ok=dust()>=c;return `<div class="row" style="justify-content:center"><button class="btn" id="up" ${ok?'':'disabled'}>⬆️ ${RAR[u.rar].n}(${u.rar})로 강화 · 별가루 ${c}</button></div><p class="note" style="text-align:center">${ok?`이 카드 1장이 ${u.rar} 카드로 바뀌어요. HP ${m.hp}→${u.hp} · 힘 ${m.atk}→${u.atk}`:`별가루가 ${c-dust()}개 더 필요해요.`}</p>`;})()}
  ${n>1?`<div class="row" style="justify-content:center"><button class="btn alt" id="dust1">✨ 1장을 별가루 ${DUST[m.rar]}개로 바꾸기</button></div>`:''}${e?buyBtn:''}
- ${e?`<div class="row" style="justify-content:center"><button class="btn pink" id="evo" ${can?'':'disabled'}>✨ 진화하기 (같은 카드 3장)</button></div><p class="note" style="text-align:center">${n}장 있어요. ${can?`3장이 ${e.name}(으)로 바뀌어요!`:`${3-n}장 더 모으면 진화해요.`}</p>`:`<p class="note" style="text-align:center">${m.base!=null?'특별 카드예요. 팩에서만 나와요.':'가장 높은 단계예요!'}</p>`}`;}
+ ${e?`<div class="row" style="justify-content:center"><button class="btn pink" id="evo" ${can?'':'disabled'}>✨ 진화하기 (같은 카드 3장)</button></div><p class="note" style="text-align:center">${n}장 있어요. ${can?`3장이 ${e.name}(으)로 바뀌어요!`:`${3-n}장 더 모으면 진화해요.`}</p>`:(m.base>=0?`<p class="note" style="text-align:center">특별 카드예요. 팩에서만 나와요.</p>`:MON.some(x=>x.fam===m.fam&&x.tier===1)?`<p class="note" style="text-align:center">가장 높은 진화 단계예요!</p>`:'')}`;}
 function evolve(){const m=byId(T.id),e=evoOf(m);if(!e||has(m.id)<3)return;me().cards[m.id]-=3;if(!me().cards[m.id])delete me().cards[m.id];me().cards[e.id]=has(e.id)+1;save();SFX.evo();
  A.insertAdjacentHTML('beforeend',`<div class="ov" id="ov"><div><h2>진화했어요!</h2><div class="big-card">${cardHtml(e)}</div><button class="btn" id="ovok">좋아요!</button></div></div>`);T.id=e.id;}
 
@@ -414,6 +417,7 @@ function vHowto(){A.innerHTML=head('게임 방법')+`<div class="how">
  <p>팩마다 1장은 고급 이상이에요. 특별 카드(SR·UR·SEC)는 같은 몬스터보다 조금 더 강해요.</p>
  <h3>3. 도감과 진화</h3><p>모은 카드는 도감에 쌓여요. 없는 카드는 그림자로 보여요. 전체 ${VIS.length}장을 모아 봐요!</p>
  <p>같은 카드 3장을 모으면 도감에서 카드를 눌러 <b>진화</b>할 수 있어요. 어린 → 보통 → 고대 순서예요.</p>
+ <h3>⬆️ 강화</h3><p>도감에서 카드를 누르면 별가루로 한 단계 높은 등급으로 강화할 수 있어요 (C→U ${UPC.C} · U→R ${UPC.U} · R→SR ${UPC.R} · SR→UR ${UPC.SR} · UR→SEC ${UPC.UR}). 등급이 오르면 HP와 힘도 세져요.</p>
  <h3>✨ 별가루</h3><p>겹친 카드는 별가루로 바꿀 수 있어요 (${ODDS_R.map(r=>`${RAR[r].s} ${DUST[r]}`).join(' · ')}). 도감 위의 버튼을 누르면 한 번에 바꿔요.</p><p>별가루로 갖고 싶은 카드를 얻을 수 있어요. 도감에서 그림자 카드를 눌러 봐요! (${ODDS_R.map(r=>`${RAR[r].s} ${BUY[r]}`).join(' · ')})</p>
  <h3>4. 대결</h3><p>카드 3장으로 팀을 짜요. 번갈아 한 가지를 골라요.</p>
  <ul><li><b>공격:</b> 카드의 힘만큼 피해를 줘요.</li><li><b>필살기:</b> 힘의 2배! 쓰고 나면 3턴 동안 못 써요.</li><li><b>교체:</b> 다른 카드로 바꿔요. 차례를 한 번 써요.</li></ul>
@@ -504,6 +508,7 @@ A.addEventListener('click',e=>{const t=e.target,q=s=>t.closest(s);let x;
  if(x=q('[data-pg]')){if(!x.disabled)go('album',{filter:T.filter,rar:T.rar,q:T.q,page:+x.dataset.pg});return;}
  if(q('#evo'))return evolve();
  if(q('#dustAll'))return dustAll();
+ if(q('#up')){const m=byId(T.id),u=upOf(m),c=UPC[m.rar];if(!u||!has(m.id)||dust()<c)return;me().dust=dust()-c;me().cards[m.id]--;if(!me().cards[m.id])delete me().cards[m.id];me().cards[u.id]=has(u.id)+1;save();SFX.evo();T.id=u.id;vCard();A.insertAdjacentHTML('beforeend',`<div class="ov" id="ov"><div><h2>강화 성공!</h2><div class="big-card">${cardHtml(u)}</div><button class="btn" id="ovok">좋아요!</button></div></div>`);return;}
  if(q('#dust1')){const m=byId(T.id);if(has(m.id)>1){me().cards[m.id]--;me().dust=dust()+DUST[m.rar];save();SFX.tap();}return vCard();}
  if(q('#buy')){const m=byId(T.id),c=BUY[m.rar];if(dust()<c)return;const first=!has(m.id);me().dust=dust()-c;me().cards[m.id]=has(m.id)+1;save();SFX.evo();vCard();if(first)A.insertAdjacentHTML('beforeend',`<div class="ov" id="ov"><div><h2>새 카드!</h2><div class="big-card">${cardHtml(m)}</div><button class="btn" id="ovok">좋아요!</button></div></div>`);return;}
  if(q('#ovok'))return go('card',{id:T.id});
