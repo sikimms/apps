@@ -63,7 +63,9 @@ h2{font:400 24px/1.2 var(--d);margin:0;text-wrap:balance}
 @keyframes foil{from{transform:translateX(-45%)}to{transform:translateX(45%)}}
 .card.none{border-color:#ffffff1a;background:#ffffff08;color:#fff7;cursor:pointer;box-shadow:none}.card.none::after{display:none}
 .card.none svg{filter:brightness(0) opacity(.5)}.card.none .rb{display:none}
-.pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px}.pager span{font:600 14px var(--b);font-variant-numeric:tabular-nums}.bar{height:8px;border-radius:9px;background:#0007;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--gold)}
+.pager{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px}.srch{position:relative;margin-top:10px}.srch input{width:100%;box-sizing:border-box;border:1px solid #ffffff33;background:#ffffff14;color:#fff;border-radius:12px;padding:11px 44px 11px 14px;font:600 16px var(--b);user-select:text;-webkit-user-select:text}.srch input::placeholder{color:#fff9}.srch input::-webkit-search-cancel-button{display:none;-webkit-appearance:none}.srch button{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:#ffffff22;color:#fff;border-radius:50%;width:32px;height:32px;font-size:15px;cursor:pointer}
+.pager select{background:#ffffff1c;color:#fff;border:1px solid #ffffff33;border-radius:10px;padding:8px 10px;font:600 15px var(--b);font-variant-numeric:tabular-nums}.pager select option{color:#000}
+.pager span{font:600 14px var(--b);font-variant-numeric:tabular-nums}.bar{height:8px;border-radius:9px;background:#0007;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--gold)}
 .oddtb{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;font:600 12px var(--b);color:#c8d2e8;margin-top:6px}.oddtb b{font-weight:700}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:12px}
 .tabs{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}.tabs button{flex:1 1 auto;white-space:nowrap;border:0;background:#ffffff1c;color:#fff;border-radius:10px;padding:8px 10px;font:400 16px var(--d);cursor:pointer;min-height:42px}
@@ -313,7 +315,7 @@ const DUST={C:5,U:10,R:25,SR:60,UR:150,SEC:400},BUY={C:50,U:100,R:250,SR:600,UR:
 const coin=()=>`<span style="display:inline-flex;gap:6px"><span class="coin" aria-label="별가루 ${dust()}개">✨ ${dust()}</span><span class="coin" aria-label="팩 ${me().packs}개">🎴 ${me().packs}</span></span>`;
 const head=(t,back=true)=>`<div class="top">${back?'<button class="btn alt" data-go="home" aria-label="처음으로">← 처음</button>':`<h1>${t}</h1>`}${back?`<h2>${t}</h2>`:''}${coin()}</div>`;
 const has=id=>me().cards[id]||0;const kinds=()=>VIS.filter(m=>has(m.id)).length;
-function go(v,o){view=v;T=o||{};refill();({home:vHome,pack:vPack,album:vAlbum,card:vCard,pick:vPick,fight:vFight,howto:vHowto})[v]();window.scrollTo(0,0);}
+function go(v,o){if(v==='album'&&!o&&view==='card')o={...lastAlbum};view=v;T=o||{};refill();({home:vHome,pack:vPack,album:vAlbum,card:vCard,pick:vPick,fight:vFight,howto:vHowto})[v]();window.scrollTo(0,0);}
 function vHome(){setTimeout(()=>{if(me().refund||S.justReset){delete me().refund;delete S.justReset;save();}},4000);const free=me().day!==today();
  A.innerHTML=head('별빛 몬스터 카드',false)+
  `${S.justReset?`<div class="msg" style="background:#5fe0b722;border-radius:12px;padding:8px">카드를 모두 비웠어요. 처음부터 다시 모아 봐요!</div>`:''}${me().refund?`<div class="msg" style="background:#e8b84b22;border-radius:12px;padding:8px">예전 카드 ${me().refund}장을 카드팩 ${me().refund}개로 바꿔 드렸어요!</div>`:''}<div class="who">${['kid','dad'].map(k=>`<button class="${S.me===k?'on':''}" data-who="${k}">${S.p[k].name}</button>`).join('')}</div>
@@ -378,16 +380,20 @@ function openSq(){if(T.sqDone)return;T.sqDone=true;const i=T.idx,m=T.got[i],c=do
  else{const ag=document.getElementById('again'),fa=document.getElementById('flipAll');if(ag)ag.hidden=false;if(fa)fa.hidden=true;setTimeout(()=>{const p=document.getElementById('pm');if(p&&view==='pack')p.textContent='아래 카드를 누르면 크게 볼 수 있어요!';},1600);}}
 
 let albumOwn=false;   // 도감에서 보유 카드만 보기 (다시 들어와도 유지)
-function vAlbum(){const f=T.filter||'all',rf=T.rar||'all',pg=T.page||0,N=30;
- const list=VIS.filter(m=>(f==='all'||m.el===f)&&(rf==='all'||m.rar===rf)&&(!albumOwn||has(m.id))),pages=Math.max(1,Math.ceil(list.length/N)),show=list.slice(pg*N,pg*N+N),gotN=list.filter(m=>has(m.id)).length;
+let lastAlbum={},aqT=null;
+const escH=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+function matchQ(m,q){if(!q)return true;if(/^\d+$/.test(q))return m.no===+q;return has(m.id)&&m.name.replace(/\s/g,'').includes(q.replace(/\s/g,''));}
+function vAlbum(){lastAlbum={...T};const f=T.filter||'all',rf=T.rar||'all',N=30,qs=(T.q||'').trim();
+ const list=VIS.filter(m=>(f==='all'||m.el===f)&&(rf==='all'||m.rar===rf)&&(!albumOwn||has(m.id))&&matchQ(m,qs)),pages=Math.max(1,Math.ceil(list.length/N)),pg=Math.min(T.page||0,pages-1),show=list.slice(pg*N,pg*N+N),gotN=list.filter(m=>has(m.id)).length;
  A.innerHTML=head('내 도감')+`<div class="msg" style="margin:0">${kinds()} / ${VIS.length} 장</div><div class="bar"><i style="width:${kinds()/VIS.length*100}%"></i></div>
+ <div class="srch"><input id="aq" type="search" enterkeyhint="search" autocomplete="off" placeholder="🔍 내 카드 이름 또는 번호(예: 301)" value="${escH(qs)}">${qs?'<button id="aqx" aria-label="검색 지우기">✕</button>':''}</div>
  <div class="tabs"><button class="${albumOwn?'':'on'}" data-own="0">전체 ${VIS.length}장</button><button class="${albumOwn?'on':''}" data-own="1">보유 ${kinds()}장</button></div>
  <div class="tabs">${[['all','전체'],...ELK.map(k=>[k,EL[k].n])].map(([k,n])=>`<button class="${f===k?'on':''}" data-filter="${k}">${n}</button>`).join('')}</div>
  <div class="tabs">${[['all','모든 등급'],...ODDS_R.map(r=>[r,RAR[r].s])].map(([k,n])=>`<button class="${rf===k?'on':''}" data-rf="${k}">${n}</button>`).join('')}</div>
  ${(()=>{const[xn,xd]=extras();return xn?`<div class="row" style="justify-content:center"><button class="btn pink" id="dustAll">✨ 겹친 카드 ${xn}장 → 별가루 ${xd}개</button></div><p class="note" style="text-align:center">한 장씩은 남겨요. 진화할 수 있는 카드는 그대로 둬요.</p>`:''})()}
  <p class="note" style="text-align:center">이 묶음에서 ${gotN} / ${list.length} 장 모음</p>
- ${show.length?'':`<div class="msg">${albumOwn&&!kinds()?'아직 카드가 없어요. 카드팩을 뜯어 봐요!':'이 묶음에는 가진 카드가 없어요.'}</div>`}<div class="grid">${show.map(m=>cardHtml(m,{none:!has(m.id),cnt:has(m.id)})).join('')}</div>
- <div class="pager"><button class="btn alt" data-pg="${pg-1}" ${pg?'':'disabled'}>← 이전</button><span>${pg+1} / ${pages}쪽</span><button class="btn alt" data-pg="${pg+1}" ${pg<pages-1?'':'disabled'}>다음 →</button></div>`;}
+ ${show.length?'':`<div class="msg">${qs?'찾는 카드가 없어요. 이름으로는 내가 가진 카드만 찾을 수 있어요.':albumOwn&&!kinds()?'아직 카드가 없어요. 카드팩을 뜯어 봐요!':'이 묶음에는 가진 카드가 없어요.'}</div>`}<div class="grid">${show.map(m=>cardHtml(m,{none:!has(m.id),cnt:has(m.id)})).join('')}</div>
+ <div class="pager"><button class="btn alt" data-pg="${pg-1}" ${pg?'':'disabled'}>← 이전</button><select id="apg" aria-label="쪽 고르기">${Array.from({length:pages},(_,i)=>`<option value="${i}" ${i===pg?'selected':''}>${i+1} / ${pages}쪽</option>`).join('')}</select><button class="btn alt" data-pg="${pg+1}" ${pg<pages-1?'':'disabled'}>다음 →</button></div>`;}
 function extras(){let n=0,d=0;MON.forEach(m=>{const c=has(m.id);if(c>1&&!evoOf(m)){n+=c-1;d+=(c-1)*DUST[m.rar];}});return[n,d];}
 function dustAll(){let d=0;MON.forEach(m=>{const c=has(m.id);if(c>1&&!evoOf(m)){d+=(c-1)*DUST[m.rar];me().cards[m.id]=1;}});if(!d)return;me().dust=dust()+d;save();SFX.evo();go('album',T);A.insertAdjacentHTML('beforeend',`<div class="ov" id="ov"><div><h2>✨ 별가루 ${d}개!</h2><p style="font:700 18px var(--b)">겹친 카드를 별가루로 바꿨어요.<br>한 장씩은 그대로 남아 있어요.</p><button class="btn" id="ovClose">좋아요!</button></div></div>`);}
 function evoOf(m){if(m.evo!=null)return byId(m.evo);return m.tier<3&&m.base==null?MON.find(x=>x.fam===m.fam&&x.tier===m.tier+1&&x.base==null):null;}
@@ -458,6 +464,11 @@ function endFight(w){T.busy=true;const two=T.kind==='two';let line,won=w===T.A;
  save();A.insertAdjacentHTML('beforeend',`<div class="ov"><div><h2>${two?'대결 끝!':won?'승리!':'패배'}</h2><p style="font:700 18px var(--b)">${line}</p><div class="row"><button class="btn" data-go="home">처음으로</button>${two?'':'<button class="btn alt" data-go="pack">팩 뜯으러</button>'}</div></div></div>`);}
 
 /* ---------- 누름 처리 ---------- */
+function aqRun(el){const v=el.value,pos=el.selectionStart;if((T.q||'')===v)return;go('album',{filter:T.filter,rar:T.rar,q:v});const n=document.getElementById('aq');if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(_){}}}
+A.addEventListener('input',e=>{if(e.target.id!=='aq'||e.isComposing)return;clearTimeout(aqT);const el=e.target;aqT=setTimeout(()=>aqRun(el),450);});
+A.addEventListener('compositionend',e=>{if(e.target.id!=='aq')return;clearTimeout(aqT);const el=e.target;aqT=setTimeout(()=>aqRun(el),450);});
+A.addEventListener('keydown',e=>{if(e.target.id==='aq'&&e.key==='Enter'&&!e.isComposing){clearTimeout(aqT);aqRun(e.target);e.target.blur();}});
+A.addEventListener('change',e=>{if(e.target.id==='apg'){SFX.tap();go('album',{filter:T.filter,rar:T.rar,q:T.q,page:+e.target.value});}});
 A.addEventListener('click',e=>{const t=e.target,q=s=>t.closest(s);let x;
  if(x=q('[data-go]')){SFX.tap();return go(x.dataset.go);}
  if(x=q('[data-who]')){SFX.tap();S.me=x.dataset.who;save();return go('home');}
@@ -486,10 +497,11 @@ A.addEventListener('click',e=>{const t=e.target,q=s=>t.closest(s);let x;
  if(x=q('[data-flip]')){if(x.classList.contains('open'))return;x.classList.add('open');const tr=+x.dataset.tier,i=+x.dataset.flip,gm=T.got[i];tr>=3?SFX.super():tr===2?SFX.rare():SFX.flip();
   const pm=document.getElementById('pm');if(pm)pm.textContent=(tr>=2?RAR[gm.rar].n+'! ':'')+(T.fresh[i]?'새 카드 ':'')+gm.name;
   if(--T.left===0){document.getElementById('again').hidden=false;const fa=document.getElementById('flipAll');if(fa)fa.hidden=true;}return;}
- if(x=q('[data-own]')){albumOwn=x.dataset.own==='1';SFX.tap();return go('album',{filter:T.filter,rar:T.rar});}
- if(x=q('[data-filter]'))return go('album',{filter:x.dataset.filter,rar:T.rar});
- if(x=q('[data-rf]'))return go('album',{filter:T.filter,rar:x.dataset.rf});
- if(x=q('[data-pg]')){if(!x.disabled)go('album',{filter:T.filter,rar:T.rar,page:+x.dataset.pg});return;}
+ if(q('#aqx'))return go('album',{filter:T.filter,rar:T.rar});
+ if(x=q('[data-own]')){albumOwn=x.dataset.own==='1';SFX.tap();return go('album',{filter:T.filter,rar:T.rar,q:T.q});}
+ if(x=q('[data-filter]'))return go('album',{filter:x.dataset.filter,rar:T.rar,q:T.q});
+ if(x=q('[data-rf]'))return go('album',{filter:T.filter,rar:x.dataset.rf,q:T.q});
+ if(x=q('[data-pg]')){if(!x.disabled)go('album',{filter:T.filter,rar:T.rar,q:T.q,page:+x.dataset.pg});return;}
  if(q('#evo'))return evolve();
  if(q('#dustAll'))return dustAll();
  if(q('#dust1')){const m=byId(T.id);if(has(m.id)>1){me().cards[m.id]--;me().dust=dust()+DUST[m.rar];save();SFX.tap();}return vCard();}
