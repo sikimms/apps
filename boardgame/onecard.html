@@ -337,7 +337,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="levels" id="olevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="opts">
         <label>인원 <select id="oPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
-        <label>판돈 <select id="oAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option><option value="50000">5만원</option><option value="100000">10만원</option></select></label>
+        <label>판돈 <select id="oAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option><option value="50000">5만원</option><option value="100000">10만원</option><option value="500000">50만원</option><option value="1000000">100만원</option></select></label>
         <label><input type="checkbox" id="oSound"> 소리</label><label><input type="checkbox" id="vVoice"> 목소리</label>
       </div>
       <div class="tips"><strong>하는 법</strong><ul id="ohow"></ul>
@@ -627,7 +627,7 @@ const LV=[{name:'신입',bluff:0.18,rnd:0.3,loose:0.12,samples:50},{name:'초보
 function aiBet(s,lv){
   const p=s.turn,L=LV[lv],eq=equity(s,p,L.samples),nA=alive(s).length,fair=1/nA;
   let e=s.kind==='hilo'?Math.min(1,Math.max(eq.hi,eq.lo)+Math.min(eq.hi,eq.lo)*0.6):eq.win;
-  e+=(Math.random()-0.5)*L.rnd;const edge=e-fair;
+  e+=(Math.random()-0.5)*L.rnd;if(s.stack[p]<1e11&&s.stack[p]>s.pot*30)e+=0.05;const edge=e-fair;
   const acts=actions(s),get=k=>acts.find(a=>a.k===k),need=s.toCall-s.bet[p],odds=need/(s.pot+need||1);
   if(acts.length===1)return acts[0];   // 올인해서 더 걸 돈이 없으면 그대로 넘어감
   const late=s.kind==='badugi'?s.street>=3:s.street>=7;
@@ -1023,7 +1023,7 @@ const won=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
 const SND={ctx:null,on:store.get('sound',true),
   tick(f=900,v=.15,d=.06){if(!this.on)return;try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){return;}const c=this.ctx,t=c.currentTime,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.02);},
   card(){this.tick(1500,.12,.05);},win(){[660,880,1320].forEach((f,i)=>setTimeout(()=>this.tick(f,.18,.25),i*110));}};
-const opt={kind:store.get('kind','oc'),players:store.get('players',3),level:store.get('level',1),ante:(x=>[1000,5000,10000,50000,100000].includes(x)?x:1000)(store.get('ante',1000))};
+const opt={kind:store.get('kind','oc'),players:store.get('players',3),level:store.get('level',1),ante:(x=>[1000,5000,10000,50000,100000,500000,1000000].includes(x)?x:1000)(store.get('ante',1000))};
 let seq=0;
 function face(id){if(id===52||id===53)return jokerSvg(id);const t='o'+(++seq)+'_';return PC.face(id).split(`pc${id}_`).join(`${t}pc${id}_`);}
 function jokerSvg(id){const col=id===53;return `<svg viewBox="0 0 60 90" xmlns="http://www.w3.org/2000/svg"><rect x=".5" y=".5" width="59" height="89" rx="6" fill="#fffdf7" stroke="#999"/>
@@ -1040,7 +1040,7 @@ function bigText(t){VOICE.say(t);const b=$('obig');b.innerHTML=`<span>${t}</span
 function msg(h){$('omsg').innerHTML=h;}
 
 /* ---------- 상태 ---------- */
-let S=null,V=null,ME=0,UI=null,gen=0,money=WALLET.get(),aiMoney=store.get('aimoney',[0,100000,100000,100000,100000]),NAMES=store.get('names',['나','김 사장','이 여사','박 부장','최 선생']);
+let S=null,V=null,ME=0,UI=null,gen=0,money=WALLET.get(),aiMoney=(a=>a.slice(1).every(v=>v<1000000)?[0,10000000,10000000,10000000,10000000]:a)(store.get('aimoney',[0,10000000,10000000,10000000,10000000])),NAMES=store.get('names',['나','김 사장','이 여사','박 부장','최 선생']);
 let NET=null;   // 방장: {seats,kind,names} · 친구: {guest:true,names}
 const GUEST=()=>!!(NET&&NET.guest);
 const remote=p=>!!(NET&&!NET.guest&&NET.kind[p]==='net');
@@ -1110,7 +1110,7 @@ async function startHand(){
   if(GUEST())return;const g=++gen;UI=null;$('onext').hidden=true;
   const n=NET?NET.kind.length:opt.players;money=WALLET.get();if(money<opt.ante*5)money=WALLET.rescue(opt.ante*5);
   if(NET&&!NET.guest)for(let p=1;p<n;p++)if(remote(p))aiMoney[p]=roomMoney(NET.seats[p],aiMoney[p]);   // 친구 자리는 친구 지갑 돈
-  const left=[];for(let p=1;p<n;p++){if(aiMoney[p]<opt.ante*5){if(!NET||NET.kind[p]==='ai'){if(!NET){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}}aiMoney[p]=Math.max(100000,opt.ante*100);}aiMoney[p]-=opt.ante;}
+  const left=[];for(let p=1;p<n;p++){if(aiMoney[p]<opt.ante*5){if(!NET||NET.kind[p]==='ai'){if(!NET){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}}aiMoney[p]=Math.max(10000000,opt.ante*100);}aiMoney[p]-=opt.ante;}
   money-=opt.ante;WALLET.set(money);store.set('aimoney',aiMoney);store.set('names',NAMES);
   S=opt.kind==='oc'?OC.ocNew({players:n,ante:opt.ante,first:Math.floor(Math.random()*n)}):OC.huNew({players:n,ante:opt.ante,first:Math.floor(Math.random()*n)});S.res=null;
   msg((left.length?guestNote(left)+'<br>':'')+`판돈 ${won(opt.ante)}씩 내고 <b>${opt.kind==='oc'?'원카드':'훌라'}</b>를 시작해요.`);

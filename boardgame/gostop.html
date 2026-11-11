@@ -1028,7 +1028,7 @@ async function animateTurn(T,s,mv,pick,o){
 
 /* ---------- 실전 ---------- */
 const CNAME=store.get('cname',['나','김 사장','이 여사']);
-let aiMoney=store.get('aimoney',[0,100000,100000]);
+let aiMoney=store.get('aimoney',[0,10000000,10000000]);if(aiMoney[1]<1000000&&aiMoney[2]<1000000){aiMoney=[0,10000000,10000000];store.set('aimoney',aiMoney);}
 const opt={players:store.get('players',2),level:store.get('level',1)};
 let money=WALLET.get(),rec=store.get('rec',{}),G=null;
 /* 온라인: ME = 내 자리. 방장 기기는 NETG.seats[q] = 0(방장) / 친구 번호 / -1(컴퓨터).
@@ -1073,7 +1073,7 @@ function stopOnline(){NETG=null;ME=0;if(pendAsk){pendAsk.res(pendAsk.def);pendAs
 function newGame(keepFirst){
   if(GUEST())return;
   money=WALLET.get();if(money<=0)money=WALLET.rescue(1);   // 공통 지갑 (돈이 다 떨어지면 다시 채워 줌)
-  const left=[];if(!NETG&&!GUEST())for(let q=1;q<3;q++)if(aiMoney[q]<=0){const o=CNAME[q];CNAME[q]=newGuest(CNAME);aiMoney[q]=Math.max(100000,POINT*1000);left.push([o,CNAME[q]]);}
+  const left=[];if(!NETG&&!GUEST())for(let q=1;q<3;q++)if(aiMoney[q]<=0){const o=CNAME[q];CNAME[q]=newGuest(CNAME);aiMoney[q]=Math.max(10000000,POINT*1000);left.push([o,CNAME[q]]);}
   if(left.length){store.set('cname',CNAME);store.set('aimoney',aiMoney);setTimeout(()=>PT.shout('새 손님!'),400);}
   const first=G&&keepFirst&&G.nextFirst!=null?G.nextFirst:0,nag=G&&G.nagariNext||1;
   PT.reset();PT.closeOverlay();
@@ -1251,7 +1251,7 @@ $('gPlayers').value=String(opt.players);$('gPlayers').onchange=e=>{opt.players=+
 $('gNew').onclick=()=>{if(GUEST())return;G&&(G.nagariNext=1);if(NETG){startOnline();return;}newGame();};
 $('gLabels').checked=PT.labels;$('gLabels').onchange=e=>{PT.setLabels(e.target.checked);LT.setLabels(e.target.checked);if(G)draw();renderLesson();};
 $('gSound').checked=SND.on;$('gSound').onchange=e=>{SND.on=e.target.checked;store.set('sound',SND.on);};
-$('gReset').onclick=()=>{aiMoney=[0,100000,100000];store.set('aimoney',aiMoney);WALLET.reset();money=WALLET.get();rec={};store.set('rec',rec);renderRec();if(G)renderPanel();};
+$('gReset').onclick=()=>{aiMoney=[0,10000000,10000000];store.set('aimoney',aiMoney);WALLET.reset();money=WALLET.get();rec={};store.set('rec',rec);renderRec();if(G)renderPanel();};
 addEventListener('resize',()=>{if(G)draw();renderLesson(true);});
 
 /* ---------- 배우기 ---------- */
