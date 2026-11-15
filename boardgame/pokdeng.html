@@ -424,7 +424,7 @@ function bigNext(btnId,hostId){const btn=document.getElementById(btnId),host=doc
   const sync=()=>{b.hidden=btn.hidden||btn.disabled;};new MutationObserver(sync).observe(btn,{attributes:true,attributeFilter:['hidden','disabled']});sync();}
 setTimeout(()=>{[['snext','stable'],['dnext','dtable'],['pnext','ptable'],['onext','otable'],['dnext2','dtable2']].forEach(([a,b])=>bigNext(a,b));},0);
 
-/* ===== 포커 규칙: 세븐포커 · 하이로우 · 바둑이 =====
+/* ===== 포커 규칙: 세븐포커 · 하이로우 · 바둑이 · 홀덤 =====
    카드 id 0~51: 숫자 r = id%13+2 (2~14, 14=A), 무늬 s = floor(id/13): 0♣ 1♥ 2♦ 3♠ (같은 족보면 ♠>♦>♥>♣) */
 const PK=(()=>{
 const R=id=>id%13+2,S=id=>Math.floor(id/13);
@@ -504,7 +504,7 @@ const alive=s=>s.folded.map((f,i)=>f?-1:i).filter(i=>i>=0);
 function draw1(s){if(!s.deck.length){s.deck=shuffle(s.discards);s.discards=[];}return s.deck.shift();}
 function startBetting(s,first){s.bet=Array(s.n).fill(0);s.toCall=0;s.lastRaise=0;s.acted=Array(s.n).fill(false);s.raises=0;s.turn=first;s.phase='bet';}
 function nextAlive(s,from){for(let k=1;k<=s.n;k++){const q=(from+k)%s.n;if(!s.folded[q])return q;}return -1;}
-function actions(s){
+function actions(s){if(s.kind==='holdem')return holdemActions(s);
   const p=s.turn,need=s.toCall-s.bet[p],st=s.stack[p];
   if(st<=0)return[{k:'check',amt:0,name:'올인'}];   // 이미 올인: 더 걸 돈이 없음
   const out=[{k:'die',amt:0,name:'다이'}];
@@ -553,7 +553,7 @@ function sidePots(s,fn){
 }
 
 /* ---------- 세븐포커 · 하이로우 진행 ---------- */
-const all=(s,p)=>s.hidden[p].concat(s.open[p]);
+const all=(s,p)=>s.hidden[p].concat(s.open[p],s.board||[]);
 function studDeal4(s){for(let k=0;k<4;k++)for(let p=0;p<s.n;p++)s.hidden[p].push(draw1(s));s.street=3;s.phase='discard';}   // 버리고 보여 주면 3장(3구). 다음부터 4·5·6구 오픈, 7구 히든
 function studDiscard(s,p,id){s.hidden[p]=s.hidden[p].filter(x=>x!==id);s.discards.push(id);}
 function studOpen(s,p,id){s.hidden[p]=s.hidden[p].filter(x=>x!==id);s.open[p].push(id);}
@@ -620,7 +620,7 @@ function equity(s,p,N=160){
 }
 const LV=[{name:'신입',bluff:0.18,rnd:0.3,loose:0.12,samples:50},{name:'초보',bluff:0.08,rnd:0.15,loose:0.05,samples:70},{name:'중수',bluff:0.05,rnd:0.07,loose:0.02,samples:140},{name:'고수',bluff:0.06,rnd:0.03,loose:0.02,samples:220}];
 // 베팅: 인원수에 따른 '내 몫'(1/살아 있는 사람 수)보다 얼마나 유리한지로 판단
-function aiBet(s,lv){
+function aiBet(s,lv){if(s.kind==='holdem')return aiHoldem(s,lv);
   const p=s.turn,L=LV[lv],eq=equity(s,p,L.samples),nA=alive(s).length,fair=1/nA;
   let e=s.kind==='hilo'?Math.min(1,Math.max(eq.hi,eq.lo)+Math.min(eq.hi,eq.lo)*0.6):eq.win;
   e+=(Math.random()-0.5)*L.rnd;if(s.stack[p]<1e11&&s.stack[p]>s.pot*30)e+=0.05;const edge=e-fair;
@@ -647,7 +647,67 @@ function aiDiscardOpen(s,p){
 }
 function aiDeclare(s,p){const eq=equity(s,p,200);if(eq.hi>0.7&&eq.lo>0.7)return'swing';return eq.lo>eq.hi?'lo':'hi';}
 function aiDraw(s,p){const b=badugi(s.hidden[p]);if(b.size===4&&!(b.desc[0]>=11&&s.street<2))return[];return s.hidden[p].filter(c=>!b.keep.includes(c)).concat(b.size===4?[b.keep.find(c=>(R(c)===14?1:R(c))===b.desc[0])]:[]);}
-return{R,S,RN,SN,SKO,cardName,DECK,shuffle,cmp,CAT,eval5,bestHigh,highName,bestLow,lowBetter,badugi,newGame,alive,actions,act,startBetting,nextAlive,
+
+/* ---------- 텍사스 홀덤 (HOLDEM_V1) ----------
+   개인 카드 2장 + 바닥 카드 5장 중 가장 좋은 5장. 국제 규칙: 무늬로 가리지 않고 같으면 나눔, A-2-3-4-5는 가장 낮은 스트레이트. */
+const HCAT=['하이카드','원페어','투페어','트리플','스트레이트','플러시','풀하우스','포카드','스트레이트 플러시'];
+function hScore5(c){const e=eval5(c),t=e.score.slice(1,-1);let cat,tie;
+  if(e.cat>=10){cat=8;tie=[e.cat===11?5:t[0]];}else if(e.cat===9){cat=7;tie=t;}else if(e.cat===8){cat=6;tie=t;}else if(e.cat===7){cat=5;tie=t;}
+  else if(e.cat>=4&&e.cat<=6){cat=4;tie=[e.cat===5?5:t[0]];}else{cat=e.cat;tie=t;}
+  return{score:[cat,...tie],cat,cards:c};}
+function holdemBest(cards){if(cards.length<5){const e=eval5pad(cards);return{score:e.score.slice(0,-1),cat:e.cat,cards};}
+  let best=null;const n=cards.length;
+  for(let a=0;a<n;a++)for(let b=a+1;b<n;b++)for(let c=b+1;c<n;c++)for(let d=c+1;d<n;d++)for(let e=d+1;e<n;e++){const h=hScore5([cards[a],cards[b],cards[c],cards[d],cards[e]]);if(!best||cmp(h.score,best.score)>0)best=h;}
+  return best;}
+function holdemName(h){const t=h.score[1];
+  if(h.cat===8)return t===14?'로열 플러시':`${RN(t)} 스트레이트 플러시`;if(h.cat===7)return `${RN(t)} 포카드`;if(h.cat===6)return `${RN(t)} 풀하우스`;
+  if(h.cat===5)return `${RN(t)} 플러시`;if(h.cat===4)return `${RN(t)} 스트레이트`;if(h.cat===3)return `${RN(t)} 트리플`;
+  if(h.cat===2)return `${RN(t)}·${RN(h.score[2])} 투페어`;if(h.cat===1)return `${RN(t)} 원페어`;return `${RN(t)} 하이`;}
+function holdemNew(o){const s=newGame(Object.assign({},o,{ante:0}));s.kind='holdem';s.bb=o.bb;s.sb=Math.max(100,Math.round(o.bb/2/100)*100);s.board=[];s.paid=Array(s.n).fill(0);s.pot=0;
+  const n=s.n;s.sbP=n===2?s.dealer:(s.dealer+1)%n;s.bbP=n===2?(s.dealer+1)%n:(s.dealer+2)%n;return s;}
+// 블라인드 내기: [누가, 얼마] 목록을 돌려줌 (돈 빼기는 화면 쪽에서)
+function holdemBlinds(s){const out=[];for(const [p,amt] of [[s.sbP,s.sb],[s.bbP,s.bb]]){const a=Math.min(amt,s.stack[p]);s.bet[p]+=a;s.paid[p]+=a;s.pot+=a;s.stack[p]-=a;out.push([p,a]);}
+  s.toCall=s.bb;s.lastRaise=s.bb;s.street=0;return out;}
+function holdemDeal(s){for(let k=0;k<2;k++)for(let i=1;i<=s.n;i++){const p=(s.dealer+i)%s.n;s.hidden[p].push(draw1(s));}
+  s.acted=Array(s.n).fill(false);s.raises=0;s.phase='bet';s.turn=nextAlive(s,s.bbP);}
+function holdemStreet(s){s.street++;draw1(s);const k=s.street===1?3:1;for(let i=0;i<k;i++)s.board.push(draw1(s));startBetting(s,nextAlive(s,s.dealer));}
+const canBet=s=>alive(s).filter(q=>s.stack[q]>0).length>=2;
+function holdemActions(s){
+  const p=s.turn,need=s.toCall-s.bet[p],st=s.stack[p];
+  if(st<=0)return[{k:'check',amt:0,name:'올인'}];
+  const out=[{k:'die',amt:0,name:'폴드'}];
+  if(need<=0)out.push({k:'check',amt:0,name:'체크'});else out.push(need>=st?{k:'call',amt:st,name:'올인'}:{k:'call',amt:need,name:'콜'});
+  const canRaise=alive(s).some(q=>q!==p&&s.stack[q]>0);
+  if(canRaise&&st>need&&s.raises<8){const minR=Math.max(s.bb,s.lastRaise),r100=x=>Math.round(x/100)*100,seen=new Set();
+    const cand=[['minr',need+minR,s.toCall?'레이즈':'벳'],['half',need+Math.max(minR,r100((s.pot+need)/2)),'1/2 팟'],['pot',need+Math.max(minR,r100(s.pot+need)),'팟'],['allin',st,'올인']];
+    for(const [k,amt0,name] of cand){const amt=Math.min(st,amt0);if(seen.has(amt))continue;if(amt<st&&amt-need<minR)continue;seen.add(amt);out.push({k,amt,raise:Math.max(0,amt-need),name:amt>=st?(k==='allin'?'올인':name+'(올인)'):name});}}
+  return out;}
+function holdemShowdown(s){return sidePots(s,holdemShowdown1);}
+function holdemShowdown1(s){const al=alive(s);s.over=true;let best=null,ws=[];const H=p=>holdemBest(s.hidden[p].concat(s.board));
+  for(const p of al){const h=H(p);const c=best?cmp(h.score,best.score):1;if(c>0){best=h;ws=[p];}else if(c===0)ws.push(p);}
+  const sh=Math.floor(s.pot/ws.length),rem=s.pot-sh*ws.length;
+  s.result={winners:ws.map((p,i)=>({p,share:sh+(i===0?rem:0),why:holdemName(H(p))+(ws.length>1?' (나눔)':'')})),hands:al.map(p=>({p,name:holdemName(H(p))}))};return s.result;}
+function holdemEquity(s,p,N=160){const al=alive(s),known=new Set(s.board.concat(s.hidden[p]));const pool=DECK.filter(c=>!known.has(c));let win=0;
+  for(let k=0;k<N;k++){const d=shuffle(pool);let i=0;const board=s.board.concat(d.slice(i,i+5-s.board.length));i+=5-s.board.length;
+    const mine=holdemBest(s.hidden[p].concat(board)).score;let tie=1,lose=false;
+    for(const q of al){if(q===p)continue;const hq=d.slice(i,i+2);i+=2;const c=cmp(mine,holdemBest(hq.concat(board)).score);if(c<0){lose=true;break;}if(c===0)tie++;}
+    if(!lose)win+=1/tie;}
+  return{win:win/N,hi:win/N,lo:0};}
+function aiHoldem(s,lv){
+  const p=s.turn,L=LV[lv],eq=holdemEquity(s,p,Math.round(L.samples*.8)),nA=alive(s).length,fair=1/nA;
+  let e=eq.win+(Math.random()-0.5)*L.rnd;if(s.stack[p]<1e11&&s.stack[p]>s.pot*30)e+=0.03;const edge=e-fair;
+  const acts=holdemActions(s),get=k=>acts.find(a=>a.k===k),need=s.toCall-s.bet[p],odds=need/(s.pot+need||1);
+  if(acts.length===1)return acts[0];
+  const calm=s.raises>=3;   // 이미 많이 올렸으면 진짜 센 패만 더 올림
+  if(Math.random()<L.bluff&&s.street<3&&!calm&&need<=s.bb&&get('half'))return get('half');
+  if(e>0.8&&s.street>=2&&get('allin')&&Math.random()<.35)return get('allin');
+  if(edge>0.38&&!calm&&get('pot'))return get('pot');
+  if(edge>0.24&&(!calm||edge>0.45)&&get('half'))return get('half');
+  if(edge>0.12&&!calm&&get('minr'))return get('minr');
+  if(need<=0)return get('check');
+  if(e+L.loose>odds*1.05&&get('call'))return get('call');
+  return get('die')||get('check')||acts[0];}
+return{holdemNew,holdemBlinds,holdemDeal,holdemStreet,holdemShowdown,holdemBest,holdemName,holdemEquity,canBet,HCAT,R,S,RN,SN,SKO,cardName,DECK,shuffle,cmp,CAT,eval5,bestHigh,highName,bestLow,lowBetter,badugi,newGame,alive,actions,act,startBetting,nextAlive,
   studDeal4,studDiscard,studOpen,studNextCard,studShowdown,boss,all,badugiDeal,badugiDraw,badugiShowdown,equity,aiBet,aiDiscardOpen,aiDeclare,aiDraw,LV,draw1};
 })();
 
