@@ -1072,7 +1072,7 @@ function bigText(t){VOICE.say(t);const b=$('dbig');b.innerHTML=`<span>${t}</span
 function msg(h){$('dmsg').innerHTML=h;}
 
 /* ---------- 상태 ---------- */
-let S=null,V=null,ME=0,UI=null,gen=0,money=WALLET.get(),aiMoney=(a=>a.slice(1).every(v=>v<1000000)?[0,10000000,10000000,10000000,10000000,10000000]:a)(store.get('aimoney',[0,10000000,10000000,10000000,10000000,10000000])),NAMES=store.get('names',['나','김 사장','이 여사','박 부장','최 선생','정 과장']);
+let S=null,V=null,ME=0,UI=null,gen=0,money=WALLET.get(),aiMoney=(a=>a.slice(1).every(v=>v<50000000)?[0,100000000,100000000,100000000,100000000,100000000]:a)(store.get('aimoney',[0,100000000,100000000,100000000,100000000,100000000])),NAMES=store.get('names',['나','김 사장','이 여사','박 부장','최 선생','정 과장']);
 let dealerSeat=0;   // 돌아가며 할 때 선 자리
 let NET=null;
 const GUEST=()=>!!(NET&&NET.guest);
@@ -1120,7 +1120,7 @@ async function startRound(){
   // 선: 하우스(컴퓨터)면 마지막 자리, 돌아가며면 한 칸씩
   let d;if(opt.house&&!NET){d=n-1;}else{dealerSeat=(dealerSeat+1)%n;d=dealerSeat;}
   if(NET&&!NET.guest)for(let p=1;p<n;p++)if(remote(p))aiMoney[p]=roomMoney(NET.seats[p],aiMoney[p]);   // 친구 자리는 친구 지갑 돈
-  const left=[];for(let p=1;p<n;p++){if((!NET||NET.kind[p]==='ai')&&aiMoney[p]<opt.ante*10){const o=NAMES[p];if(!NET&&!(opt.house&&p===d)){NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}aiMoney[p]=opt.house&&p===d?Math.max(50000000,opt.ante*500):Math.max(10000000,opt.ante*100);}}
+  const left=[];for(let p=1;p<n;p++){if((!NET||NET.kind[p]==='ai')&&aiMoney[p]<opt.ante*10){const o=NAMES[p];if(!NET&&!(opt.house&&p===d)){NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}aiMoney[p]=opt.house&&p===d?Math.max(500000000,opt.ante*500):Math.max(100000000,opt.ante*100);}}
   if(opt.house&&!NET&&aiMoney[d]<opt.ante*100)aiMoney[d]=Math.max(5000000,opt.ante*500);
   S=PD.newRound({players:n,dealer:d,ante:opt.ante});S.turn=-1;S.chips=[...Array(n).keys()].map(seatMoney);
   if(!NET){NAMES[d]=opt.house?'선 (하우스)':NAMES[d];}

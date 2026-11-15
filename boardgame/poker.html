@@ -1169,13 +1169,13 @@ $('ptable').addEventListener('click',e=>{const c=e.target.closest('.card.pick');
 async function newHand(){
   if(GUEST())return;
   const n=opt.players;money=WALLET.get();if(money<opt.ante*10)money=WALLET.rescue(opt.ante*10);
-  const ai=G&&G.ai&&G.ai.length===n?G.ai:Array(n).fill(10000000);
+  const ai=G&&G.ai&&G.ai.length===n?G.ai:Array(n).fill(100000000);
   const dealer=G?(G.s.dealer+1)%n:0;
   G={kind:opt.kind,s:opt.kind==='holdem'?PK.holdemNew({kind:'holdem',players:n,bb:opt.ante,dealer}):PK.newGame({kind:opt.kind,players:n,ante:opt.ante,dealer}),ai,known:Array(n).fill(0),last:{},sel:[],phase:'deal',busy:true,reveal:false,result:null,gen:(G?G.gen:0)+1,hid:Date.now()+Math.random()};
   const left=[];
   if(NETP&&!NETP.guest)for(let p=1;p<n;p++)if(remote(p))G.ai[p]=roomMoney(NETP.seats[p],G.ai[p]);   // 친구 자리는 친구 지갑 돈
   const anteNow=opt.kind==='holdem'?0:opt.ante;
-  for(let p=0;p<n;p++){if(p===0)money-=anteNow;else{if(G.ai[p]<opt.ante*10){if(!NETP){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}G.ai[p]=Math.max(10000000,opt.ante*200);}G.ai[p]-=anteNow;}}
+  for(let p=0;p<n;p++){if(p===0)money-=anteNow;else{if(G.ai[p]<opt.ante*10){if(!NETP){const o=NAMES[p];NAMES[p]=newGuest(NAMES.slice(0,n));left.push([o,NAMES[p]]);}G.ai[p]=Math.max(100000000,opt.ante*200);}G.ai[p]-=anteNow;}}
   G.s.stack=[money].concat(G.ai.slice(1));   // 가진 돈만큼만 걸 수 있음
   saveMoney();$('pnext').hidden=true;const gen=G.gen,s=G.s;
   msg((left.length?guestNote(left)+'<br>':'')+(s.kind==='holdem'?`블라인드 ${won(s.sb)}·${won(s.bb)}로 <b>홀덤</b>을 시작해요.`:`판돈 ${won(opt.ante)}씩 내고 <b>${KIND[s.kind]}</b>를 시작해요.`));if(left.length)setTimeout(()=>bigText('새 손님!'),200);
