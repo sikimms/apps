@@ -1028,7 +1028,7 @@ async function animateTurn(T,s,mv,pick,o){
 
 /* ---------- 실전 ---------- */
 const CNAME=store.get('cname',['나','김 사장','이 여사']);
-let aiMoney=store.get('aimoney',[0,100000000,100000000]);if(aiMoney[1]<50000000&&aiMoney[2]<50000000){aiMoney=[0,100000000,100000000];store.set('aimoney',aiMoney);}
+let aiMoney=store.get('aimoney',[0,100000000,100000000]);aiMoney=(a=>a.map((v,i)=>i&&!(v>=100000000)?100000000:v))(aiMoney);store.set('aimoney',aiMoney);/*KEEPAI_V1*/
 const opt={players:store.get('players',2),level:store.get('level',1)};
 let money=WALLET.get(),rec=store.get('rec',{}),G=null;
 /* 온라인: ME = 내 자리. 방장 기기는 NETG.seats[q] = 0(방장) / 친구 번호 / -1(컴퓨터).

@@ -1245,6 +1245,12 @@ let money=WALLET.get(),rec=store.get('rec',{sw:0,sl:0,dw:0,dl:0});
 function saveMoney(){WALLET.set(money);$('smoney').textContent=won(money);}
 const SEATS={2:[[50,74],[50,18]],3:[[50,74],[17,32],[83,32]],4:[[50,75],[13,47],[50,16],[87,47]],5:[[50,75],[12,52],[26,16],[74,16],[88,52]]};
 const NAMES=['나','김 사장','이 여사','박 부장','최 선생','선(물주)'];
+// KEEPAI_V1: 컴퓨터 돈·이름 저장. 다시 들어오면 딴 사람(1억 이상)은 그대로, 잃은 사람만 1억으로
+const AIBASE=100000000;let SAVED_AI=store.get('aimoney',null)||[];
+const loadAI=n=>[...Array(n)].map((_,i)=>{if(!i)return 0;const v=SAVED_AI[i];return typeof v==='number'&&v>=AIBASE?v:AIBASE;});
+function keepAI(arr){for(let i=1;i<arr.length;i++)SAVED_AI[i]=arr[i];store.set('aimoney',SAVED_AI);store.set('names9',NAMES);}
+{const nm0=store.get('names9',null);if(Array.isArray(nm0))nm0.forEach((v,i)=>{if(i&&typeof v==='string'&&i<NAMES.length)NAMES[i]=v;});}
+
 
 /* ================= 온라인 공통 =================
    방장 기기: NET.seats[p] = 0(방장) / 친구 번호 / -1(컴퓨터). 판은 방장 기기에서만 진행한다.
@@ -1278,7 +1284,7 @@ let S=null;
 function seotdaNew(carry){
   if(NGUEST())return;
   const n=sopt.players;
-  const ai=S&&S.aiMoney&&S.aiMoney.length===n?S.aiMoney:Array(n).fill(100000000);
+  const ai=S&&S.aiMoney&&S.aiMoney.length===n?S.aiMoney:(NET?Array(n).fill(AIBASE):loadAI(n));
   money=WALLET.get();if(money<sopt.ante*4)money=WALLET.rescue(sopt.ante*4);
   S={s:SD.newSeotda({players:n,ante:sopt.ante,three:sopt.cards===3,gusaJang:sopt.gusaJang,dealer:S?(S.s.dealer+1)%n:0}),aiMoney:ai,dealt:Array(n).fill(0),last:{},busy:true,gen:(S?S.gen:0)+1,reveal:false,hid:handId()};
   if(NET&&!NET.guest)for(let p=1;p<n;p++)if(nremote(p))S.aiMoney[p]=roomMoney(NET.seats[p],S.aiMoney[p]);   // 친구 자리는 친구 지갑 돈
@@ -1380,6 +1386,7 @@ function seotdaSettle(){
       if(gen!==S.gen)return;seotdaNewKeep(pot,skip);},1800);return;}
   if(res.payouts)res.payouts.concat(res.refunds||[]).forEach(x=>{if(x.p===0)money+=x.amt;else S.aiMoney[x.p]+=x.amt;});   // 올인이 있을 때: 사이드 팟
   else{const share=Math.floor(s.pot/res.winners.length);res.winners.forEach(p=>{if(p===0)money+=share;else S.aiMoney[p]+=share;});}
+  if(!NET)setTimeout(()=>keepAI(S.aiMoney),0);
   // 땡값: 혼자 이겼고 그 패가 땡·광땡이면 나머지 모두에게서 따로 받음
   if(sopt.ttaeng&&res.winners.length===1){const w=res.winners[0],wh=(res.hands||[]).find(x=>x.p===w),mult=ttaengMult(wh&&wh.h);
     if(mult){let total=0;const per=[];for(let q=0;q<s.n;q++){if(q===w||s.folded[q])continue;   // 다이한 사람은 안 냄

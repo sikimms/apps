@@ -1080,6 +1080,11 @@ const SEATS={2:[[50,75],[50,18]],3:[[50,75],[17,33],[83,33]],4:[[50,76],[13,47],
 const chipsHtml=amt=>{const cols=[['#212121',1000000],['#c62828',100000],['#1565c0',10000],['#2e7d32',1000],['#f9a825',100]];let left=amt,h='';
   for(const [c,v] of cols){const n=Math.min(8,Math.floor(left/v));left-=n*v;if(n)h+=`<span class="chipstack" style="--c:${c}">${'<i></i>'.repeat(n)}</span>`;}return h||'<span class="chipstack" style="--c:#f9a825"><i></i></span>';};
 function bigText(t){VOICE.say(t);const b=$('pbig');b.innerHTML=`<span>${t}</span>`;b.classList.remove('show');void b.offsetWidth;b.classList.add('show');setTimeout(()=>b.classList.remove('show'),1200);}
+// KEEPAI_V1: 컴퓨터 돈·이름 저장. 다시 들어오면 딴 사람(1억 이상)은 그대로, 잃은 사람만 1억으로
+const AIBASE=100000000;let SAVED_AI=store.get('aimoney',null)||[];
+const loadAI=n=>[...Array(n)].map((_,i)=>{if(!i)return 0;const v=SAVED_AI[i];return typeof v==='number'&&v>=AIBASE?v:AIBASE;});
+function keepAI(arr){for(let i=1;i<arr.length;i++)SAVED_AI[i]=arr[i];store.set('aimoney',SAVED_AI);store.set('names9',NAMES);}
+{const nm0=store.get('names9',null);if(Array.isArray(nm0))nm0.forEach((v,i)=>{if(i&&typeof v==='string'&&i<NAMES.length)NAMES[i]=v;});}
 const KIND={seven:'세븐포커',hilo:'하이로우',badugi:'바둑이',holdem:'홀덤'};
 const KINDS=['seven','hilo','badugi','holdem'];
 let sqOn=store.get('squeeze',true);
@@ -1169,7 +1174,7 @@ $('ptable').addEventListener('click',e=>{const c=e.target.closest('.card.pick');
 async function newHand(){
   if(GUEST())return;
   const n=opt.players;money=WALLET.get();if(money<opt.ante*10)money=WALLET.rescue(opt.ante*10);
-  const ai=G&&G.ai&&G.ai.length===n?G.ai:Array(n).fill(100000000);
+  const ai=G&&G.ai&&G.ai.length===n?G.ai:(NETP?Array(n).fill(AIBASE):loadAI(n));
   const dealer=G?(G.s.dealer+1)%n:0;
   G={kind:opt.kind,s:opt.kind==='holdem'?PK.holdemNew({kind:'holdem',players:n,bb:opt.ante,dealer}):PK.newGame({kind:opt.kind,players:n,ante:opt.ante,dealer}),ai,known:Array(n).fill(0),last:{},sel:[],phase:'deal',busy:true,reveal:false,result:null,gen:(G?G.gen:0)+1,hid:Date.now()+Math.random()};
   const left=[];
@@ -1255,7 +1260,7 @@ async function drawPhase(round){
 async function reveal(){G.reveal=true;G.result=G.s.result;G.phase='end';render();SND.card();await sleep(700);settle();}
 function settle(){
   const s=G.s,res=s.result;G.result=res;G.phase='end';G.busy=true;
-  res.winners.concat((res.refunds||[]).map(r=>({p:r.p,share:r.amt}))).forEach(w=>{if(w.p===0)money+=w.share;else G.ai[w.p]+=w.share;});saveMoney();
+  res.winners.concat((res.refunds||[]).map(r=>({p:r.p,share:r.amt}))).forEach(w=>{if(w.p===0)money+=w.share;else G.ai[w.p]+=w.share;});saveMoney();if(!NETP)keepAI(G.ai);
   const me=res.winners.find(w=>w.p===0),k=KIND[s.kind];if(me){SND.win();bigText('승리!');pokerBadges(s,me);}
   if(!NETP){const r=rec[k]||{w:0,l:0};if(me)r.w++;else r.l++;rec[k]=r;store.set('rec',rec);}
   settleMsg(res);

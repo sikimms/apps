@@ -1072,7 +1072,7 @@ function bigText(t){VOICE.say(t);const b=$('dbig');b.innerHTML=`<span>${t}</span
 function msg(h){$('dmsg').innerHTML=h;}
 
 /* ---------- 상태 ---------- */
-let S=null,V=null,ME=0,UI=null,gen=0,money=WALLET.get(),aiMoney=(a=>a.slice(1).every(v=>v<50000000)?[0,100000000,100000000,100000000,100000000,100000000]:a)(store.get('aimoney',[0,100000000,100000000,100000000,100000000,100000000])),NAMES=store.get('names',['나','김 사장','이 여사','박 부장','최 선생','정 과장']);
+let S=null,V=null,ME=0,UI=null,gen=0,money=WALLET.get(),aiMoney=(a=>a.map((v,i)=>i&&!(v>=100000000)?100000000:v))/*KEEPAI_V1*/(store.get('aimoney',[0,100000000,100000000,100000000,100000000,100000000])),NAMES=store.get('names',['나','김 사장','이 여사','박 부장','최 선생','정 과장']);
 let dealerSeat=0;   // 돌아가며 할 때 선 자리
 let NET=null;
 const GUEST=()=>!!(NET&&NET.guest);
