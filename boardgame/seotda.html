@@ -328,7 +328,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
         <label><input type="checkbox" id="sTtaeng"> 땡값 (낸 돈의 땡 2배·장땡 3배·광땡 5배)</label>
         <label>방식 <select id="sCards"><option value="2">2장 섯다</option><option value="3">3장 섯다</option></select></label>
         <label>인원 <select id="sPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option></select></label>
-        <label>판돈 <select id="sAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option><option value="50000">5만원</option><option value="100000">10만원</option><option value="500000">50만원</option><option value="1000000">100만원</option></select></label>
+        <label>판돈 <select id="sAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option><option value="50000">5만원</option><option value="100000">10만원</option><option value="500000">50만원</option><option value="1000000">100만원</option><option value="5000000">500만원</option><option value="10000000">1000만원</option></select></label>
       </div>
       <div class="tips"><strong>섯다 하는 법</strong><ul>
         <li>모두 판돈을 내고 한 장씩 받아요. 첫 장을 보고 한 번, 두 번째 장을 받고 한 번 더 베팅해요.</li>
@@ -1278,7 +1278,7 @@ function sViewFor(v,dealing){
 }
 function sNetView(dealing){if(!NET||NET.guest||NET.game!=='seotda')return;const x=S.netx||{};S.netx=null;roomEach(gi=>({...sViewFor(NET.seats.indexOf(gi),dealing),...x}));}
 
-const sopt={players:store.get('players',3),level:store.get('level',1),ante:(x=>[1000,5000,10000,50000,100000,500000,1000000].includes(x)?x:1000)(store.get('ante',1000)),cards:store.get('cards',2),ttaeng:store.get('ttaeng',true),gusaJang:store.get('gusaJang',true),rejoin:store.get('rejoin',true)};
+const sopt={players:store.get('players',3),level:store.get('level',1),ante:(x=>[1000,5000,10000,50000,100000,500000,1000000,5000000,10000000].includes(x)?x:1000)(store.get('ante',1000)),cards:store.get('cards',2),ttaeng:store.get('ttaeng',true),gusaJang:store.get('gusaJang',true),rejoin:store.get('rejoin',true)};
 // 땡값 배수: 광땡 5배, 장땡 3배, 1~9땡 2배 — 끝까지 남은 사람이 각자 이번 판에 낸 돈 × 배수를 냄 (다이한 사람은 안 냄)
 const paidOf=(s,q)=>Math.max(s.paid?s.paid[q]:0,s.ante||sopt.ante);
 const ttaengMult=h=>!h?0:h.v>=900?5:h.ttaeng===10?3:h.ttaeng?2:0;
@@ -1417,7 +1417,7 @@ $('snext').onclick=()=>{$('snext').hidden=true;S.result=null;S.reveal=false;seot
 /* ================= 도리짓고땡 =================
    기본 돈을 걸고 3장을 받은 뒤 한 번, 4번째 장을 받은 뒤 한 번 더 걸 수 있다. 5장째를 받으면 짓기.
    온라인: 친구들도 각자 선(물주)과 겨룬다. 거는 것과 짓기는 모두가 동시에 고르고, 다 고르면 다음으로 넘어간다. */
-const dopt={others:store.get('dothers',1),bet:(x=>[1000,5000,10000,50000,100000,500000,1000000].includes(x)?x:5000)(store.get('dbet',5000))};
+const dopt={others:store.get('dothers',1),bet:(x=>[1000,5000,10000,50000,100000,500000,1000000,5000000,10000000].includes(x)?x:5000)(store.get('dbet',5000))};
 let D=null;
 const dnm=p=>p===D.s.n-1?NAMES[5]:NET&&NET.game==='dori'?NET.names[p]:NAMES[p];
 const dchip=p=>NGUEST()||p!==0?D.chips[p]:money;
@@ -1633,7 +1633,7 @@ $('sTtaeng').checked=sopt.ttaeng;$('sTtaeng').onchange=e=>{sopt.ttaeng=e.target.
 $('sCards').value=String(sopt.cards);$('sCards').onchange=e=>{sopt.cards=+e.target.value;store.set('cards',sopt.cards);if(NET&&!NET.guest){startOnline();return;}S=null;seotdaNew();};
 $('sAnte').value=String(sopt.ante);$('sAnte').onchange=e=>{sopt.ante=+e.target.value;store.set('ante',sopt.ante);};
 $('dOthers').value=String(dopt.others);$('dOthers').onchange=e=>{dopt.others=+e.target.value;store.set('dothers',dopt.others);if(NET&&!NET.guest){startOnline();return;}D=null;doriNew();};
-$('dBet').innerHTML=[[1000,'#2e7d32'],[5000,'#1565c0'],[10000,'#c62828'],[50000,'#6a1b9a'],[100000,'#e65100'],[500000,'#37474f'],[1000000,'#212121']].map(([v,c])=>`<button style="background:${c}" data-v="${v}" aria-pressed="${v===dopt.bet}">${v>=10000?v/10000+'만원':v/1000+'천원'}</button>`).join('');
+$('dBet').innerHTML=[[1000,'#2e7d32'],[5000,'#1565c0'],[10000,'#c62828'],[50000,'#6a1b9a'],[100000,'#e65100'],[500000,'#37474f'],[1000000,'#212121'],[5000000,'#880e4f'],[10000000,'#4a148c']].map(([v,c])=>`<button style="background:${c}" data-v="${v}" aria-pressed="${v===dopt.bet}">${v>=10000?v/10000+'만원':v/1000+'천원'}</button>`).join('');
 $('dBet').addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;dopt.bet=+b.dataset.v;store.set('dbet',dopt.bet);$('dBet').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));});
 $('sLabels').checked=showLabels;$('sLabels').onchange=e=>{showLabels=e.target.checked;store.set('labels',showLabels);if(S)seotdaRender();if(D)doriRender();};
 $('sSq').checked=sqOn;$('sSq').onchange=e=>{sqOn=e.target.checked;store.set('squeeze',sqOn);};

@@ -352,7 +352,7 @@ select{font:14px var(--f-body);padding:4px 8px;border-radius:6px;border:1px soli
       <div class="levels" id="plevels" role="radiogroup" aria-label="컴퓨터 등급"></div>
       <div class="opts">
         <label>인원 <select id="pPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option><option value="6">6명</option><option value="7">7명</option><option value="8">8명</option><option value="9">9명</option></select></label>
-        <label>판돈 <select id="pAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option><option value="50000">5만원</option><option value="100000">10만원</option><option value="500000">50만원</option><option value="1000000">100만원</option></select></label>
+        <label>판돈 <select id="pAnte"><option value="1000">1,000원</option><option value="5000">5,000원</option><option value="10000">1만원</option><option value="50000">5만원</option><option value="100000">10만원</option><option value="500000">50만원</option><option value="1000000">100만원</option><option value="5000000">500만원</option><option value="10000000">1000만원</option></select></label>
         <label><input type="checkbox" id="pSound"> 소리</label>
         <label><input type="checkbox" id="vVoice"> 목소리</label>
         <label><input type="checkbox" id="pSq"> 히든 카드 쪼아 보기</label>
@@ -1090,7 +1090,7 @@ function keepAI(arr){for(let i=1;i<arr.length;i++)SAVED_AI[i]=arr[i];store.set('
 const KIND={seven:'세븐포커',hilo:'하이로우',badugi:'바둑이',holdem:'홀덤'};
 const KINDS=['seven','hilo','badugi','holdem'];
 let sqOn=store.get('squeeze',true);
-const opt={kind:store.get('kind','seven'),players:store.get('players',3),level:store.get('level',1),ante:(x=>[1000,5000,10000,50000,100000,500000,1000000].includes(x)?x:1000)(store.get('ante',1000))};
+const opt={kind:store.get('kind','seven'),players:store.get('players',3),level:store.get('level',1),ante:(x=>[1000,5000,10000,50000,100000,500000,1000000,5000000,10000000].includes(x)?x:1000)(store.get('ante',1000))};
 let money=WALLET.get(),rec=store.get('rec',{}),G=null;
 function saveMoney(){WALLET.set(money);$('pmoney').textContent=won(money);}
 const cardHtml=(id,o={})=>`<div class="card pk${o.down?' down':''}${o.deal?' deal':''}${o.pick?' pick':''}${o.chosen?' chosen':''}${o.reveal?' reveal':''}${o.hid?' hid':''}" data-id="${id}" style="${o.delay!=null?`animation-delay:${o.delay}ms;`:''}"><div class="ci"><div class="cf">${face(id)}</div><div class="cb">${PC.back()}</div></div></div>`;
