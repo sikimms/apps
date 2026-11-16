@@ -1,5 +1,5 @@
-// 오프라인 저장 (버전 b899b4ffe3)
-const CACHE='lotto-b899b4ffe3',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html"];
+// 오프라인 저장 (버전 4194d4565d)
+const CACHE='lotto-4194d4565d',FILES=["./","manifest.webmanifest","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","index.html"];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES.map(f=>new Request(f,{cache:'reload'})))));});
 self.addEventListener('message',e=>{if(e.data==='SKIP')self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('lotto-')&&k!==CACHE&&k!=='lotto-font').map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
@@ -14,5 +14,5 @@ self.addEventListener('fetch',e=>{
     const net=fetch(e.request,{cache:'no-cache'}).then(res=>{if(res.ok){const c=res.clone();caches.open(CACHE).then(k=>k.put(e.request,c));}return res;});
     const saved=()=>caches.match(e.request,{ignoreSearch:true});
     e.respondWith(Promise.race([net.catch(()=>null),new Promise(r=>setTimeout(()=>r(null),3000))]).then(r=>r||saved().then(s=>s||net)));return;}
-  e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(r=>r||fetch(e.request)));
+  e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(r=>r||fetch(e.request).then(res=>{if(false&&res.ok){const c=res.clone();caches.open(CACHE).then(k=>k.put(e.request,c));}return res;})));
 });
