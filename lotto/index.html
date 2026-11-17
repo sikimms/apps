@@ -1018,7 +1018,7 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       <div class="mbtns"><span class="mcount"><button class="go" id="mMine">추첨기로 1게임 뽑기</button><select id="mCount" aria-label="한 번에 뽑을 게임 수"><option value="1">1게임</option><option value="2">2게임</option><option value="3">3게임</option><option value="4">4게임</option><option value="5">5게임</option></select></span><button class="btn" id="mMock">모의 추첨 (6개 + 보너스)</button><button class="btn" id="mFast" aria-pressed="false">빨리 보기</button><button class="btn" id="mSound" aria-pressed="true">소리 켜짐</button></div>
     </div>
     <div class="stage" id="stage" aria-label="3D 로또 추첨기"></div>
-    <div class="buyline"><button class="go buyb" id="buyFromMachine" type="button">🛒 뽑은 번호 동행복권에서 사기</button></div>
+    <div class="buyline"><button class="go buyb" id="buyFromMachine" type="button">🛒 복권구매</button></div>
     <div class="mfoot"><div class="mtray" id="mtray"></div><div id="mstat">버튼을 누르면 용지의 A게임부터 차례로 추첨기로 뽑아요. 반자동은 칠한 숫자가 먼저 나와요.</div></div>
   </section>
 
@@ -1042,7 +1042,7 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       <span class="note">게임마다 추첨을 따로 돌려 많이 나온 6개로 용지를 칠하고, 이번 회차 번호에 바로 넣어요.</span>
     </div>
     <div id="recList"></div>
-    <div class="buyline"><button class="go buyb" id="buyFromRec" type="button">🛒 추천 번호 동행복권에서 사기</button></div>
+    <div class="buyline"><button class="go buyb" id="buyFromRec" type="button">🛒 복권구매</button></div>
     <div id="recChart" style="margin-top:12px"></div>
     <div id="recTop"></div>
     <div class="note" style="margin-top:8px">추첨은 매번 독립이라, 많이 나온 숫자가 다음에도 잘 나오는 건 아니에요. 횟수를 늘릴수록 모든 숫자가 점선(평균)에 가까워지고, 다시 돌리면 순위가 바뀌어요. 재미로 고르는 방법으로 써 주세요.</div>
@@ -11938,7 +11938,7 @@ function openBuy(games,title){
   games=games.filter(g=>g&&g.nums&&g.nums.length===6).map((g,i)=>({lab:g.lab||g.game||LAB[i]||String(i+1),nums:g.nums.slice().sort((a,b)=>a-b)}));
   if(!games.length)return false;
   const old=document.getElementById('buyOv');if(old)old.remove();
-  const ov=document.createElement('div');ov.id='buyOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','동행복권에서 사기');
+  const ov=document.createElement('div');ov.id='buyOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','복권구매');
   const many=games.length>5;
   ov.innerHTML='<div class="bt"><b>'+title+' · '+games.length+'게임 ('+(games.length*1000).toLocaleString()+'원)</b><button type="button" data-x="1">닫기</button></div>'+
     (/iPhone|iPad|iPod/i.test(navigator.userAgent)?'<a class="bogo" href="x-safari-'+BUY_URL+'">🛒 사파리에서 동행복권 열기</a><a href="'+BUY_URL+'" target="_blank" rel="noopener" style="display:block;text-align:center;color:#bbb;font-size:13px;margin:-4px 0 12px">사파리가 안 열리면 여기 (앱 안에서 열기)</a>':'<a class="bogo" href="'+BUY_URL+'" target="_blank" rel="noopener">🛒 동행복권 열어서 사기</a>')+'<div class="bh" style="margin:-4px 2px 12px">'+(BUY_MOBILE?'동행복권이 열리면 로그인 → 위쪽 <b>로또6/45</b>(또는 바로구매) → 수동 선택으로 넣어요. 빈 화면이면 새로고침(↻)을 눌러 주세요. 모바일 구매는 미리 충전한 예치금으로만 되고, 판매 시간(주말 등)에는 막힐 수 있어요.':'동행복권 로또 구매 화면이 열려요.')+' 안 열리면 <a href="https://dhlottery.co.kr/" target="_blank" rel="noopener" style="color:#ff8fb1">동행복권 첫 화면</a>에서 들어가 주세요.</div>'+
