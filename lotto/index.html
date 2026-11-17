@@ -898,31 +898,24 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
 .layoutbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-8px 0 14px}
 .layoutbar .note{flex:1 1 260px}
 
-/* 동행복권 구매 도우미 */
-.buysrc{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
-.buysrc button{font:600 13px var(--f-body,inherit);border-radius:999px;padding:7px 14px;border:1px solid #d8c9cd;background:#fff;color:#333;cursor:pointer}
-.buysrc button[aria-pressed="true"]{background:#c8325f;border-color:#c8325f;color:#fff}
-.buylist{display:flex;flex-direction:column;gap:6px}
-.buyrow{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:12px;background:#fff7f9;border:1px solid #f0dde3}
-.buyrow input{width:20px;height:20px;accent-color:#c8325f;flex:none}
-.buyrow .lab{font:800 15px var(--f-body,inherit);width:20px;text-align:center;color:#c8325f}
-.buyrow .balls{display:flex;gap:3px;flex-wrap:nowrap}
-.buyrow .ball{width:32px!important;height:32px!important;font-size:13px!important;flex:none}
-.buyrow.off{opacity:.45}
-.buybtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.buybtns .go,.buybtns .btn{flex:1 1 150px}
-.buyhow{margin:12px 0 0;padding-left:20px;font-size:13.5px;line-height:1.55;color:#555}
-.buyempty{padding:12px;color:#888;font-size:14px}
-#buyOv{position:fixed;inset:0;box-sizing:border-box;width:100%;overflow-x:hidden;z-index:300;background:#111;color:#fff;display:flex;flex-direction:column;padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(14px + env(safe-area-inset-bottom,0px));overflow:auto}
-#buyOv .bt{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-#buyOv .bt b{font-size:18px}#buyOv .bt button{font-weight:700;font-size:15px;border:0;border-radius:999px;padding:9px 18px;background:#fff;color:#111}
-#buyOv .bg{display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:14px;background:#222;margin-bottom:10px;cursor:pointer;user-select:none}
-#buyOv .bo-l{font-weight:900;font-size:26px;width:30px;color:#ff8fb1;text-align:center}
+/* 동행복권 구매 (추첨기·숫자 추천 아래 버튼 → 큰 화면) */
+.buyline{display:flex;justify-content:center;padding:10px 14px 14px}
+.buyline .buyb{width:100%;max-width:440px;font-size:17px;padding:11px 16px}
+#buyOv{position:fixed;inset:0;z-index:300;box-sizing:border-box;width:100%;overflow-x:hidden;overflow-y:auto;background:#111;color:#fff;display:flex;flex-direction:column;padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(18px + env(safe-area-inset-bottom,0px))}
+#buyOv .bt{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+#buyOv .bt b{font-size:18px}
+#buyOv .bt button{font-weight:700;font-size:15px;border:0;border-radius:999px;padding:9px 18px;background:#fff;color:#111}
+#buyOv .bogo{display:block;text-align:center;text-decoration:none;font-weight:800;font-size:19px;padding:14px;border-radius:14px;background:#e8466f;color:#fff;margin-bottom:12px;box-shadow:0 6px 16px rgba(232,70,111,.35)}
+#buyOv .bg{display:flex;align-items:center;gap:8px;padding:12px 8px;border-radius:14px;background:#222;margin-bottom:10px;cursor:pointer;user-select:none;-webkit-user-select:none}
+#buyOv .bo-l{font-weight:900;font-size:24px;width:28px;color:#ff8fb1;text-align:center;flex:none}
 #buyOv .bo-n{display:flex;gap:4px;flex-wrap:nowrap;flex:1;justify-content:center}
 #buyOv .bo-n span{width:min(52px,9.6vw);height:min(52px,9.6vw);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:clamp(15px,4.4vw,22px);color:#111;flex:none}
-#buyOv .bo-c{font-size:24px;width:28px;text-align:center;opacity:.25}
+#buyOv .bo-c{font-size:22px;width:28px;text-align:center;opacity:.25;flex:none}
 #buyOv .bg.done{background:#14321f}#buyOv .bg.done .bo-c{opacity:1}#buyOv .bg.done .bo-n span{opacity:.55}
-#buyOv .bh{font-size:13px;opacity:.7;margin-top:4px;text-align:center}
+#buyOv .bf{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+#buyOv .bf button{flex:1 1 140px;font-weight:700;font-size:15px;border:0;border-radius:12px;padding:12px;background:#2c2c2c;color:#fff}
+#buyOv .bh{font-size:13px;opacity:.75;margin:8px 2px 0;line-height:1.5}
+#buyOv .bm{font-size:14px;margin-top:8px;color:#9ee6b0;min-height:1em}
 
 #panels{display:flex;flex-direction:column;gap:22px}
 #panels>.panel{margin:0}
@@ -1025,6 +1018,7 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       <div class="mbtns"><span class="mcount"><button class="go" id="mMine">추첨기로 1게임 뽑기</button><select id="mCount" aria-label="한 번에 뽑을 게임 수"><option value="1">1게임</option><option value="2">2게임</option><option value="3">3게임</option><option value="4">4게임</option><option value="5">5게임</option></select></span><button class="btn" id="mMock">모의 추첨 (6개 + 보너스)</button><button class="btn" id="mFast" aria-pressed="false">빨리 보기</button><button class="btn" id="mSound" aria-pressed="true">소리 켜짐</button></div>
     </div>
     <div class="stage" id="stage" aria-label="3D 로또 추첨기"></div>
+    <div class="buyline"><button class="go buyb" id="buyFromMachine" type="button">🛒 뽑은 번호 동행복권에서 사기</button></div>
     <div class="mfoot"><div class="mtray" id="mtray"></div><div id="mstat">버튼을 누르면 용지의 A게임부터 차례로 추첨기로 뽑아요. 반자동은 칠한 숫자가 먼저 나와요.</div></div>
   </section>
 
@@ -1048,6 +1042,7 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
       <span class="note">게임마다 추첨을 따로 돌려 많이 나온 6개로 용지를 칠하고, 이번 회차 번호에 바로 넣어요.</span>
     </div>
     <div id="recList"></div>
+    <div class="buyline"><button class="go buyb" id="buyFromRec" type="button">🛒 추천 번호 동행복권에서 사기</button></div>
     <div id="recChart" style="margin-top:12px"></div>
     <div id="recTop"></div>
     <div class="note" style="margin-top:8px">추첨은 매번 독립이라, 많이 나온 숫자가 다음에도 잘 나오는 건 아니에요. 횟수를 늘릴수록 모든 숫자가 점선(평균)에 가까워지고, 다시 돌리면 순위가 바뀌어요. 재미로 고르는 방법으로 써 주세요.</div>
@@ -1068,30 +1063,6 @@ td.n{font-family:var(--f-num);font-variant-numeric:tabular-nums}
         <div class="sub">마음에 드는 줄은 <b>보관</b>을 누르면 이 브라우저에 남아요.</div>
         <div class="rows" id="saved" style="margin-top:10px"></div>
       </div>
-    </section>
-
-
-    <section class="card panel" data-id="buy" aria-labelledby="hBuy">
-      <h2 id="hBuy">동행복권에서 사기</h2>
-      <div class="sub">뽑은 번호를 동행복권 구매 화면에 그대로 옮겨 누르도록 도와줘요. 로그인과 결제는 동행복권에서 직접 해요.</div>
-      <div class="buysrc" id="buySrc" role="radiogroup" aria-label="가져올 번호">
-        <button type="button" data-src="cur" aria-pressed="true">방금 뽑은 번호</button>
-        <button type="button" data-src="saved" aria-pressed="false">보관함 (이번 회차)</button>
-      </div>
-      <div class="buylist" id="buyList"></div>
-      <div class="buybtns">
-        <button class="go" id="buyOpen" type="button">🛒 동행복권 로또 구매 열기</button>
-        <button class="btn" id="buyBig" type="button">🔍 크게 보며 옮기기</button>
-        <button class="btn" id="buyCopy" type="button">📋 번호 복사</button>
-        <button class="btn" id="buyDone" type="button">✅ 샀어요 · 보관함에 넣기</button>
-      </div>
-      <div class="msg" id="buyMsg" hidden></div>
-      <ol class="buyhow">
-        <li><b>동행복권 로또 구매 열기</b>를 눌러 로그인해요. 폰 브라우저에 로그인을 저장해 두면 다음부터 빨라요.</li>
-        <li>구매 화면에서 <b>수동(직접 선택)</b>으로 A게임 번호 6개를 누르고 확인, 이어서 B·C… 게임을 넣어요. <b>크게 보며 옮기기</b>를 켜 두고 하나씩 체크하면 헷갈리지 않아요.</li>
-        <li>결제까지 마치면 <b>샀어요</b>를 눌러 보관함에 넣어 두세요. 추첨 뒤 당첨 여부를 알려 줘요.</li>
-      </ol>
-      <div class="sub" style="margin-top:6px">온라인 구매는 한 사람이 회차마다 5,000원(5게임)까지예요. 판매점에서 살 때는 <b>크게 보며 옮기기</b> 화면을 보며 용지에 적으면 돼요.</div>
     </section>
 
     <section class="card panel" data-id="win" aria-labelledby="hWin">
@@ -11958,43 +11929,37 @@ renderSlip();
 current=playable().games.map(makeGame);
 renderRows(true);
 
-/* ===== 동행복권 구매 도우미 ===== */
+/* ===== 동행복권에서 사기: 추첨기·숫자 추천 아래 버튼 → 큰 화면 ===== */
 try{
 const BUY_URL='https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40';
-let buySrc='cur',buySel=null;
-const ballColor=n=>n<=10?'#fbc400':n<=20?'#69c8f2':n<=30?'#ff7272':n<=40?'#aaaaaa':'#b0d840';
-function buyGames(){
-  if(buySrc==='cur')return current.map(g=>({lab:g.game,nums:g.nums.slice().sort((a,b)=>a-b)}));
-  const r=roundOf(Date.now());const list=saved.filter(s=>s.round===r);
-  return (list.length?list:saved).slice(0,10).map((s,i)=>({lab:LAB[i]||String(i+1),nums:s.nums.slice().sort((a,b)=>a-b),old:!list.length}));}
-function buyMsg(t,ok){const m=$('buyMsg');m.textContent=t;m.className='msg'+(ok?' ok':'');m.hidden=!t;}
-function renderBuy(){const el=$('buyList');if(!el)return;const gs=buyGames();
-  if(!buySel||buySel.length!==gs.length)buySel=gs.map((_,i)=>i<5);
-  document.querySelectorAll('#buySrc button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.src===buySrc)));
-  if(!gs.length){el.innerHTML='<div class="buyempty">'+(buySrc==='cur'?'먼저 <b>이번 회차 번호</b>에서 번호를 뽑아 주세요.':'보관함이 비어 있어요.')+'</div>';return;}
-  el.innerHTML=(gs[0].old?'<div class="sub" style="margin-bottom:4px">이번 회차로 보관한 번호가 없어 최근 보관한 번호를 보여 줘요.</div>':'')+
-    gs.map((g,i)=>'<label class="buyrow'+(buySel[i]?'':' off')+'"><input type="checkbox" data-bi="'+i+'"'+(buySel[i]?' checked':'')+'><span class="lab">'+g.lab+'</span><span class="balls">'+g.nums.map(n=>ballHtml(n)).join('')+'</span></label>').join('');}
-const buyPicked=()=>buyGames().filter((_,i)=>buySel&&buySel[i]);
-$('buySrc').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;buySrc=b.dataset.src;buySel=null;buyMsg('');renderBuy();});
-$('buyList').addEventListener('change',e=>{const c=e.target.closest('input[data-bi]');if(!c)return;const i=+c.dataset.bi;
-  if(c.checked&&buySel.filter(Boolean).length>=5){c.checked=false;buyMsg('온라인은 한 번에 5게임까지예요. 다른 줄을 먼저 빼 주세요.');return;}
-  buySel[i]=c.checked;buyMsg('');renderBuy();});
-$('buyOpen').onclick=()=>{const w=window.open(BUY_URL,'_blank','noopener');if(!w)location.href=BUY_URL;};
-$('buyCopy').onclick=async()=>{const gs=buyPicked();if(!gs.length){buyMsg('복사할 번호를 골라 주세요.');return;}
-  const txt=gs.map(g=>g.lab+': '+g.nums.map(n=>String(n).padStart(2,'0')).join(' ')).join('\n');
-  try{await navigator.clipboard.writeText(txt);buyMsg('번호를 복사했어요.',true);}catch(e){buyMsg('복사가 막혀 있어요: '+txt.replace(/\n/g,' / '));}};
-$('buyBig').onclick=()=>{const gs=buyPicked();if(!gs.length){buyMsg('옮길 번호를 골라 주세요.');return;}
-  const ov=document.createElement('div');ov.id='buyOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','번호 크게 보기');
-  ov.innerHTML='<div class="bt"><b>로또 6/45 · '+gs.length+'게임 ('+(gs.length*1000).toLocaleString()+'원)</b><button type="button" id="buyOvX">닫기</button></div>'+
-    gs.map(g=>'<div class="bg"><span class="bo-l">'+g.lab+'</span><span class="bo-n">'+g.nums.map(n=>'<span style="background:'+ballColor(n)+'">'+n+'</span>').join('')+'</span><span class="bo-c">✅</span></div>').join('')+
-    '<div class="bh">한 게임을 다 넣으면 그 줄을 눌러 체크해 두세요.</div>';
-  document.body.appendChild(ov);ov.addEventListener('click',e=>{const g=e.target.closest('.bg');if(g)g.classList.toggle('done');});$('buyOvX').onclick=()=>ov.remove();};
-$('buyDone').onclick=()=>{const gs=buyPicked();if(!gs.length){buyMsg('산 번호를 골라 주세요.');return;}let n=0;const r=roundOf(Date.now());
-  for(const g of gs){if(saved.some(s=>s.nums.slice().sort((a,b)=>a-b).join()===g.nums.join()))continue;saved.unshift({nums:g.nums.slice(),type:'구매',t:Date.now(),round:r});n++;}
-  saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);buyMsg(n?n+'게임을 보관함에 넣었어요. 추첨 뒤 당첨 여부를 알려 드려요.':'이미 보관함에 있는 번호예요.',true);};
-{const _rr=renderRows;renderRows=function(a){_rr(a);try{renderBuy();}catch(e){}};}
-renderBuy();
-}catch(e){console.warn("buy panel error",e);try{const m=document.getElementById("buyMsg");if(m){m.hidden=false;m.textContent="구매 도우미 오류(캡처해서 알려 주세요): "+(e&&e.message||e);}}catch(_){}}
+const buyColor=n=>n<=10?'#fbc400':n<=20?'#69c8f2':n<=30?'#ff7272':n<=40?'#aaaaaa':'#b0d840';
+function openBuy(games,title){
+  games=games.filter(g=>g&&g.nums&&g.nums.length===6).map((g,i)=>({lab:g.lab||g.game||LAB[i]||String(i+1),nums:g.nums.slice().sort((a,b)=>a-b)}));
+  if(!games.length)return false;
+  const old=document.getElementById('buyOv');if(old)old.remove();
+  const ov=document.createElement('div');ov.id='buyOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','동행복권에서 사기');
+  const many=games.length>5;
+  ov.innerHTML='<div class="bt"><b>'+title+' · '+games.length+'게임 ('+(games.length*1000).toLocaleString()+'원)</b><button type="button" data-x="1">닫기</button></div>'+
+    '<a class="bogo" href="'+BUY_URL+'" target="_blank" rel="noopener">🛒 동행복권 열어서 사기</a>'+
+    games.map(g=>'<div class="bg"><span class="bo-l">'+g.lab+'</span><span class="bo-n">'+g.nums.map(n=>'<span style="background:'+buyColor(n)+'">'+n+'</span>').join('')+'</span><span class="bo-c">✅</span></div>').join('')+
+    '<div class="bf"><button type="button" data-copy="1">📋 번호 복사</button><button type="button" data-done="1">✅ 샀어요 · 보관함에 넣기</button></div><div class="bm" aria-live="polite"></div>'+
+    '<div class="bh">동행복권 구매 화면에서 <b>수동(직접 선택)</b>으로 A게임 번호 6개를 누르고 확인, 이어서 다음 게임을 넣어요. 다 넣은 줄은 눌러서 ✅ 표시해 두면 헷갈리지 않아요. 로그인과 결제는 동행복권에서 직접 해요.'+(many?'<br>온라인은 한 회차에 5게임(5,000원)까지라 위에서부터 5게임만 살 수 있어요.':'<br>온라인 구매는 한 회차에 5,000원(5게임)까지예요.')+'</div>';
+  document.body.appendChild(ov);
+  const bm=ov.querySelector('.bm'),say=t=>{bm.textContent=t;};
+  ov.addEventListener('click',async e=>{
+    if(e.target.closest('[data-x]')){ov.remove();return;}
+    const g=e.target.closest('.bg');if(g){g.classList.toggle('done');return;}
+    if(e.target.closest('[data-copy]')){const txt=games.map(g=>g.lab+': '+g.nums.map(n=>String(n).padStart(2,'0')).join(' ')).join('\n');
+      try{await navigator.clipboard.writeText(txt);say('번호를 복사했어요.');}catch(_){say('복사가 막혀 있어요: '+txt.replace(/\n/g,' / '));}return;}
+    if(e.target.closest('[data-done]')){let n=0;const r=roundOf(Date.now());
+      for(const g of games.slice(0,5)){if(saved.some(s=>s.nums.slice().sort((a,b)=>a-b).join()===g.nums.join()))continue;saved.unshift({nums:g.nums.slice(),type:'구매',t:Date.now(),round:r});n++;}
+      saved=saved.slice(0,50);store.set('saved',saved);try{renderRows(false);}catch(_){}
+      say(n?n+'게임을 보관함에 넣었어요. 추첨 뒤 당첨 여부를 알려 드려요.':'이미 보관함에 있는 번호예요.');}});
+  return true;}
+const recTop6=()=>{try{if(typeof rec==='undefined'||!rec||!rec.counts)return null;return rec.counts.map((c,n)=>[c,n]).slice(1).sort((a,b)=>b[0]-a[0]||a[1]-b[1]).slice(0,6).map(x=>x[1]);}catch(_){return null;}};
+$('buyFromMachine').onclick=()=>{if(!openBuy(current,'뽑은 번호'))alert('먼저 추첨기로 번호를 뽑아 주세요.');};
+$('buyFromRec').onclick=()=>{const gs=recResults.length?recResults:(recTop6()?[{lab:'A',nums:recTop6()}]:[]);if(!openBuy(gs,'추천 번호'))alert('먼저 추첨을 돌려 추천 번호를 받아 주세요.');};
+}catch(e){console.warn('buy error',e);}
 
 /* ===== 화면 정리: 메뉴를 끌어서 순서 바꾸기 + 접기/펴기 ===== */
 (function(){
@@ -12039,7 +12004,7 @@ renderBuy();
     if(before){if(p.nextElementSibling!==before)box.insertBefore(p,before);}else if(box.lastElementChild!==p)box.appendChild(p);
   }
   // 저장된 상태 불러오기
-  {const o=store.get('order',DEF).slice();if(!o.includes('buy')){const i=o.indexOf('draw');o.splice(i<0?o.length:i+1,0,'buy');}applyOrder(o);}
+  applyOrder(store.get('order',DEF));
   const col=store.get('collapsed',{});for(const p of panels())setCollapsed(p,!!col[p.dataset.id],false);
   $('layAll').onclick=()=>panels().forEach(p=>setCollapsed(p,false,true));
   $('layNone').onclick=()=>panels().forEach(p=>setCollapsed(p,true,true));
@@ -12412,7 +12377,7 @@ $('mMock').onclick=async()=>{
   const savedBox=draw.querySelector('.facts'),hupd=hist.querySelector('.hupd'),hl=$('hlatest');
   const latestBox=document.createElement('div');latestBox.className='mlatest';
   if(!store.get('compact-v2',false)){store.set('compact',true);store.set('compact-v2',true);}
-  if(!store.get('compact-v3',false)){store.set('compact',true);store.set('compact-v3',true);}   // 11/17: 구매 메뉴 업데이트 뒤 모든 메뉴가 펼쳐진 폰을 다시 간단 보기로   // 이번 업데이트에서 한 번은 간단 보기로
+  if(!store.get('compact-v3',false)){store.set('compact',true);store.set('compact-v3',true);}   // 이번 업데이트에서 한 번은 간단 보기로
   let compact=store.get('compact',true);
   function apply(){
     for(const id of HIDE){const p=document.querySelector(`[data-id="${id}"]`);if(p)p.classList.toggle('mhide',compact);}
