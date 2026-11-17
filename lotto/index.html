@@ -11994,7 +11994,7 @@ $('buyDone').onclick=()=>{const gs=buyPicked();if(!gs.length){buyMsg('산 번호
   saved=saved.slice(0,50);store.set('saved',saved);renderRows(false);buyMsg(n?n+'게임을 보관함에 넣었어요. 추첨 뒤 당첨 여부를 알려 드려요.':'이미 보관함에 있는 번호예요.',true);};
 {const _rr=renderRows;renderRows=function(a){_rr(a);try{renderBuy();}catch(e){}};}
 renderBuy();
-}catch(e){console.warn("buy panel error",e);}
+}catch(e){console.warn("buy panel error",e);try{const m=document.getElementById("buyMsg");if(m){m.hidden=false;m.textContent="구매 도우미 오류(캡처해서 알려 주세요): "+(e&&e.message||e);}}catch(_){}}
 
 /* ===== 화면 정리: 메뉴를 끌어서 순서 바꾸기 + 접기/펴기 ===== */
 (function(){
