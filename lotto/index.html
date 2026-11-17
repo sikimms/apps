@@ -12411,7 +12411,8 @@ $('mMock').onclick=async()=>{
   const picked=document.createElement('div');picked.className='mpicked';picked.innerHTML='<div class="mptitle">뽑은 번호 <span class="note">보관한 번호는 QR 맞춰보기 메뉴 맨 아래 보관함에서 볼 수 있어요</span></div>';
   const savedBox=draw.querySelector('.facts'),hupd=hist.querySelector('.hupd'),hl=$('hlatest');
   const latestBox=document.createElement('div');latestBox.className='mlatest';
-  if(!store.get('compact-v2',false)){store.set('compact',true);store.set('compact-v2',true);}   // 이번 업데이트에서 한 번은 간단 보기로
+  if(!store.get('compact-v2',false)){store.set('compact',true);store.set('compact-v2',true);}
+  if(!store.get('compact-v3',false)){store.set('compact',true);store.set('compact-v3',true);}   // 11/17: 구매 메뉴 업데이트 뒤 모든 메뉴가 펼쳐진 폰을 다시 간단 보기로   // 이번 업데이트에서 한 번은 간단 보기로
   let compact=store.get('compact',true);
   function apply(){
     for(const id of HIDE){const p=document.querySelector(`[data-id="${id}"]`);if(p)p.classList.toggle('mhide',compact);}
