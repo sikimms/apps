@@ -402,8 +402,10 @@ const WALLET=(()=>{
   // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
   function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
   // 매일 한 번 용돈
-  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;const bonus=10000000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
-    setTimeout(()=>funToast(`🎁 오늘의 용돈 <b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,3800),900);return bonus;}
+  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;// 11/18: 100만~5000만원 중 100만원 단위로 랜덤 뽑기
+    const bonus=(1+Math.floor(Math.random()*50))*1000000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
+    const tag=bonus>=50000000?'🎰 최고 당첨! ':bonus>=40000000?'🎉 대박! ':bonus>=20000000?'✨ ':'';
+    setTimeout(()=>funToast(`🎲 오늘의 용돈 뽑기<br>${tag}<b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,4500),900);return bonus;}
   function reset(){set(300000);}
   return{get,set,rescue,today,daily,reset};
 })();
