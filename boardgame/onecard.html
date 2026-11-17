@@ -421,7 +421,8 @@ document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementByI
 setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
 if(!window.FUN_NO_DAILY)WALLET.daily();
 // 11/15 사용자 요청: 한 번만 1조원 넣어 주기 (기기마다 한 번)
-if(!window.FUN_NO_DAILY&&!FUNLS.get('bgc-gift-1jo',false)){FUNLS.set('bgc-gift-1jo',true);WALLET.set(WALLET.get()+1e12);setTimeout(()=>funToast(`💎 특별 선물 <b>+1조원</b>을 넣어 드렸어요 · 지갑 ${wonF(WALLET.get())}`,5000),1800);}
+// 11/18 사용자 요청: 1조 선물은 끝. 기기마다 한 번, 내 지갑과 컴퓨터 상대 돈을 모두 1억원으로 맞춤
+if(!window.FUN_NO_DAILY&&!FUNLS.get('bgc-reset-1eok',false)){FUNLS.set('bgc-reset-1eok',true);FUNLS.set('bgc-gift-1jo',true);WALLET.set(100000000);for(const g of ['gostop','seotda','poker','onecard','pokdeng']){const v=FUNLS.get(g+'-aimoney',null);if(Array.isArray(v))FUNLS.set(g+'-aimoney',v.map((x,i)=>i?100000000:x));}setTimeout(()=>funToast('💰 게임 머니를 모두 <b>1억원</b>으로 맞췄어요 (나·컴퓨터 상대 모두)',5000),1800);}
 /* ---------- 판이 끝나면 게임 판 가운데에 큰 '다음 판' 버튼 (옆 패널의 다음 판 버튼과 같이 움직임) ---------- */
 function bigNext(btnId,hostId){const btn=document.getElementById(btnId),host=document.getElementById(hostId);if(!btn||!host||host.querySelector('.bignext'))return;
   if(!document.getElementById('bignextCss')){const st=document.createElement('style');st.id='bignextCss';st.textContent='.bignext{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;font:800 22px "Noto Sans KR",sans-serif;padding:14px 34px;border-radius:999px;border:3px solid #fff;background:linear-gradient(#ff8a65,#e53935);color:#fff;cursor:pointer;box-shadow:0 6px 20px #0009;animation:bnPulse 1.2s ease-in-out infinite;white-space:nowrap}.bignext[hidden]{display:none}.bignext:active{transform:translate(-50%,-48%)}@keyframes bnPulse{50%{box-shadow:0 6px 28px #ff5252,0 0 0 6px #ffffff55}}@media (max-width:600px){.bignext{font-size:18px;padding:11px 26px}}';document.head.appendChild(st);}
