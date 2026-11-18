@@ -370,13 +370,61 @@ const WALLET=(()=>{
   // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
   function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
   // 매일 한 번 용돈
-  function daily(){const d=FUNLS.get(KD,{}),t=dayKey();if(d.date===t)return 0;// 11/18: 100만~5000만원 중 100만원 단위로 랜덤 뽑기
-    const bonus=(1+Math.floor(Math.random()*50))*1000000;set(get()+bonus);FUNLS.set(KD,{date:t,start:get()});
-    const tag=bonus>=50000000?'🎰 최고 당첨! ':bonus>=40000000?'🎉 대박! ':bonus>=20000000?'✨ ':'';
-    setTimeout(()=>funToast(`🎲 오늘의 용돈 뽑기<br>${tag}<b>+${wonF(bonus)}</b> · 지갑 ${wonF(get())}`,4500),900);return bonus;}
+  // 11/18: 매일 한 번 용돈 카드 — 뒤집힌 카드 5장 중 하나를 골라 100만~5000만원 받기
+  const dailyDone=()=>FUNLS.get(KD,{}).date===dayKey();
+  function daily(){if(dailyDone())return 0;
+    const go=()=>{if(document.body)setTimeout(()=>dailyPick(),700);else document.addEventListener('DOMContentLoaded',go,{once:true});};go();return 0;}
+  function claimDaily(bonus){if(dailyDone())return 0;set(get()+bonus);FUNLS.set(KD,{date:dayKey(),start:get()});return bonus;}
   function reset(){set(300000);}
-  return{get,set,rescue,today,daily,reset};
+  return{get,set,rescue,today,daily,reset,claimDaily,dailyDone};
 })();
+function dailyPick(){
+  if(WALLET.dailyDone()||document.getElementById('dpOv'))return;
+  if(!document.getElementById('dpCss')){const st=document.createElement('style');st.id='dpCss';st.textContent=
+`#dpOv{position:fixed;inset:0;z-index:9998;background:radial-gradient(ellipse at 50% 40%,#3a2c10 0,#120d04 55%,#000 90%);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px 12px;box-sizing:border-box;font-family:"Noto Sans KR",sans-serif;color:#fff;text-align:center;animation:dpIn .35s ease-out}
+#dpOv>*{position:relative;z-index:1}
+#dpOv::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 45% at 50% 50%,#ffd54f40,transparent 70%);pointer-events:none}
+#dpOv::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(2px 2px at 12% 18%,#fff,transparent),radial-gradient(2px 2px at 82% 14%,#ffe082,transparent),radial-gradient(3px 3px at 70% 30%,#fff,transparent),radial-gradient(2px 2px at 22% 70%,#ffe082,transparent),radial-gradient(3px 3px at 88% 76%,#fff,transparent),radial-gradient(2px 2px at 40% 88%,#fff,transparent),radial-gradient(2px 2px at 8% 46%,#fff,transparent),radial-gradient(2px 2px at 94% 50%,#ffe082,transparent),radial-gradient(3px 3px at 30% 10%,#ffe082,transparent),radial-gradient(2px 2px at 58% 94%,#ffe082,transparent);animation:dpTw 2.2s ease-in-out infinite alternate}
+@keyframes dpSpin{to{transform:rotate(360deg)}}@keyframes dpTw{from{opacity:.35}}
+@keyframes dpIn{from{opacity:0}}
+#dpOv h2{margin:0;font-size:24px;font-weight:900;color:#ffe9a8;letter-spacing:2px;text-shadow:0 2px 8px #000a}
+#dpOv .dps{margin:0;font-size:15px;opacity:.85}
+#dpOv .dpr{display:grid;grid-template-columns:repeat(5,auto);gap:min(10px,2.2vw);justify-content:center;perspective:900px}
+#dpOv .dpc{width:min(16vw,84px);aspect-ratio:2/3;position:relative;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.3,1.4,.5,1);cursor:pointer;border:0;padding:0;background:none;animation:dpBob 1.6s ease-in-out infinite}
+@keyframes dpBob{50%{translate:0 -6px}}
+#dpOv.done .dpc{animation:none;cursor:default}
+#dpOv .dpc>span{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px #0008}
+#dpOv .dpb{background:radial-gradient(circle,#ffd54f 0 22%,transparent 23%),repeating-linear-gradient(45deg,#c62828 0 6px,#b71c1c 6px 12px);border:3px solid #ffd54f;font:900 min(8vw,36px) "Noto Sans KR",sans-serif;color:#b71c1c}
+#dpOv .dpf{transform:rotateY(180deg);background:linear-gradient(#fffbe6,#ffe082);border:3px solid #ffb300;color:#5d3a00;flex-direction:column;font-weight:900;font-size:min(3.9vw,18px);line-height:1.15}
+#dpOv .dpf small{font-size:.6em;font-weight:700;opacity:.7}
+#dpOv .dpc.open{transform:rotateY(180deg)}
+#dpOv .dpc.mine{scale:1.12;z-index:1}#dpOv .dpc.mine .dpf{box-shadow:0 0 0 4px #fff,0 0 26px 8px #ffd54f}
+#dpOv .dpc.other .dpf{filter:grayscale(.7) brightness(.75)}
+#dpOv .dpm{min-height:58px;font-size:20px;font-weight:800}
+#dpOv .dpm b{color:#ffd54f;font-size:28px}
+#dpOv .dpx{border:0;border-radius:999px;padding:12px 40px;font:800 18px "Noto Sans KR",sans-serif;background:linear-gradient(#ffe082,#ffb300);color:#3a2a00;box-shadow:0 6px 16px #0008;cursor:pointer}
+#dpOv .dpx[hidden]{display:none}`;document.head.appendChild(st);}
+  // 서로 다른 금액 5개 (100만원 단위, 100만~5000만)
+  const pool=[...Array(100)].map((_,i)=>(i+1)*1000000);for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const amts=pool.slice(0,15),man=v=>v>=100000000?'1억':(v/10000).toLocaleString()+'만';
+  const ov=document.createElement('div');ov.id='dpOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','오늘의 용돈 카드');
+  ov.innerHTML='<h2>🎁 오늘의 용돈 카드</h2><p class="dps">카드 한 장을 골라 보세요 · 100만 ~ 1억원</p><div class="dpr">'+
+    amts.map((a,i)=>'<button type="button" class="dpc" data-i="'+i+'" style="animation-delay:-'+(i*0.11).toFixed(2)+'s" aria-label="'+(i+1)+'번 카드"><span class="dpb">?</span><span class="dpf">'+man(a)+'<small>원</small></span></button>').join('')+
+    '</div><div class="dpm" aria-live="polite"></div><button type="button" class="dpx" hidden>받기</button>';
+  document.body.appendChild(ov);
+  const cards=[...ov.querySelectorAll('.dpc')],msg=ov.querySelector('.dpm'),x=ov.querySelector('.dpx');
+  ov.querySelector('.dpr').addEventListener('click',e=>{const c=e.target.closest('.dpc');if(!c||ov.classList.contains('done'))return;ov.classList.add('done');
+    const bonus=amts[+c.dataset.i];c.classList.add('open','mine');
+    const got=WALLET.claimDaily(bonus);
+    if(got){try{if(typeof money==='number')money+=got;}catch(_){}}
+    setTimeout(()=>{cards.forEach(k=>{if(k!==c)k.classList.add('open','other');});
+      const tag=bonus>=100000000?'🎰 최고 당첨! ':bonus>=70000000?'🎉 대박! ':bonus>=40000000?'✨ ':'';
+      msg.innerHTML=got?tag+'<b>+'+wonF(bonus)+'</b><br><span style="font-size:15px;opacity:.85">지갑 '+wonF(WALLET.get())+'</span>':'오늘 용돈은 이미 받았어요.';
+      x.hidden=false;try{VOICE.say(got?'용돈 '+man(bonus)+' 원':'');}catch(_){}},700);});
+  x.onclick=()=>{ov.remove();
+    try{if(typeof homeRender==='function')homeRender();}catch(_){}
+    try{['smoney','pmoney','gmoney'].forEach(id=>{const el=document.getElementById(id);if(el&&typeof money==='number')el.textContent=wonF(money);});}catch(_){}};
+}
 
 /* ---------- 목소리: 휴대폰·PC에 들어 있는 한국어 음성으로 외침 ---------- */
 const VOICE={on:FUNLS.get('bgc-voice',true),
