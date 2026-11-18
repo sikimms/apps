@@ -473,6 +473,23 @@ if(!window.FUN_NO_DAILY)WALLET.daily();
 // 11/15 사용자 요청: 한 번만 1조원 넣어 주기 (기기마다 한 번)
 // 11/18 사용자 요청: 1조 선물은 끝. 기기마다 한 번, 내 지갑과 컴퓨터 상대 돈을 모두 1억원으로 맞춤
 if(!window.FUN_NO_DAILY&&!FUNLS.get('bgc-reset-1eok',false)){FUNLS.set('bgc-reset-1eok',true);FUNLS.set('bgc-gift-1jo',true);WALLET.set(100000000);for(const g of ['gostop','seotda','poker','onecard','pokdeng']){const v=FUNLS.get(g+'-aimoney',null);if(Array.isArray(v))FUNLS.set(g+'-aimoney',v.map((x,i)=>i?100000000:x));}setTimeout(()=>funToast('💰 게임 머니를 모두 <b>1억원</b>으로 맞췄어요 (나·컴퓨터 상대 모두)',5000),1800);}
+// 11/18: 닉네임이 없는 사람에게 한 번만 물어보기 (코인 큰손 순위 등에 씀)
+function askNickOnce(){
+  if(FUNLS.get('bgc-nick','')||FUNLS.get('bgc-nick-asked',false)||document.getElementById('nkOv'))return;
+  if(!document.body||document.getElementById('dpOv')){setTimeout(askNickOnce,1000);return;}
+  const ov=document.createElement('div');ov.id='nkOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','닉네임 정하기');
+  ov.style.cssText='position:fixed;inset:0;z-index:9997;background:#000c;display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Noto Sans KR",sans-serif';
+  ov.innerHTML='<form style="width:min(100%,360px);background:radial-gradient(ellipse at 50% 0,#3a2c10,#120d04 70%);border:2px solid #ffd54f;border-radius:18px;padding:22px 18px;color:#fff;text-align:center;box-shadow:0 10px 30px #000a">'+
+    '<div style="font-size:40px">👋</div><h2 style="margin:6px 0 4px;font-size:20px;color:#ffe9a8">사용자 닉네임을 입력해 주세요</h2>'+
+    '<p style="margin:0 0 14px;font-size:13px;opacity:.75">코인 큰손 순위 같은 곳에 이 이름이 나와요 · 나중에 바꿀 수 있어요</p>'+
+    '<input name="n" maxlength="10" autocomplete="nickname" placeholder="예: 천국부자" aria-label="닉네임" style="width:100%;box-sizing:border-box;background:#0d0a03;border:1px solid #ffd54f;border-radius:12px;color:#fff;font:700 18px inherit;padding:11px 12px;text-align:center;outline:none">'+
+    '<div style="display:flex;gap:8px;margin-top:14px"><button type="button" data-skip="1" style="flex:1;border:1px solid #6b5a2a;background:none;color:#ccc;border-radius:12px;padding:11px;font:700 15px inherit;cursor:pointer">나중에</button>'+
+    '<button type="submit" style="flex:2;border:0;background:linear-gradient(#ffe082,#ffb300);color:#3a2a00;border-radius:12px;padding:11px;font:900 16px inherit;cursor:pointer">저장</button></div></form>';
+  document.body.appendChild(ov);const f=ov.querySelector('form'),inp=f.n;setTimeout(()=>inp.focus(),50);
+  const done=()=>{FUNLS.set('bgc-nick-asked',true);ov.remove();try{window.dispatchEvent(new Event('bgc-nick'));}catch(_){}};
+  f.querySelector('[data-skip]').onclick=done;
+  f.onsubmit=e=>{e.preventDefault();const v=inp.value.trim().slice(0,10);if(!v){inp.focus();return;}FUNLS.set('bgc-nick',v);done();funToast('반가워요, <b>'+v.replace(/[<>&"']/g,'')+'</b>님!');};}
+if(!window.FUN_NO_DAILY)setTimeout(askNickOnce,1500);
 /* ---------- 판이 끝나면 게임 판 가운데에 큰 '다음 판' 버튼 (옆 패널의 다음 판 버튼과 같이 움직임) ---------- */
 function bigNext(btnId,hostId){const btn=document.getElementById(btnId),host=document.getElementById(hostId);if(!btn||!host||host.querySelector('.bignext'))return;
   if(!document.getElementById('bignextCss')){const st=document.createElement('style');st.id='bignextCss';st.textContent='.bignext{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;font:800 22px "Noto Sans KR",sans-serif;padding:14px 34px;border-radius:999px;border:3px solid #fff;background:linear-gradient(#ff8a65,#e53935);color:#fff;cursor:pointer;box-shadow:0 6px 20px #0009;animation:bnPulse 1.2s ease-in-out infinite;white-space:nowrap}.bignext[hidden]{display:none}.bignext:active{transform:translate(-50%,-48%)}@keyframes bnPulse{50%{box-shadow:0 6px 28px #ff5252,0 0 0 6px #ffffff55}}@media (max-width:600px){.bignext{font-size:18px;padding:11px 26px}}';document.head.appendChild(st);}

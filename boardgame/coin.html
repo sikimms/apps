@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2d6a4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="보드게임 천국">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<title>천국코인 거래소</title>
+<meta name="theme-color" content="#0d1117">
+<style>
+:root{--bg:#0d1117;--card:#161b22;--line:#2a313c;--tx:#e6edf3;--sub:#8b949e;--up:#f0475a;--dn:#3d8bfd;--gold:#ffd54f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 "Noto Sans KR",system-ui,sans-serif;padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(24px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.top{display:flex;align-items:center;gap:10px}
+.top a{color:var(--sub);text-decoration:none;font-size:22px;padding:2px 6px}
+.coin{width:44px;height:44px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,#fff3b0,#ffd54f 40%,#c99700 75%,#8a6400);box-shadow:inset 0 0 0 3px #ffe58a,0 3px 10px #0008;display:flex;align-items:center;justify-content:center;font:900 20px sans-serif;color:#7a5200}
+.top h1{margin:0;font-size:19px}.top h1 small{display:block;font-size:12px;color:var(--sub);font-weight:500}
+.badge{margin-left:auto;font-size:12px;font-weight:700;color:#111;background:var(--gold);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.price{font-size:32px;font-weight:900;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.chg{font-weight:800;font-size:15px}
+.up{color:var(--up)}.dn{color:var(--dn)}
+.flash{animation:fl .6s}@keyframes fl{0%{background:#ffffff22}}
+.rng{display:flex;gap:6px;margin:10px 0 6px}
+.rng button{flex:1;border:1px solid var(--line);background:none;color:var(--sub);border-radius:10px;padding:6px;font:700 13px inherit;cursor:pointer}
+.rng button[aria-pressed=true]{background:#232a35;color:var(--tx);border-color:#3a4452}
+canvas{width:100%;height:190px;display:block}
+.hi{display:flex;justify-content:space-between;color:var(--sub);font-size:12px;margin-top:4px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.grid div{display:flex;flex-direction:column}.grid small{color:var(--sub);font-size:12px}.grid b{font-size:16px;font-variant-numeric:tabular-nums}
+.tabs{display:flex;background:#0d1117;border-radius:12px;padding:4px;margin-bottom:10px}
+.tabs button{flex:1;border:0;background:none;color:var(--sub);padding:9px;border-radius:9px;font:800 15px inherit;cursor:pointer}
+.tabs button.on.buy{background:var(--up);color:#fff}.tabs button.on.sell{background:var(--dn);color:#fff}
+.amt{display:flex;align-items:center;gap:8px;background:#0d1117;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.amt input{flex:1;min-width:0;background:none;border:0;color:var(--tx);font:800 20px inherit;text-align:right;outline:none}
+.amt span{color:var(--sub);font-weight:700}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.quick button{border:1px solid var(--line);background:#1c222b;color:var(--tx);border-radius:10px;padding:8px 0;font:700 13px inherit;cursor:pointer}
+.est{color:var(--sub);font-size:13px;text-align:right;min-height:1.3em}
+.go{width:100%;border:0;border-radius:12px;padding:13px;font:900 17px inherit;color:#fff;cursor:pointer;margin-top:6px}
+.go.buy{background:var(--up)}.go.sell{background:var(--dn)}
+h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px}
+.news{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}
+.news li{display:flex;gap:8px;align-items:flex-start;font-size:14px}
+.news time{color:var(--sub);font-size:12px;flex:none;width:58px;white-space:nowrap;padding-top:2px}
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rank li{display:flex;align-items:center;gap:8px;font-size:14px}
+.rank .av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+.rank .nm{flex:1}.rank .me{color:var(--gold);font-weight:800}
+.nickb{margin-left:auto;border:1px solid var(--line);background:#1c222b;color:var(--tx);border-radius:999px;padding:4px 12px;font:700 12px inherit;cursor:pointer}
+.nickf{display:flex;gap:6px;margin-bottom:10px}.nickf[hidden]{display:none}
+.nickf input{flex:1;min-width:0;background:#0d1117;border:1px solid var(--gold);border-radius:10px;color:var(--tx);font:700 15px inherit;padding:8px 10px;outline:none}
+.nickf button{border:0;border-radius:10px;background:var(--gold);color:#111;font:800 14px inherit;padding:0 14px;cursor:pointer}
+.nickf small{display:block}
+.rank b{font-variant-numeric:tabular-nums}
+.foot{color:var(--sub);font-size:12px;text-align:center;line-height:1.6}
+.ticker{overflow:hidden;white-space:nowrap;border-radius:10px;background:#1c1405;border:1px solid #4a3a10;color:#ffe9a8;font-size:13px;padding:6px 0}
+.ticker span{display:inline-block;padding-left:100%;animation:tk 22s linear infinite}@keyframes tk{to{transform:translateX(-100%)}}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="./" aria-label="처음으로">‹</a><div class="coin">天</div><h1>천국코인 <small>HVN · 보드게임 천국 전용 가짜 코인</small></h1><span class="badge" id="dday">상장 D+0</span></div>
+  <div class="ticker" aria-hidden="true"><span id="tick">🎉 천국코인 상장 기념! 오늘의 소식을 확인하세요</span></div>
+  <div class="card">
+    <div class="price" id="price">-</div>
+    <div class="chg" id="chg">-</div>
+    <div class="rng" role="group" aria-label="차트 기간"><button data-r="1h" aria-pressed="true">1시간</button><button data-r="1d" aria-pressed="false">하루</button><button data-r="1w" aria-pressed="false">1주</button><button data-r="all" aria-pressed="false">전체</button></div>
+    <canvas id="chart"></canvas>
+    <div class="hi"><span id="lo">-</span><span id="hi">-</span></div>
+  </div>
+  <div class="card">
+    <h2>💼 내 코인</h2>
+    <div class="grid">
+      <div><small>보유 수량</small><b id="mQty">0 HVN</b></div>
+      <div><small>평균 산 값</small><b id="mAvg">-</b></div>
+      <div><small>지금 가치</small><b id="mVal">0원</b></div>
+      <div><small>수익</small><b id="mPnl">-</b></div>
+      <div style="grid-column:1/3"><small>지갑 (게임 머니)</small><b id="mWal">-</b></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="tabs"><button class="buy on" data-t="buy">사기</button><button class="sell" data-t="sell">팔기</button></div>
+    <div class="amt"><input id="amt" inputmode="numeric" placeholder="0" aria-label="금액"><span id="unit">원</span></div>
+    <div class="quick"><button data-q=".1">10%</button><button data-q=".25">25%</button><button data-q=".5">50%</button><button data-q="1">전부</button></div>
+    <div class="est" id="est"></div>
+    <button class="go buy" id="go">사기</button>
+  </div>
+  <div class="card"><h2>📰 코인 뉴스</h2><ul class="news" id="news"></ul></div>
+  <div class="card"><h2>🐋 큰손 순위<button type="button" class="nickb" id="nickB">✏️ 내 이름</button></h2>
+    <form class="nickf" id="nickF" hidden><input id="nickI" maxlength="10" placeholder="순위에 나올 내 이름" aria-label="내 이름"><button type="submit">저장</button></form>
+    <ul class="rank" id="rank"></ul></div>
+  <p class="foot">천국코인은 이 앱 안에서만 쓰는 장난 코인이에요. 진짜 돈·진짜 코인과 아무 관계가 없어요.<br>시세는 앱을 꺼 둔 동안에도 흘러가요.</p>
+</div>
+<script>/* ===== 보드게임 교실 공통: 지갑 · 매일 용돈 · 목소리 · 업적 배지 · 알림 =====
+   휴대폰 앱(같은 주소)에서는 모든 게임이 이 지갑과 배지를 함께 쓴다. */
+const FUNLS={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const dayKey=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+// 화면 위쪽 알림
+function funToast(html,ms=2600){let box=document.getElementById('funToasts');
+  if(!box){box=document.createElement('div');box.id='funToasts';box.style.cssText='position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92vw,420px)';document.body.appendChild(box);}
+  const t=document.createElement('div');t.innerHTML=html;t.style.cssText='background:#1f2a24;color:#fff;border:2px solid #ffd54f;border-radius:14px;padding:9px 16px;font:600 14px "Noto Sans KR",sans-serif;box-shadow:0 6px 18px #0007;opacity:0;transform:translateY(-10px);transition:all .3s;text-align:center';
+  box.appendChild(t);requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='none';});setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(-10px)';setTimeout(()=>t.remove(),350);},ms);}
+const wonF=n=>(n<0?'-':'')+Math.abs(Math.round(n)).toLocaleString()+'원';
+
+/* ---------- 지갑: 처음 만들 때 각 게임에 있던 돈을 모두 합쳐 옮김 ---------- */
+const WALLET=(()=>{
+  const K='bgc-wallet',KD='bgc-daily';
+  function init(){let w=FUNLS.get(K,null);
+    if(typeof w!=='number'){let sum=0,any=false;for(const g of ['gostop','seotda','poker']){const v=FUNLS.get(g+'-money',null);if(typeof v==='number'){sum+=Math.max(0,v);any=true;}}
+      w=any?sum:300000;FUNLS.set(K,w);if(any)setTimeout(()=>funToast(`💰 게임마다 따로 있던 돈을 한 지갑에 합쳤어요: <b>${wonF(w)}</b>`,4200),600);}
+    return w;}
+  let bal=init();
+  const get=()=>{const v=FUNLS.get(K,null);if(typeof v==='number')bal=v;return bal;};
+  function set(v){bal=Math.round(v);FUNLS.set(K,bal);
+    if(typeof ACH!=='undefined'){if(bal>=1000000)ACH.unlock('rich_1m');if(bal>=10000000)ACH.unlock('rich_10m');if(bal>=100000000)ACH.unlock('rich_100m');}}
+  // 돈이 모자라면 다시 채워 줌 (가짜 돈이라 멈추지 않게)
+  function rescue(min){const b=get();if(b>=min)return b;const v=Math.max(100000,min*4);set(v);funToast(`💸 돈이 모자라서 <b>${wonF(v)}</b>으로 채워 드렸어요`);return v;}
+  // 오늘 얼마 땄나: 오늘 처음 연 때의 돈과 비교
+  function today(){const d=FUNLS.get(KD,{});return d.date===dayKey()?get()-d.start:0;}
+  // 매일 한 번 용돈
+  // 11/18: 매일 한 번 용돈 카드 — 뒤집힌 카드 5장 중 하나를 골라 100만~5000만원 받기
+  const dailyDone=()=>FUNLS.get(KD,{}).date===dayKey();
+  function daily(){if(dailyDone())return 0;
+    const go=()=>{if(document.body)setTimeout(()=>dailyPick(),700);else document.addEventListener('DOMContentLoaded',go,{once:true});};go();return 0;}
+  function claimDaily(bonus){if(dailyDone())return 0;set(get()+bonus);FUNLS.set(KD,{date:dayKey(),start:get()});return bonus;}
+  function reset(){set(300000);}
+  return{get,set,rescue,today,daily,reset,claimDaily,dailyDone};
+})();
+function dailyPick(){
+  if(WALLET.dailyDone()||document.getElementById('dpOv'))return;
+  if(!document.getElementById('dpCss')){const st=document.createElement('style');st.id='dpCss';st.textContent=
+`#dpOv{position:fixed;inset:0;z-index:9998;background:radial-gradient(ellipse at 50% 40%,#3a2c10 0,#120d04 55%,#000 90%);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px 12px;box-sizing:border-box;font-family:"Noto Sans KR",sans-serif;color:#fff;text-align:center;animation:dpIn .35s ease-out}
+#dpOv>*{position:relative;z-index:1}
+#dpOv::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 70% 45% at 50% 50%,#ffd54f40,transparent 70%);pointer-events:none}
+#dpOv::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(2px 2px at 12% 18%,#fff,transparent),radial-gradient(2px 2px at 82% 14%,#ffe082,transparent),radial-gradient(3px 3px at 70% 30%,#fff,transparent),radial-gradient(2px 2px at 22% 70%,#ffe082,transparent),radial-gradient(3px 3px at 88% 76%,#fff,transparent),radial-gradient(2px 2px at 40% 88%,#fff,transparent),radial-gradient(2px 2px at 8% 46%,#fff,transparent),radial-gradient(2px 2px at 94% 50%,#ffe082,transparent),radial-gradient(3px 3px at 30% 10%,#ffe082,transparent),radial-gradient(2px 2px at 58% 94%,#ffe082,transparent);animation:dpTw 2.2s ease-in-out infinite alternate}
+@keyframes dpSpin{to{transform:rotate(360deg)}}@keyframes dpTw{from{opacity:.35}}
+@keyframes dpIn{from{opacity:0}}
+#dpOv h2{margin:0;font-size:24px;font-weight:900;color:#ffe9a8;letter-spacing:2px;text-shadow:0 2px 8px #000a}
+#dpOv .dps{margin:0;font-size:15px;opacity:.85}
+#dpOv .dpr{display:grid;grid-template-columns:repeat(5,auto);gap:min(10px,2.2vw);justify-content:center;perspective:900px}
+#dpOv .dpc{width:min(16vw,84px);aspect-ratio:2/3;position:relative;transform-style:preserve-3d;transition:transform .6s cubic-bezier(.3,1.4,.5,1);cursor:pointer;border:0;padding:0;background:none;animation:dpBob 1.6s ease-in-out infinite}
+@keyframes dpBob{50%{translate:0 -6px}}
+#dpOv.done .dpc{animation:none;cursor:default}
+#dpOv .dpc>span{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px #0008}
+#dpOv .dpb{background:radial-gradient(circle,#ffd54f 0 22%,transparent 23%),repeating-linear-gradient(45deg,#c62828 0 6px,#b71c1c 6px 12px);border:3px solid #ffd54f;font:900 min(8vw,36px) "Noto Sans KR",sans-serif;color:#b71c1c}
+#dpOv .dpf{transform:rotateY(180deg);background:linear-gradient(#fffbe6,#ffe082);border:3px solid #ffb300;color:#5d3a00;flex-direction:column;font-weight:900;font-size:min(3.9vw,18px);line-height:1.15}
+#dpOv .dpf small{font-size:.6em;font-weight:700;opacity:.7}
+#dpOv .dpc.open{transform:rotateY(180deg)}
+#dpOv .dpc.mine{scale:1.12;z-index:1}#dpOv .dpc.mine .dpf{box-shadow:0 0 0 4px #fff,0 0 26px 8px #ffd54f}
+#dpOv .dpc.other .dpf{filter:grayscale(.7) brightness(.75)}
+#dpOv .dpm{min-height:58px;font-size:20px;font-weight:800}
+#dpOv .dpm b{color:#ffd54f;font-size:28px}
+#dpOv .dpx{border:0;border-radius:999px;padding:12px 40px;font:800 18px "Noto Sans KR",sans-serif;background:linear-gradient(#ffe082,#ffb300);color:#3a2a00;box-shadow:0 6px 16px #0008;cursor:pointer}
+#dpOv .dpx[hidden]{display:none}`;document.head.appendChild(st);}
+  // 서로 다른 금액 5개 (100만원 단위, 100만~5000만)
+  const pool=[...Array(100)].map((_,i)=>(i+1)*1000000);for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const amts=pool.slice(0,15),man=v=>v>=100000000?'1억':(v/10000).toLocaleString()+'만';
+  const ov=document.createElement('div');ov.id='dpOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','오늘의 용돈 카드');
+  ov.innerHTML='<h2>🎁 오늘의 용돈 카드</h2><p class="dps">카드 한 장을 골라 보세요 · 100만 ~ 1억원</p><div class="dpr">'+
+    amts.map((a,i)=>'<button type="button" class="dpc" data-i="'+i+'" style="animation-delay:-'+(i*0.11).toFixed(2)+'s" aria-label="'+(i+1)+'번 카드"><span class="dpb">?</span><span class="dpf">'+man(a)+'<small>원</small></span></button>').join('')+
+    '</div><div class="dpm" aria-live="polite"></div><button type="button" class="dpx" hidden>받기</button>';
+  document.body.appendChild(ov);
+  const cards=[...ov.querySelectorAll('.dpc')],msg=ov.querySelector('.dpm'),x=ov.querySelector('.dpx');
+  ov.querySelector('.dpr').addEventListener('click',e=>{const c=e.target.closest('.dpc');if(!c||ov.classList.contains('done'))return;ov.classList.add('done');
+    const bonus=amts[+c.dataset.i];c.classList.add('open','mine');
+    const got=WALLET.claimDaily(bonus);
+    if(got){try{if(typeof money==='number')money+=got;}catch(_){}}
+    setTimeout(()=>{cards.forEach(k=>{if(k!==c)k.classList.add('open','other');});
+      const tag=bonus>=100000000?'🎰 최고 당첨! ':bonus>=70000000?'🎉 대박! ':bonus>=40000000?'✨ ':'';
+      msg.innerHTML=got?tag+'<b>+'+wonF(bonus)+'</b><br><span style="font-size:15px;opacity:.85">지갑 '+wonF(WALLET.get())+'</span>':'오늘 용돈은 이미 받았어요.';
+      x.hidden=false;try{VOICE.say(got?'용돈 '+man(bonus)+' 원':'');}catch(_){}},700);});
+  x.onclick=()=>{ov.remove();
+    try{if(typeof homeRender==='function')homeRender();}catch(_){}
+    try{['smoney','pmoney','gmoney'].forEach(id=>{const el=document.getElementById(id);if(el&&typeof money==='number')el.textContent=wonF(money);});}catch(_){}};
+}
+
+/* ---------- 목소리: 휴대폰·PC에 들어 있는 한국어 음성으로 외침 ---------- */
+const VOICE={on:FUNLS.get('bgc-voice',true),
+  say(t){if(!this.on||!window.speechSynthesis)return;const s=String(t).replace(/<[^>]+>/g,'').replace(/[!~★]/g,'').trim();if(!s)return;
+    try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s);u.lang='ko-KR';u.rate=1.08;u.pitch=1.15;u.volume=1;
+      const v=speechSynthesis.getVoices().find(x=>/^ko/i.test(x.lang));if(v)u.voice=v;speechSynthesis.speak(u);}catch(e){}},
+  set(on){this.on=on;FUNLS.set('bgc-voice',on);}};
+if(window.speechSynthesis)try{speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>{};}catch(e){}
+
+/* ---------- 업적 배지 ---------- */
+const ACH=(()=>{
+  const K='bgc-ach';
+  const L={
+    gs_win:['🎴','고스톱 첫 승리','고스톱에서 처음 이기기','고스톱'],gs_3go:['🔥','3고 성공','3고 이상 불러서 이기기','고스톱'],gs_chongtong:['👑','총통','처음부터 같은 달 4장','고스톱'],
+    gs_5gwang:['🌟','오광','광 5장 모으기','고스톱'],gs_big:['💵','큰 판','고스톱 한 판에 2만원 넘게 따기','고스톱'],
+    sd_win:['🀄','섯다 첫 승리','섯다에서 처음 이기기','섯다'],sd_38:['🌕','38광땡','38광땡으로 이기기','섯다'],sd_gwang:['✨','광땡','13·18광땡으로 이기기','섯다'],
+    sd_jang:['🔟','장땡','장땡으로 이기기','섯다'],sd_ttaeng:['💰','땡값','땡값 받기','섯다'],sd_jabi:['🗡️','땡잡이','땡잡이로 땡 잡기','섯다'],dori_win:['🏮','도리짓고땡 승리','선을 이기기','섯다'],
+    pk_win:['♠️','포커 첫 승리','포커에서 처음 이기기','포커'],pk_full:['🏠','풀하우스','풀하우스 이상으로 이기기','포커'],pk_four:['4️⃣','포카드','포카드 이상으로 이기기','포커'],
+    pk_sf:['🌈','스트레이트 플러시','스트레이트 플러시 이상으로 이기기','포커'],pk_royal:['👑','로열 스트레이트 플러시','로열로 이기기','포커'],pk_swing:['🎯','스윙 성공','하이로우 스윙으로 다 가져가기','포커'],bd_golf:['⛳','골프','바둑이 골프(A·2·3·4)로 이기기','포커'],
+    mj_win:['🀅','마작 첫 화료','마작에서 처음 화료','마작'],mj_riichi:['🎌','리치 화료','리치하고 화료','마작'],mj_mangan:['💮','만관','만관 이상으로 화료','마작'],mj_yakuman:['🐉','역만','역만으로 화료','마작'],mj_top:['🥇','대국 1등','마작 대국 1등','마작'],
+    ss_clear:['🧩','사천성 완성','사천성 다 없애기','사천성'],ss_fast:['⏱️','번개 손','보통 판을 5분 안에','사천성'],ss_big:['🏯','큰 판 완성','144장 판 다 없애기','사천성'],
+    yut_win:['🐎','윷놀이 승리','윷놀이에서 이기기','윷놀이'],
+    baduk_win:['⚫','바둑 승리','컴퓨터를 이기기','판 게임'],chess_win:['♟️','체스 승리','컴퓨터를 이기기','판 게임'],janggi_win:['🐘','장기 승리','컴퓨터를 이기기','판 게임'],
+    omok_win:['⭕','오목 승리','컴퓨터를 이기기','판 게임'],othello_win:['⚪','오델로 승리','컴퓨터를 이기기','판 게임'],gonu_win:['🔷','고누 승리','컴퓨터를 이기기','판 게임'],
+    oc_win:['🃏','원카드 승리','원카드에서 이기기','카드'],hula_win:['🂡','훌라 승리','훌라에서 이기기','카드'],hula_hula:['💥','훌라!','한 번에 다 내고 이기기','카드'],
+    pd_win:['🇹🇭','뽁뎅 첫 승리','뽁뎅에서 선을 이기기','카드'],pd_pok9:['9️⃣','뽁 9','처음 2장이 9','카드'],pd_tong:['💩','똥','같은 숫자 3장','카드'],pd_5deng:['🖐️','5뎅','5배 패 만들기','카드'],
+    online_win:['🌐','온라인 승리','친구와 온라인으로 이기기','온라인'],
+    rich_1m:['💎','백만장자','지갑 100만원 넘기기','지갑'],rich_10m:['🏦','천만장자','지갑 1,000만원 넘기기','지갑'],rich_100m:['👑','억만장자','지갑 1억원 넘기기','지갑'],
+    slot_star:['⭐','골든스타','황금별 슬롯 별 3개','카지노'],bj_bj:['🂱','블랙잭','블랙잭 나오기','카지노'],bac_tie:['🤝','타이 적중','바카라 타이 맞히기','카지노']};
+  const got=()=>FUNLS.get(K,{});
+  function unlock(id){if(!L[id])return;const g=got();if(g[id])return;g[id]=Date.now();FUNLS.set(K,g);
+    // 상금: 배지마다 1,000만원 (게임 화면이 들고 있는 돈에도 같이 더해서 나중에 덮어쓰지 않게)
+    const PRIZE=10000000;WALLET.set(WALLET.get()+PRIZE);try{if(typeof money==='number')money+=PRIZE;}catch(e){}
+    funToast(`${L[id][0]} 배지 획득! <b>${L[id][1]}</b><br><small>${L[id][2]}</small><br>🎁 상금 <b>+${wonF(PRIZE)}</b>`,4200);VOICE.say('배지 획득, 상금 천만 원');
+    setTimeout(()=>{try{const sm=document.getElementById('smoney')||document.getElementById('pmoney');if(sm&&typeof money==='number')sm.textContent=wonF(money);}catch(e){}},50);}
+  return{L,got,unlock};
+})();
+// 목소리 켜기/끄기 상자 (페이지에 id="vVoice" 가 있으면 연결)
+document.addEventListener('DOMContentLoaded',()=>{const v=document.getElementById('vVoice');if(v){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}});
+setTimeout(()=>{const v=document.getElementById('vVoice');if(v&&!v.onchange){v.checked=VOICE.on;v.onchange=()=>VOICE.set(v.checked);}},0);
+if(!window.FUN_NO_DAILY)WALLET.daily();
+// 11/15 사용자 요청: 한 번만 1조원 넣어 주기 (기기마다 한 번)
+// 11/18 사용자 요청: 1조 선물은 끝. 기기마다 한 번, 내 지갑과 컴퓨터 상대 돈을 모두 1억원으로 맞춤
+if(!window.FUN_NO_DAILY&&!FUNLS.get('bgc-reset-1eok',false)){FUNLS.set('bgc-reset-1eok',true);FUNLS.set('bgc-gift-1jo',true);WALLET.set(100000000);for(const g of ['gostop','seotda','poker','onecard','pokdeng']){const v=FUNLS.get(g+'-aimoney',null);if(Array.isArray(v))FUNLS.set(g+'-aimoney',v.map((x,i)=>i?100000000:x));}setTimeout(()=>funToast('💰 게임 머니를 모두 <b>1억원</b>으로 맞췄어요 (나·컴퓨터 상대 모두)',5000),1800);}
+// 11/18: 닉네임이 없는 사람에게 한 번만 물어보기 (코인 큰손 순위 등에 씀)
+function askNickOnce(){
+  if(FUNLS.get('bgc-nick','')||FUNLS.get('bgc-nick-asked',false)||document.getElementById('nkOv'))return;
+  if(!document.body||document.getElementById('dpOv')){setTimeout(askNickOnce,1000);return;}
+  const ov=document.createElement('div');ov.id='nkOv';ov.setAttribute('role','dialog');ov.setAttribute('aria-label','닉네임 정하기');
+  ov.style.cssText='position:fixed;inset:0;z-index:9997;background:#000c;display:flex;align-items:center;justify-content:center;padding:16px;font-family:"Noto Sans KR",sans-serif';
+  ov.innerHTML='<form style="width:min(100%,360px);background:radial-gradient(ellipse at 50% 0,#3a2c10,#120d04 70%);border:2px solid #ffd54f;border-radius:18px;padding:22px 18px;color:#fff;text-align:center;box-shadow:0 10px 30px #000a">'+
+    '<div style="font-size:40px">👋</div><h2 style="margin:6px 0 4px;font-size:20px;color:#ffe9a8">사용자 닉네임을 입력해 주세요</h2>'+
+    '<p style="margin:0 0 14px;font-size:13px;opacity:.75">코인 큰손 순위 같은 곳에 이 이름이 나와요 · 나중에 바꿀 수 있어요</p>'+
+    '<input name="n" maxlength="10" autocomplete="nickname" placeholder="예: 천국부자" aria-label="닉네임" style="width:100%;box-sizing:border-box;background:#0d0a03;border:1px solid #ffd54f;border-radius:12px;color:#fff;font:700 18px inherit;padding:11px 12px;text-align:center;outline:none">'+
+    '<div style="display:flex;gap:8px;margin-top:14px"><button type="button" data-skip="1" style="flex:1;border:1px solid #6b5a2a;background:none;color:#ccc;border-radius:12px;padding:11px;font:700 15px inherit;cursor:pointer">나중에</button>'+
+    '<button type="submit" style="flex:2;border:0;background:linear-gradient(#ffe082,#ffb300);color:#3a2a00;border-radius:12px;padding:11px;font:900 16px inherit;cursor:pointer">저장</button></div></form>';
+  document.body.appendChild(ov);const f=ov.querySelector('form'),inp=f.n;setTimeout(()=>inp.focus(),50);
+  const done=()=>{FUNLS.set('bgc-nick-asked',true);ov.remove();try{window.dispatchEvent(new Event('bgc-nick'));}catch(_){}};
+  f.querySelector('[data-skip]').onclick=done;
+  f.onsubmit=e=>{e.preventDefault();const v=inp.value.trim().slice(0,10);if(!v){inp.focus();return;}FUNLS.set('bgc-nick',v);done();funToast('반가워요, <b>'+v.replace(/[<>&"']/g,'')+'</b>님!');};}
+if(!window.FUN_NO_DAILY)setTimeout(askNickOnce,1500);
+/* ---------- 판이 끝나면 게임 판 가운데에 큰 '다음 판' 버튼 (옆 패널의 다음 판 버튼과 같이 움직임) ---------- */
+function bigNext(btnId,hostId){const btn=document.getElementById(btnId),host=document.getElementById(hostId);if(!btn||!host||host.querySelector('.bignext'))return;
+  if(!document.getElementById('bignextCss')){const st=document.createElement('style');st.id='bignextCss';st.textContent='.bignext{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:45;font:800 22px "Noto Sans KR",sans-serif;padding:14px 34px;border-radius:999px;border:3px solid #fff;background:linear-gradient(#ff8a65,#e53935);color:#fff;cursor:pointer;box-shadow:0 6px 20px #0009;animation:bnPulse 1.2s ease-in-out infinite;white-space:nowrap}.bignext[hidden]{display:none}.bignext:active{transform:translate(-50%,-48%)}@keyframes bnPulse{50%{box-shadow:0 6px 28px #ff5252,0 0 0 6px #ffffff55}}@media (max-width:600px){.bignext{font-size:18px;padding:11px 26px}}';document.head.appendChild(st);}
+  const b=document.createElement('button');b.className='bignext';b.type='button';b.innerHTML='다음 판 ▶';b.hidden=true;host.appendChild(b);
+  b.onclick=e=>{e.stopPropagation();b.hidden=true;btn.click();};
+  const sync=()=>{b.hidden=btn.hidden||btn.disabled;};new MutationObserver(sync).observe(btn,{attributes:true,attributeFilter:['hidden','disabled']});sync();}
+setTimeout(()=>{[['snext','stable'],['dnext','dtable'],['pnext','ptable'],['onext','otable'],['dnext2','dtable2']].forEach(([a,b])=>bigNext(a,b));},0);
+</script>
+<script>/* ===== 천국코인(HVN): 보드게임 천국 전용 가짜 코인 =====
+   시세는 시간으로 정해지는 난수 걸음이라 앱을 꺼 둬도 흘러가고, 다시 열면 같은 흐름을 다시 계산한다. */
+const COIN=(()=>{
+  const EPOCH=Date.UTC(2026,10,10,15,0,0); // 2026-11-11 00:00 (한국 시간) 상장
+  const STEP=5000,BASE=Math.log(10000),SIG=0.0018,REV=0.00003,EVP=1/4000,EVLEN=60;
+  const h=(i,s)=>{let x=Math.imul(i^0x9e3779b9,0x85ebca6b)^Math.imul(s+0x632be5,0xc2b2ae35);x^=x>>>16;x=Math.imul(x,0x7feb352d);x^=x>>>15;x=Math.imul(x,0x846ca68b);x^=x>>>16;return (x>>>0)/4294967296;};
+  const WHO=['김 사장','이 여사','박 부장','최 선생','정 과장','선(물주)','한 회장','윤 실장'];
+  const UPN=[(w,i)=>`🚀 ${w}, 천국코인에 ${2+Math.floor(h(i,3)*90)}억 몰빵!`,w=>`📈 "고스톱 판돈을 천국코인으로 받는다"는 소문에 급등`,w=>`🐋 정체불명 큰손 매수 포착 — ${w}로 추정`,w=>`🌕 ${w}: "천국코인 달까지 간다"`,w=>`🎉 ${w}, 포커 대박 상금으로 천국코인 쓸어 담아`];
+  const DNN=[w=>`📉 ${w}, 천국코인 전부 팔았다…`,w=>`😱 ${w} "섯다에서 다 잃었다" 코인 급히 처분`,w=>`🧊 거래소 점검 소문에 급락`,w=>`🐻 곰돌이 등장! 시장에 공포 확산`,w=>`💸 ${w}, 손절하고 화투 치러 떠나`];
+  let L=new Float64Array(0),N=-1,events=[],evLeft=0,evDrift=0;
+  function stepTo(n){if(n<=N)return;const nl=new Float64Array(Math.max(n+1,L.length*2|0,1024));nl.set(L.subarray(0,N+1));L=nl;
+    for(let i=N+1;i<=n;i++){
+      if(i===0){L[0]=BASE;events.push({i:0,up:1,t:'🎉 천국코인 상장! 1 HVN = 10,000원에서 출발'});N=0;continue;}
+      let p=L[i-1];
+      const u1=Math.max(1e-12,h(i,1)),u2=h(i,2);p+=SIG*Math.sqrt(-2*Math.log(u1))*Math.cos(6.283185307*u2)+REV*(BASE-p);
+      if(!evLeft&&h(i,7)<EVP){const up=h(i,8)<0.5,mag=0.15+0.35*h(i,9);evDrift=(up?Math.log(1+mag):Math.log(1-mag*0.8))/EVLEN;evLeft=EVLEN;
+        const w=WHO[Math.floor(h(i,10)*WHO.length)],pool=up?UPN:DNN;events.push({i,up:up?1:0,mag,t:pool[Math.floor(h(i,11)*pool.length)](w,i)});}
+      if(evLeft){p+=evDrift;evLeft--;}
+      L[i]=p;}
+    N=n;}
+  const nowStep=()=>Math.max(0,Math.floor((Date.now()-EPOCH)/STEP));
+  const price=i=>Math.exp(L[Math.max(0,Math.min(N,i))]);
+  const timeOf=i=>EPOCH+i*STEP;
+  return{EPOCH,STEP,h,WHO,stepTo,nowStep,price,timeOf,get N(){return N;},get events(){return events;}};
+})();
+
+(()=>{
+  const $=id=>document.getElementById(id);
+  const K='bgc-coin';const hold=()=>Object.assign({q:0,cost:0},FUNLS.get(K,{}));
+  const fmtP=v=>Math.round(v).toLocaleString()+'원';
+  const fmtQ=q=>(q>=100?Math.floor(q).toLocaleString():q.toLocaleString(undefined,{maximumFractionDigits:2}))+' HVN';
+  const big=v=>{const a=Math.abs(v);return a>=1e8?(v/1e8).toLocaleString(undefined,{maximumFractionDigits:a>=1e10?0:1})+'억원':a>=1e4?Math.round(v/1e4).toLocaleString()+'만원':Math.round(v).toLocaleString()+'원';};
+  let range='1h',tab='buy',lastP=0;
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');const nick=()=>esc(FUNLS.get('bgc-nick','')||'나');
+  const KN='bgc-coin-news';const myNews=()=>FUNLS.get(KN,[]);
+  function addMyNews(t,up){const a=myNews();a.push({t,up,time:Date.now()});FUNLS.set(KN,a.slice(-20));}
+  const R={'1h':720,'1d':17280,'1w':120960};
+  function draw(){const c=$('chart'),dpr=window.devicePixelRatio||1,W=c.clientWidth,H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;const g=c.getContext('2d');g.scale(dpr,dpr);
+    const N=COIN.N,len=range==='all'?N+1:Math.min(N+1,R[range]+1),s0=N+1-len,M=Math.min(len,320),pts=[];
+    for(let k=0;k<M;k++){const i=s0+Math.round(k*(len-1)/Math.max(1,M-1));pts.push(COIN.price(i));}
+    let lo=Math.min(...pts),hi=Math.max(...pts);if(hi-lo<1e-9){hi+=1;lo-=1;}const pad=(hi-lo)*.12;lo-=pad;hi+=pad;
+    const X=k=>k/(M-1||1)*(W-8)+4,Y=v=>H-6-(v-lo)/(hi-lo)*(H-12);
+    const up=pts[pts.length-1]>=pts[0],col=up?'#f0475a':'#3d8bfd';
+    g.strokeStyle='#2a313c';g.lineWidth=1;for(let j=1;j<4;j++){g.beginPath();g.moveTo(0,H*j/4);g.lineTo(W,H*j/4);g.stroke();}
+    const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,col+'55');gr.addColorStop(1,col+'00');
+    g.beginPath();pts.forEach((v,k)=>k?g.lineTo(X(k),Y(v)):g.moveTo(X(k),Y(v)));g.lineTo(X(M-1),H);g.lineTo(X(0),H);g.closePath();g.fillStyle=gr;g.fill();
+    g.beginPath();pts.forEach((v,k)=>k?g.lineTo(X(k),Y(v)):g.moveTo(X(k),Y(v)));g.strokeStyle=col;g.lineWidth=2;g.lineJoin='round';g.stroke();
+    // 뉴스 난 자리 표시
+    COIN.events.forEach(e=>{if(e.i<s0||!e.i)return;const k=(e.i-s0)/(len-1)*(M-1);g.font='14px sans-serif';g.textAlign='center';g.fillText(e.up?'🚀':'💥',X(k),e.up?14:H-4);});
+    const lx=X(M-1),ly=Y(pts[M-1]);g.fillStyle=col;g.beginPath();g.arc(lx,ly,4,0,7);g.fill();
+    $('lo').textContent='최저 '+fmtP(Math.min(...pts));$('hi').textContent='최고 '+fmtP(Math.max(...pts));}
+  function ago(t){const m=Math.floor((Date.now()-t)/60000);return m<1?'방금':m<60?m+'분 전':m<1440?Math.floor(m/60)+'시간 전':Math.floor(m/1440)+'일 전';}
+  function render(){const N=COIN.N,p=COIN.price(N),p24=COIN.price(N-17280),d=(p/p24-1)*100;
+    const pe=$('price');pe.textContent=fmtP(p);pe.className='price '+(p>=lastP?'up':'dn')+(lastP&&p!==lastP?' flash':'');lastP=p;
+    $('chg').innerHTML='<span class="'+(d>=0?'up':'dn')+'">'+(d>=0?'▲ ':'▼ ')+Math.abs(d).toFixed(2)+'%</span> <span style="color:var(--sub);font-weight:500;font-size:13px">하루 전보다</span>';
+    $('dday').textContent='상장 D+'+Math.floor((Date.now()-COIN.EPOCH)/864e5);
+    const H=hold(),val=H.q*p,pnl=val-H.cost;
+    $('mQty').textContent=fmtQ(H.q);$('mAvg').textContent=H.q>1e-9?fmtP(H.cost/H.q):'-';$('mVal').textContent=big(val);
+    $('mPnl').innerHTML=H.q>1e-9?'<span class="'+(pnl>=0?'up':'dn')+'">'+(pnl>=0?'+':'')+big(pnl)+' ('+(pnl>=0?'+':'')+(pnl/H.cost*100).toFixed(1)+'%)</span>':'-';
+    $('mWal').textContent=wonF(WALLET.get());
+    const ev=COIN.events.slice(-12).map(e=>({t:e.t,up:e.up,time:COIN.timeOf(e.i)})).concat(myNews()).sort((a,b)=>b.time-a.time).slice(0,12);
+    $('news').innerHTML=ev.map(e=>'<li><time>'+ago(e.time)+'</time><span class="'+(e.up?'up':'dn')+'" style="color:inherit">'+e.t+'</span></li>').join('');
+    $('tick').textContent=ev.slice(0,3).map(e=>e.t).join('   ·   ');
+    // 큰손 순위 (컴퓨터 상대는 시간에 따라 조금씩 사고팖)
+    const day=Math.floor(N/17280),AV=['#e57373','#64b5f6','#81c784','#ffb74d','#ba68c8','#4db6ac','#f06292','#a1887f'];
+    const list=COIN.WHO.map((w,k)=>({w,q:Math.round(3000000*(0.3+2.5*COIN.h(k,50))*(0.5+COIN.h(day*13+k,51))),c:AV[k]}));
+    list.push({w:nick(),q:H.q,me:1,c:'#ffd54f'});list.sort((a,b)=>b.q-a.q);
+    $('rank').innerHTML=list.slice(0,6).concat(list.slice(0,6).some(x=>x.me)?[]:[list.find(x=>x.me)]).map((x,k)=>'<li><span class="av" style="background:'+x.c+'">'+(x.me?'⭐':x.w[0])+'</span><span class="nm'+(x.me?' me':'')+'">'+(list.indexOf(x)+1)+'. '+x.w+'</span><b>'+fmtQ(x.q)+'</b></li>').join('');
+    est();draw();}
+  function est(){const v=+($('amt').value.replace(/[^0-9.]/g,''))||0,p=COIN.price(COIN.N);
+    $('est').textContent=v?(tab==='buy'?'≈ '+fmtQ(v/p)+' 받아요':'≈ '+wonF(v*p)+' 받아요'):'';}
+  document.querySelector('.rng').onclick=e=>{const b=e.target.closest('button');if(!b)return;range=b.dataset.r;document.querySelectorAll('.rng button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();};
+  document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;tab=b.dataset.t;document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+    $('go').className='go '+tab;$('go').textContent=tab==='buy'?'사기':'팔기';$('unit').textContent=tab==='buy'?'원':'HVN';$('amt').value='';est();};
+  document.querySelector('.quick').onclick=e=>{const b=e.target.closest('button');if(!b)return;const f=+b.dataset.q;
+    $('amt').value=tab==='buy'?Math.floor(WALLET.get()*f).toLocaleString():(f===1?hold().q:Math.floor(hold().q*f*100)/100).toLocaleString(undefined,{maximumFractionDigits:2});est();};
+  $('amt').oninput=()=>{if(tab==='buy'){const v=$('amt').value.replace(/[^0-9]/g,'');$('amt').value=v?(+v).toLocaleString():'';}est();};
+  $('go').onclick=()=>{const v=+($('amt').value.replace(/[^0-9.]/g,''))||0,p=COIN.price(COIN.N),H=hold();if(!v)return;
+    if(tab==='buy'){if(v>WALLET.get()){funToast('지갑에 돈이 모자라요');return;}WALLET.set(WALLET.get()-v);H.q+=v/p;H.cost+=v;FUNLS.set(K,H);if(v>=1e9)addMyNews('🐋 '+nick()+', 천국코인 '+big(v)+'어치 매수! 큰손 등장',1);funToast('🪙 <b>'+fmtQ(v/p)+'</b> 샀어요 ('+wonF(v)+')');}
+    else{const q=Math.min(v,H.q);if(q<=0){funToast('팔 코인이 없어요');return;}const won=Math.round(q*p);H.cost*=1-q/H.q;H.q-=q;if(H.q<1e-6){H.q=0;H.cost=0;}FUNLS.set(K,H);WALLET.set(WALLET.get()+won);
+      if(won>=1e9)addMyNews('💼 '+nick()+', 천국코인 '+big(won)+'어치 매도… 차익 실현?',0);funToast('💰 <b>'+fmtQ(q)+'</b> 팔아서 <b>'+wonF(won)+'</b> 받았어요');}
+    $('amt').value='';render();};
+  const nf=$('nickF');
+  $('nickB').onclick=()=>{nf.hidden=!nf.hidden;if(!nf.hidden){$('nickI').value=FUNLS.get('bgc-nick','');$('nickI').focus();}};
+  nf.onsubmit=e=>{e.preventDefault();const v=$('nickI').value.trim().slice(0,10);FUNLS.set('bgc-nick',v);nf.hidden=true;funToast(v?'이름을 <b>'+v.replace(/[<>&]/g,'')+'</b>(으)로 정했어요':'이름을 지웠어요');render();};
+  addEventListener('bgc-nick',()=>render());
+  COIN.stepTo(COIN.nowStep());render();
+  setInterval(()=>{const n=COIN.nowStep();if(n>COIN.N){COIN.stepTo(n);render();}},1000);
+  addEventListener('resize',draw);
+})();
+</script>
+<a href="index.html" class="pwa-home" aria-label="처음 화면으로">← 처음</a>
+<style>.pwa-home{position:fixed;left:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:80;padding:7px 13px;border-radius:999px;
+background:rgba(20,24,22,.78);color:#fff;font:600 13px "Noto Sans KR","Malgun Gothic",sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.pwa-home:focus-visible{outline:2px solid #fff;outline-offset:2px}</style>
+<script>try{const k='bgc-recent',f=location.pathname.split('/').pop()||'index.html';let a=JSON.parse(localStorage.getItem(k)||'[]').filter(x=>x!==f);a.unshift(f);localStorage.setItem(k,JSON.stringify(a.slice(0,6)));}catch(e){}</script>
+<div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>
+<style>.sw-upd{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:95;display:flex;align-items:center;gap:8px;
+padding:7px 8px 7px 16px;border-radius:999px;background:#1f2622;color:#fff;font:600 14px "Noto Sans KR","Malgun Gothic",sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);
+max-width:calc(100vw - 24px);white-space:nowrap}.sw-upd[hidden]{display:none!important}
+.sw-upd button{border:0;border-radius:999px;padding:6px 12px;font-family:inherit;font-weight:700;font-size:13px;cursor:pointer}
+#swNow{background:#4cc38a;color:#0b1a12}#swLater{background:transparent;color:#cfd8d3}</style>
+<script>(function(){if(!('serviceWorker' in navigator))return;
+let reloading=false;navigator.serviceWorker.addEventListener('controllerchange',function(){if(reloading)return;reloading=true;location.reload();});
+function show(w){var b=document.getElementById('swUpd');b.hidden=false;
+  document.getElementById('swNow').onclick=function(){document.getElementById('swMsg').textContent='바꾸는 중…';w.postMessage('SKIP');};
+  document.getElementById('swLater').onclick=function(){b.hidden=true;};}
+addEventListener('load',function(){navigator.serviceWorker.register('sw.js').then(function(reg){
+  if(reg.waiting&&navigator.serviceWorker.controller)show(reg.waiting);
+  reg.addEventListener('updatefound',function(){var w=reg.installing;if(w)w.addEventListener('statechange',function(){if(w.state==='installed'&&navigator.serviceWorker.controller)show(w);});});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')reg.update().catch(function(){});});
+}).catch(function(){});});})();</script>
+</body></html>

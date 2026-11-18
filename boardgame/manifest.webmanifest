@@ -183,6 +183,17 @@
       ]
     },
     {
+      "name": "천국코인 거래소",
+      "url": "./coin.html",
+      "icons": [
+        {
+          "src": "icons/coin.png",
+          "sizes": "256x256",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
       "name": "사다리타기",
       "url": "./ladder.html",
       "icons": [
