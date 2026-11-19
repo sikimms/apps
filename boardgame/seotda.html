@@ -1428,16 +1428,18 @@ async function seotdaDeal(){
 function seotdaRender(dealing){
   sNetView(dealing);
   const s=S.s,pos=SEATS[s.n],show=S.reveal;
+  const showAll=show||!!S.ended||!!s.over,flip=showAll&&!S.flipped;   // 11/19: 끝나면 모두 펼침, 뒤집기는 한 번만
   $('stable').querySelectorAll('.seat').forEach(e=>e.remove());
   for(let p=0;p<s.n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
     const hand=s.hands[p],rh=S.result&&S.result.hands&&S.result.hands.find(x=>x.p===p),pr=rh&&rh.pair?rh.pair:(hand.length>=2&&hand.every(x=>x>=0)?SD.bestPair(hand):null),isWin=S.result&&S.result.winners.includes(p);
     const h2=pr?SD.seotdaHand(pr[0],pr[1]):null,picking=p===0&&S.picking;
-    const cards=hand.map((id,i)=>cardHtml(id,{dim:hand.length>2&&show&&rh&&rh.pair&&!rh.pair.includes(id),pick:picking,chosen:picking&&S.sel.includes(id),down:(p!==0&&!(show&&!s.folded[p]))||(p===0&&id===S.hideId),deal:dealing&&i>=S.dealt[p],delay:dealing?(p*90+i*40):0,reveal:show&&p!==0&&!s.folded[p]})).join('');
+    const cards=hand.map((id,i)=>cardHtml(id,{dim:hand.length>2&&show&&rh&&rh.pair&&!rh.pair.includes(id),pick:picking,chosen:picking&&S.sel.includes(id),down:id<0||(p!==0&&!showAll)||(p===0&&id===S.hideId),deal:dealing&&i>=S.dealt[p],delay:dealing?(p*90+i*40):0,reveal:flip&&p!==0&&id>=0})).join('');
     const la=S.last[p];
     el.innerHTML=(p===0?'':plate(p))+`<div class="scards">${cards}</div>`+
       ((p===0||show)&&h2&&!s.folded[p]&&!(p===0&&S.hideId!=null)?`<span class="shand${isWin?' win':''}">${picking&&S.sel.length===2?SD.seotdaHand(S.sel[0],S.sel[1]).name:h2.name}${hand.length>2&&!show&&p===0&&!picking?' (가장 좋은 2장)':''}</span>`:'')+
       (la?`<span class="sact ${la.k==='die'?'die':la.k==='call'||la.k==='check'?'call':'raise'}">${la.name}${la.amt?' '+won(la.amt):''}</span>`:'')+(p===0?plate(p):'');
     $('stable').appendChild(el);}
+  S.flipped=showAll;
   $('spot').innerHTML=`${MONEY.pileHtml(s.pot)}<b>${won(s.pot)}</b><small>${s.three?'3장 섯다 · ':''}${s.round>=2?(s.three?'세 번째 장':'두 번째 장'):(s.three?'두 장':'첫 번째 장')} · ${s.over?'끝':S.picking?'2장 고르기':'베팅 중'}</small>`;
   seotdaBar();
 }
@@ -1625,8 +1627,8 @@ function doriRender(dealFrom){
     let order=s.hands[p].slice(0,D.vis);const hideId=D.hideId;
     if(p===0&&D.done&&D.mine)order=D.mine.three.concat(D.mine.two);
     if(D.reveal&&p!==0&&!out&&D.best)order=D.best[p].three.concat(D.best[p].two);
-    const cards=order.map((id,i)=>cardHtml(id,{down:id<0||(p!==0&&!(D.reveal&&!out))||(p===0&&id===hideId),deal:dealing&&i>=dealFrom,delay:dealing?((i-dealFrom)*260+p*90):0,
-      pick:p===0&&D.stage==='make'&&!D.done,chosen:p===0&&D.stage==='make'&&!D.done&&D.chosen.includes(id),reveal:D.reveal&&p!==0&&!out&&id>=0})).join('');
+    const cards=order.map((id,i)=>cardHtml(id,{down:id<0||(p!==0&&!D.reveal)||(p===0&&id===hideId),deal:dealing&&i>=dealFrom,delay:dealing?((i-dealFrom)*260+p*90):0,
+      pick:p===0&&D.stage==='make'&&!D.done,chosen:p===0&&D.stage==='make'&&!D.done&&D.chosen.includes(id),reveal:D.reveal&&!D.flipped&&p!==0&&id>=0})).join('');
     const name=dnm(p);
     const handTxt=out?'다이':(p===0&&D.done&&D.mine)?D.mine.h.name:(D.reveal&&D.best?D.best[p].h.name:'');
     const act=D.acts[p]&&!D.reveal?`<span class="sact ${D.acts[p]==='다이'?'die':D.acts[p]==='그대로'?'call':'raise'}">${D.acts[p]}</span>`:'';
@@ -1634,6 +1636,7 @@ function doriRender(dealFrom){
       `<div class="scards">${cards}</div>`+(handTxt?`<span class="shand${r==='win'?' win':''}">${handTxt}${r?` · ${r==='win'?'이김':'짐'}`:''}</span>`:'')+act+
       (p===0?`<div class="splate${out?' out':''}">${avatar(0)}<span class="sn"><b>나</b><small>${won(dchip(0))} · 건 돈 ${won(s.bets[0])}</small></span></div>`:'');
     $('dtable').appendChild(el);}
+  D.flipped=!!D.reveal;
   const total=s.bets.reduce((a,b)=>a+b,0);
   const sum=D.chosen.reduce((a,c)=>a+mon(c),0),ok=D.chosen.length===3&&sum%10===0;
   $('dpot').innerHTML=`${MONEY.pileHtml(total)}<b>${won(total)}</b><small>${D.stage==='make'&&!D.done?'':`카드 ${D.vis}장`}${NET&&NET.game==='dori'?' · 온라인':''}</small>`+

@@ -1244,20 +1244,23 @@ function myHandName(){const s=G.s;if(s.kind==='badugi')return PK.badugi(s.hidden
 function render(){
   netView();
   const s=G.s,pos=s.kind==='holdem'?HSEAT(s.n):SEATS[s.n],show=G.reveal;
+  // 11/19: 판이 끝나면 다이한 사람까지 모든 패를 펼침. 뒤집기 효과는 한 번만 (다시 그릴 때마다 돌지 않게)
+  const showAll=show||!!s.over||G.phase==='end',flip=showAll&&!G.flipped;
   $('ptable').querySelectorAll('.seat').forEach(e=>e.remove());
   for(let p=0;p<s.n;p++){const [x,y]=pos[p],el=document.createElement('div');el.className='seat pkseat'+(p===0?' me':'');el.style.left=x+'%';el.style.top=y+'%';
     const known=G.known[p]||0,list=s.hidden[p].map(id=>({id,h:1})).concat(s.open[p].map(id=>({id,h:0})));
     const pickable=p===0&&['discard','open','draw'].includes(G.phase);
-    const cards=list.map((c,i)=>{const isNew=i>=known;return cardHtml(c.id,{down:c.id<0||(p!==0&&c.h&&!(show&&!s.folded[p]))||(p===0&&c.id===G.hideId),deal:isNew,delay:isNew?((i-known)*180+p*70):null,
-      pick:pickable&&c.h,chosen:pickable&&G.sel.includes(c.id),reveal:show&&p!==0&&c.h&&!s.folded[p]&&c.id>=0,hid:p===0&&c.h&&s.kind!=='badugi'&&s.kind!=='holdem'});}).join('');
+    const cards=list.map((c,i)=>{const isNew=i>=known;return cardHtml(c.id,{down:c.id<0||(p!==0&&c.h&&!showAll)||(p===0&&c.id===G.hideId),deal:isNew,delay:isNew?((i-known)*180+p*70):null,
+      pick:pickable&&c.h,chosen:pickable&&G.sel.includes(c.id),reveal:flip&&p!==0&&c.h&&c.id>=0,hid:p===0&&c.h&&s.kind!=='badugi'&&s.kind!=='holdem'});}).join('');
     const isWin=G.result&&G.result.winners.some(w=>w.p===p),hn=G.result&&G.result.hands?G.result.hands.find(x=>x.p===p):null;
     const label=p===0?(G.hideId!=null?'히든 카드를 까 보세요':myHandName()):(show&&hn?hn.name:'');
     const la=G.last[p],dec=s.declare[p]&&show?` · ${({hi:'하이',lo:'로우',swing:'스윙'})[s.declare[p]]}`:'';
     const tag=s.kind==='holdem'?(p===s.dealer?'<i class="dtag">D</i>':'')+(p===s.sbP?'<i class="btag">SB</i>':p===s.bbP?'<i class="btag">BB</i>':''):'';
     const plate=`<div class="splate${s.turn===p&&!s.over&&s.phase==='bet'?' turn':''}${s.folded[p]?' out':''}">${avatar(p)}<span class="sn"><b>${nm(p)}${tag}</b><small>${won(chipOf(p))}</small></span></div>`;
-    el.innerHTML=(p===0?'':plate)+`<div class="scards">${s.kind==='holdem'&&s.folded[p]&&p!==0?'':cards}</div>`+(label&&!s.folded[p]?`<span class="shand${isWin?' win':''}">${label}${dec}</span>`:'')+
+    el.innerHTML=(p===0?'':plate)+`<div class="scards">${s.kind==='holdem'&&s.folded[p]&&p!==0&&!showAll?'':cards}</div>`+(label&&!s.folded[p]?`<span class="shand${isWin?' win':''}">${label}${dec}</span>`:'')+
       (s.folded[p]?`<span class="sact die">${s.kind==='holdem'?'폴드':'다이'}</span>`:la?`<span class="sact ${la.k==='call'||la.k==='check'?'call':'raise'}">${la.name}${la.amt?' '+(s.kind==='holdem'?wonS(la.amt):won(la.amt)):''}</span>`:'')+(p===0?plate:'');
     $('ptable').appendChild(el);G.known[p]=list.length;}
+  G.flipped=showAll;
   const stage=s.kind==='holdem'?['프리플랍','플랍','턴','리버'][s.street]||'':s.kind==='badugi'?['처음','아침','점심','저녁'][s.street]||'':s.street?`${s.street}구`:'';
   $('ptable').classList.toggle('holdem',s.kind==='holdem');let bd=$('pboard');if(!bd){bd=document.createElement('div');bd.id='pboard';bd.className='pboard';$('ptable').appendChild(bd);}
   if(s.kind==='holdem'){const b=s.board||[],kb=G.knownBoard||0;bd.innerHTML=[0,1,2,3,4].map(i=>i<b.length?cardHtml(b[i],{deal:i>=kb,delay:i>=kb?(i-kb)*160:null}):'<div class="card pk slot"></div>').join('');G.knownBoard=b.length;bd.hidden=false;}else{bd.hidden=true;bd.innerHTML='';}
