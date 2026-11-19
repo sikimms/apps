@@ -539,11 +539,14 @@ function funZoom(build){
     '.fzx{margin-left:auto;border:0;background:#0005;color:#fff;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer;flex:none}'+
     '.fzcards{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.fzcards>*{transform:none!important;position:relative!important;left:auto!important;top:auto!important;margin:0!important}'+
     '.fzsec{margin-top:8px}.fzsec h4{margin:0 0 6px;font-size:13px;color:#ffe08a}'+
+    '.fzcards *{animation:none!important;transition:none!important}'+
+    '.fzhand{margin-top:12px;text-align:center}.fzhand b{display:inline-block;background:linear-gradient(#ffe27a,#d9a400);color:#3a2600;font-weight:900;font-size:20px;padding:6px 18px;border-radius:999px;box-shadow:0 3px 10px #0007}.fzhand small{display:block;margin-top:4px;color:#cfe8d6;font-size:12px}'+
     '.fzhint{margin-top:10px;text-align:center;font-size:12px;color:#cfe8d6}'+
     '';document.head.appendChild(st);}
   document.querySelector('.fzov')?.remove();
   const ov=document.createElement('div');ov.className='fzov';ov.setAttribute('role','dialog');
-  const draw=()=>{const r=build();if(!r){close();return;}
+  let sig='';
+  const draw=()=>{const r=build();if(!r){close();return;}const ns=r.title+'|'+r.body.innerHTML;if(ns===sig)return;sig=ns;   // 바뀐 게 없으면 다시 안 그림 (깜빡임 방지)
     ov.innerHTML=`<div class="fzbox"><div class="fzhd">${r.title}<button class="fzx" type="button" aria-label="닫기">✕</button></div><div class="fzbody"></div><div class="fzhint">아무 곳이나 누르면 닫혀요</div></div>`;
     ov.querySelector('.fzbody').appendChild(r.body);};
   const close=()=>{clearInterval(t);ov.remove();};
@@ -553,13 +556,17 @@ function funZoom(build){
 (()=>{const st=document.createElement('style');st.textContent='.seat .splate,.gplate[data-p]{cursor:pointer;pointer-events:auto}';document.head.appendChild(st);})();
 // 포커·섯다·원카드·뽁뎅: 자리(.seat) 이름표(.splate)를 누르면 그 자리 카드(.scards)를 크게
 document.addEventListener('click',e=>{const pl=e.target.closest&&e.target.closest('.seat .splate');if(!pl)return;
-  const seat=pl.closest('.seat'),tb=seat.parentElement,idx=[...tb.children].indexOf(seat);
-  funZoom(()=>{const st=tb.children[idx];if(!st||!st.classList.contains('seat'))return null;const sc=st.querySelector('.scards'),p=st.querySelector('.splate .sn');if(!sc)return null;
+  const seat=pl.closest('.seat'),tb=seat.parentElement,seats=()=>[...tb.children].filter(x=>x.classList.contains('seat')),idx=seats().indexOf(seat);
+  funZoom(()=>{const st=seats()[idx];if(!st)return null;const sc=st.querySelector('.scards'),p=st.querySelector('.splate .sn');if(!sc)return null;
     const body=document.createElement('div');body.className='fzcards';
-    const cw=Math.min(110,Math.floor((Math.min(innerWidth*0.96,720)-40)/Math.max(3,Math.min(sc.children.length,5)))-8);
-    [...sc.children].forEach(c=>{const k=c.cloneNode(true);k.style.width=cw+'px';k.style.height=Math.round(cw*97.5/60)+'px';k.style.flex='none';k.classList.remove('pick','sel','can');body.appendChild(k);});
-    if(!sc.children.length)body.innerHTML='<div style="padding:20px;color:#cfe8d6">카드가 없어요</div>';
-    return{title:p?`<span>${p.querySelector('b')?.innerHTML||''}</span><small>${p.querySelector('small')?.innerHTML||''}</small>`:'카드',body};});
+    const gz=typeof zoomSeat==='function'?zoomSeat(idx):null;   // 게임이 알려 주는 패(판이 끝나면 다 펼침)·족보
+    const tmp=document.createElement('div');if(gz&&gz.cards)tmp.innerHTML=gz.cards.join('');const src=gz&&gz.cards?tmp:sc;
+    const cw=Math.min(110,Math.floor((Math.min(innerWidth*0.96,720)-40)/Math.max(3,Math.min(src.children.length,5)))-8);
+    [...src.children].forEach(c=>{const k=c.cloneNode(true);k.style.width=cw+'px';k.style.height=Math.round(cw*97.5/60)+'px';k.style.flex='none';k.classList.remove('pick','sel','can');body.appendChild(k);});
+    const hn=gz&&gz.hand!=null?gz.hand:(st.querySelector('.shand')?.textContent||'');
+    if(!src.children.length)body.innerHTML='<div style="padding:20px;color:#cfe8d6">카드가 없어요</div>';
+    const wrap=document.createElement('div');wrap.appendChild(body);if(hn){const d=document.createElement('div');d.className='fzhand';d.innerHTML='<b>'+hn.replace(/[<>&]/g,'')+'</b>'+(gz&&gz.sub?'<small>'+gz.sub+'</small>':'');wrap.appendChild(d);}
+    return{body:wrap,title:p?`<span>${p.querySelector('b')?.innerHTML||''}</span><small>${p.querySelector('small')?.innerHTML||''}</small>`:'카드'};});
 });
 
 /* ===== 공통 도구 ===== */

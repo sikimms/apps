@@ -56,6 +56,17 @@ h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px}
 .nickf button{border:0;border-radius:10px;background:var(--gold);color:#111;font:800 14px inherit;padding:0 14px;cursor:pointer}
 .nickf small{display:block}
 .rank b{font-variant-numeric:tabular-nums}
+.ntabs{display:flex;gap:6px;margin-bottom:10px}.ntabs button{flex:1;border:1px solid var(--line);background:none;color:var(--sub);border-radius:10px;padding:8px;font:800 14px inherit;cursor:pointer}.ntabs button[aria-selected=true]{background:#232a35;color:var(--tx);border-color:#3a4452}
+.news[hidden],#talk[hidden]{display:none!important}
+.ntabs span{color:var(--gold);font-size:12px}
+.talk{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:10px;max-height:340px;overflow:auto}
+.talk li{background:#0d1117;border:1px solid var(--line);border-radius:12px;padding:8px 10px}.talk li.mine{border-color:#5a4a15}
+.talk .th{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin-bottom:3px}.talk .th b{color:var(--tx);font-size:13px}.talk li.mine .th b{color:var(--gold)}
+.talk .th button{margin-left:auto;border:0;background:none;color:var(--sub);font-size:12px;cursor:pointer;padding:0 2px}
+.talk p{margin:0;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.talkf{display:flex;gap:6px}.talkf textarea{flex:1;min-width:0;resize:none;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:var(--tx);font:500 14px inherit;padding:8px 10px;outline:none}.talkf textarea:focus{border-color:var(--gold)}
+.talkf button{border:0;border-radius:10px;background:var(--gold);color:#111;font:800 14px inherit;padding:0 14px;cursor:pointer}
+.talkh{color:var(--sub);font-size:12px;margin-top:6px}
 .foot{color:var(--sub);font-size:12px;text-align:center;line-height:1.6}
 .ticker{overflow:hidden;white-space:nowrap;border-radius:10px;background:#1c1405;border:1px solid #4a3a10;color:#ffe9a8;font-size:13px;padding:6px 0}
 .ticker span{display:inline-block;padding-left:100%;animation:tk 22s linear infinite}@keyframes tk{to{transform:translateX(-100%)}}
@@ -88,7 +99,14 @@ h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px}
     <div class="est" id="est"></div>
     <button class="go buy" id="go">사기</button>
   </div>
-  <div class="card"><h2>📰 코인 뉴스</h2><ul class="news" id="news"></ul></div>
+  <div class="card">
+    <div class="ntabs" role="tablist"><button role="tab" data-v="news" aria-selected="true">📰 코인 뉴스</button><button role="tab" data-v="talk" aria-selected="false">💬 토론 <span id="talkN"></span></button></div>
+    <ul class="news" id="news"></ul>
+    <div id="talk" hidden>
+      <ul class="talk" id="talkL"></ul>
+      <form class="talkf" id="talkF"><textarea id="talkI" maxlength="200" rows="2" placeholder="천국코인 어떻게 보세요? (200자, 모두에게 보여요)" aria-label="토론 글"></textarea><button type="submit">올리기</button></form>
+      <div class="talkh" id="talkH">글은 보드게임 천국을 하는 모든 사람에게 보여요. 서로 존중해 주세요 🙂</div>
+    </div></div>
   <div class="card"><h2>🐋 큰손 순위<button type="button" class="nickb" id="nickB">✏️ 내 이름</button></h2>
     <form class="nickf" id="nickF" hidden><input id="nickI" maxlength="10" placeholder="순위에 나올 내 이름" aria-label="내 이름"><button type="submit">저장</button></form>
     <ul class="rank" id="rank"></ul></div>
@@ -265,11 +283,14 @@ function funZoom(build){
     '.fzx{margin-left:auto;border:0;background:#0005;color:#fff;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer;flex:none}'+
     '.fzcards{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.fzcards>*{transform:none!important;position:relative!important;left:auto!important;top:auto!important;margin:0!important}'+
     '.fzsec{margin-top:8px}.fzsec h4{margin:0 0 6px;font-size:13px;color:#ffe08a}'+
+    '.fzcards *{animation:none!important;transition:none!important}'+
+    '.fzhand{margin-top:12px;text-align:center}.fzhand b{display:inline-block;background:linear-gradient(#ffe27a,#d9a400);color:#3a2600;font-weight:900;font-size:20px;padding:6px 18px;border-radius:999px;box-shadow:0 3px 10px #0007}.fzhand small{display:block;margin-top:4px;color:#cfe8d6;font-size:12px}'+
     '.fzhint{margin-top:10px;text-align:center;font-size:12px;color:#cfe8d6}'+
     '';document.head.appendChild(st);}
   document.querySelector('.fzov')?.remove();
   const ov=document.createElement('div');ov.className='fzov';ov.setAttribute('role','dialog');
-  const draw=()=>{const r=build();if(!r){close();return;}
+  let sig='';
+  const draw=()=>{const r=build();if(!r){close();return;}const ns=r.title+'|'+r.body.innerHTML;if(ns===sig)return;sig=ns;   // 바뀐 게 없으면 다시 안 그림 (깜빡임 방지)
     ov.innerHTML=`<div class="fzbox"><div class="fzhd">${r.title}<button class="fzx" type="button" aria-label="닫기">✕</button></div><div class="fzbody"></div><div class="fzhint">아무 곳이나 누르면 닫혀요</div></div>`;
     ov.querySelector('.fzbody').appendChild(r.body);};
   const close=()=>{clearInterval(t);ov.remove();};
@@ -279,13 +300,17 @@ function funZoom(build){
 (()=>{const st=document.createElement('style');st.textContent='.seat .splate,.gplate[data-p]{cursor:pointer;pointer-events:auto}';document.head.appendChild(st);})();
 // 포커·섯다·원카드·뽁뎅: 자리(.seat) 이름표(.splate)를 누르면 그 자리 카드(.scards)를 크게
 document.addEventListener('click',e=>{const pl=e.target.closest&&e.target.closest('.seat .splate');if(!pl)return;
-  const seat=pl.closest('.seat'),tb=seat.parentElement,idx=[...tb.children].indexOf(seat);
-  funZoom(()=>{const st=tb.children[idx];if(!st||!st.classList.contains('seat'))return null;const sc=st.querySelector('.scards'),p=st.querySelector('.splate .sn');if(!sc)return null;
+  const seat=pl.closest('.seat'),tb=seat.parentElement,seats=()=>[...tb.children].filter(x=>x.classList.contains('seat')),idx=seats().indexOf(seat);
+  funZoom(()=>{const st=seats()[idx];if(!st)return null;const sc=st.querySelector('.scards'),p=st.querySelector('.splate .sn');if(!sc)return null;
     const body=document.createElement('div');body.className='fzcards';
-    const cw=Math.min(110,Math.floor((Math.min(innerWidth*0.96,720)-40)/Math.max(3,Math.min(sc.children.length,5)))-8);
-    [...sc.children].forEach(c=>{const k=c.cloneNode(true);k.style.width=cw+'px';k.style.height=Math.round(cw*97.5/60)+'px';k.style.flex='none';k.classList.remove('pick','sel','can');body.appendChild(k);});
-    if(!sc.children.length)body.innerHTML='<div style="padding:20px;color:#cfe8d6">카드가 없어요</div>';
-    return{title:p?`<span>${p.querySelector('b')?.innerHTML||''}</span><small>${p.querySelector('small')?.innerHTML||''}</small>`:'카드',body};});
+    const gz=typeof zoomSeat==='function'?zoomSeat(idx):null;   // 게임이 알려 주는 패(판이 끝나면 다 펼침)·족보
+    const tmp=document.createElement('div');if(gz&&gz.cards)tmp.innerHTML=gz.cards.join('');const src=gz&&gz.cards?tmp:sc;
+    const cw=Math.min(110,Math.floor((Math.min(innerWidth*0.96,720)-40)/Math.max(3,Math.min(src.children.length,5)))-8);
+    [...src.children].forEach(c=>{const k=c.cloneNode(true);k.style.width=cw+'px';k.style.height=Math.round(cw*97.5/60)+'px';k.style.flex='none';k.classList.remove('pick','sel','can');body.appendChild(k);});
+    const hn=gz&&gz.hand!=null?gz.hand:(st.querySelector('.shand')?.textContent||'');
+    if(!src.children.length)body.innerHTML='<div style="padding:20px;color:#cfe8d6">카드가 없어요</div>';
+    const wrap=document.createElement('div');wrap.appendChild(body);if(hn){const d=document.createElement('div');d.className='fzhand';d.innerHTML='<b>'+hn.replace(/[<>&]/g,'')+'</b>'+(gz&&gz.sub?'<small>'+gz.sub+'</small>':'');wrap.appendChild(d);}
+    return{body:wrap,title:p?`<span>${p.querySelector('b')?.innerHTML||''}</span><small>${p.querySelector('small')?.innerHTML||''}</small>`:'카드'};});
 });
 </script>
 <script>/* ===== 천국코인(HVN): 보드게임 천국 전용 가짜 코인 =====
@@ -366,7 +391,7 @@ const COIN=(()=>{
     if(SH)SH.holders.forEach(x=>{if(!x.me)list.push({w:esc(x.nick),q:x.q,real:1,c:'#3a4452'});});
     list.push({w:nick(),q:H.q,me:1,c:'#ffd54f'});list.sort((a,b)=>b.q-a.q);
     $('rank').innerHTML=list.slice(0,10).concat(list.slice(0,10).some(x=>x.me)?[]:[list.find(x=>x.me)]).map((x,k)=>'<li><span class="av" style="background:'+x.c+'">'+(x.me?'⭐':x.real?'🙋':x.w[0])+'</span><span class="nm'+(x.me?' me':'')+'">'+(list.indexOf(x)+1)+'. '+x.w+'</span><b>'+fmtQ(x.q)+'</b></li>').join('');
-    est();draw();}
+    est();draw();if(typeof renderTalk==='function')renderTalk();}
   function est(){const v=+($('amt').value.replace(/[^0-9.]/g,''))||0,p=COIN.price(COIN.N);
     $('est').textContent=v?(tab==='buy'?'≈ '+fmtQ(v/p)+' 받아요':'≈ '+wonF(v*p)+' 받아요'):'';}
   document.querySelector('.rng').onclick=e=>{const b=e.target.closest('button');if(!b)return;range=b.dataset.r;document.querySelectorAll('.rng button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();};
@@ -387,6 +412,26 @@ const COIN=(()=>{
   $('nickB').onclick=()=>{nf.hidden=!nf.hidden;if(!nf.hidden){$('nickI').value=FUNLS.get('bgc-nick','');$('nickI').focus();}};
   nf.onsubmit=e=>{e.preventDefault();const v=$('nickI').value.trim().slice(0,10);FUNLS.set('bgc-nick',v);nf.hidden=true;sync();funToast(v?'이름을 <b>'+v.replace(/[<>&]/g,'')+'</b>(으)로 정했어요':'이름을 지웠어요');render();};
   addEventListener('bgc-nick',()=>{render();sync();});
+  // 💬 토론 (11/19): 모두에게 보이는 짧은 글
+  let view='news',seenN=+(FUNLS.get('bgc-talk-seen',0))||0;
+  document.querySelector('.ntabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;view=b.dataset.v;document.querySelectorAll('.ntabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+    $('news').hidden=view!=='news';$('talk').hidden=view!=='talk';if(view==='talk')pull();renderTalk();};
+  function renderTalk(){const P=SH&&SH.posts?SH.posts:null,L=$('talkL');
+    if(!P){L.innerHTML='<li><p style="color:var(--sub)">토론방에 연결하지 못했어요. 인터넷 연결을 확인해 주세요. (회사 와이파이에선 막혀 있을 수 있어요)</p></li>';$('talkN').textContent='';return;}
+    const top=P.length?P[P.length-1].n:0;
+    if(view==='talk'&&!document.hidden){if(top>seenN){seenN=top;FUNLS.set('bgc-talk-seen',seenN);}$('talkN').textContent='';}
+    else{const k=P.filter(p=>p.n>seenN&&!p.mine).length;$('talkN').textContent=k?'· 새 글 '+k:'';}
+    const atBottom=L.scrollHeight-L.scrollTop-L.clientHeight<40;
+    L.innerHTML=P.length?P.map(p=>'<li class="'+(p.mine?'mine':'')+'"><div class="th"><b>'+(p.mine?'⭐ ':'')+esc(p.nick)+'</b><span>'+ago(p.time)+'</span>'+(p.mine?'<button type="button" data-del="'+p.n+'">지우기</button>':'')+'</div><p>'+esc(p.text)+'</p></li>').join(''):'<li><p style="color:var(--sub)">아직 글이 없어요. 첫 글을 남겨 보세요!</p></li>';
+    if(atBottom||!L.dataset.init){L.scrollTop=L.scrollHeight;L.dataset.init=1;}}
+  $('talkL').onclick=async e=>{const b=e.target.closest('[data-del]');if(!b||!confirm('이 글을 지울까요?'))return;await api('/unpost',{id:UID,n:+b.dataset.del});};
+  $('talkF').onsubmit=async e=>{e.preventDefault();const t=$('talkI').value.trim();if(!t)return;
+    if(!rawNick()){funToast('먼저 이름을 정해 주세요 (아래 큰손 순위의 ✏️ 내 이름)',3500);$('nickB').click();$('nickF').scrollIntoView({block:'center'});return;}
+    const btn=e.submitter||document.querySelector('#talkF button');btn.disabled=true;
+    try{const r=await fetch(API+'/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:UID,nick:rawNick(),text:t})});
+      if(r.status===429)funToast('조금 있다가 다시 올려 주세요 (10초에 한 번)');else if(!r.ok)funToast('글을 올리지 못했어요');else{SH=await r.json();$('talkI').value='';$('talkL').dataset.init='';render();}}
+    catch(err){funToast('토론방에 연결하지 못했어요');}btn.disabled=false;};
+  $('talkI').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))$('talkF').requestSubmit();});
   COIN.stepTo(COIN.nowStep());render();sync();setInterval(()=>{if(!document.hidden)pull();},15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull();});
   setInterval(()=>{const n=COIN.nowStep();if(n>COIN.N){COIN.stepTo(n);render();}},1000);
   addEventListener('resize',draw);
