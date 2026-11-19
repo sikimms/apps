@@ -67,6 +67,22 @@ h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px}
 .talkf{display:flex;gap:6px}.talkf textarea{flex:1;min-width:0;resize:none;background:#0d1117;border:1px solid var(--line);border-radius:10px;color:var(--tx);font:500 14px inherit;padding:8px 10px;outline:none}.talkf textarea:focus{border-color:var(--gold)}
 .talkf button{border:0;border-radius:10px;background:var(--gold);color:#111;font:800 14px inherit;padding:0 14px;cursor:pointer}
 .talkh{color:var(--sub);font-size:12px;margin-top:6px}
+.vote{background:#0d1117;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+.vote .vq{font-size:13px;font-weight:800;margin-bottom:8px;display:flex;justify-content:space-between}.vote .vq small{color:var(--sub);font-weight:500}
+.vote .vb{display:flex;gap:6px}.vote button{flex:1;border:1px solid var(--line);background:#1c222b;color:var(--tx);border-radius:10px;padding:8px 4px;font:800 14px inherit;cursor:pointer}
+.vote button.on.u{background:var(--up);border-color:var(--up);color:#fff}.vote button.on.d{background:var(--dn);border-color:var(--dn);color:#fff}
+.vote .bar{display:flex;height:8px;border-radius:99px;overflow:hidden;margin-top:8px;background:#232a35}.vote .bar i{display:block;background:var(--up)}.vote .bar b{display:block;background:var(--dn)}
+.vote .vp{display:flex;justify-content:space-between;font-size:12px;margin-top:4px;font-weight:700}
+.pinned{background:linear-gradient(135deg,#2a2006,#1a1508);border:1px solid #6b5212;border-radius:12px;padding:8px 10px;margin-bottom:10px}.pinned .pt{font-size:12px;color:var(--gold);font-weight:800;margin-bottom:2px}
+.pinned .th{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);margin-bottom:3px}.pinned .th b{color:var(--tx);font-size:13px}.pinned p{margin:0;font-size:14px;white-space:pre-wrap;word-break:break-word}
+.pinned .th button{margin-left:auto;border:0;background:none;color:var(--sub);font-size:12px;cursor:pointer}.pinned .tf{display:flex;justify-content:flex-end;margin-top:4px}
+.like{border:1px solid var(--line)!important;border-radius:999px!important;padding:1px 8px!important;color:var(--sub)!important;margin-left:0!important;background:none;cursor:pointer;font-size:12px}.like.on{border-color:var(--gold)!important;color:var(--gold)!important}.like:disabled{opacity:.6;cursor:default}
+.talk .tf{display:flex;justify-content:flex-end;margin-top:4px}
+.talk li.brag,.pinned.brag{background:linear-gradient(135deg,#3a1218,#1d0d10);border-color:#7a2a35}.talk li.brag p,.pinned.brag p{font-weight:800;color:#ffd9de}
+#brag{margin-top:8px;background:linear-gradient(135deg,#3a1218,#22100f);border:1px solid #7a2a35;border-radius:12px;padding:10px;display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700}#brag[hidden]{display:none}
+#brag button{margin-left:auto;border:0;border-radius:10px;background:var(--gold);color:#111;font:800 13px inherit;padding:8px 12px;cursor:pointer;white-space:nowrap}
+.rtabs{display:flex;gap:6px;margin-bottom:10px}.rtabs button{flex:1;border:1px solid var(--line);background:none;color:var(--sub);border-radius:10px;padding:6px;font:800 13px inherit;cursor:pointer}.rtabs button[aria-pressed=true]{background:#232a35;color:var(--tx);border-color:#3a4452}
+.rnote{color:var(--sub);font-size:12px;margin-top:8px}
 .foot{color:var(--sub);font-size:12px;text-align:center;line-height:1.6}
 .ticker{overflow:hidden;white-space:nowrap;border-radius:10px;background:#1c1405;border:1px solid #4a3a10;color:#ffe9a8;font-size:13px;padding:6px 0}
 .ticker span{display:inline-block;padding-left:100%;animation:tk 22s linear infinite}@keyframes tk{to{transform:translateX(-100%)}}
@@ -98,18 +114,22 @@ h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:6px}
     <div class="quick"><button data-q=".1">10%</button><button data-q=".25">25%</button><button data-q=".5">50%</button><button data-q="1">전부</button></div>
     <div class="est" id="est"></div>
     <button class="go buy" id="go">사기</button>
+    <div class="brag" id="brag" hidden></div>
   </div>
   <div class="card">
     <div class="ntabs" role="tablist"><button role="tab" data-v="news" aria-selected="true">📰 코인 뉴스</button><button role="tab" data-v="talk" aria-selected="false">💬 토론 <span id="talkN"></span></button></div>
     <ul class="news" id="news"></ul>
     <div id="talk" hidden>
+      <div class="vote" id="vote"></div>
+      <div id="pin"></div>
       <ul class="talk" id="talkL"></ul>
       <form class="talkf" id="talkF"><textarea id="talkI" maxlength="200" rows="2" placeholder="천국코인 어떻게 보세요? (200자, 모두에게 보여요)" aria-label="토론 글"></textarea><button type="submit">올리기</button></form>
       <div class="talkh" id="talkH">글은 보드게임 천국을 하는 모든 사람에게 보여요. 서로 존중해 주세요 🙂</div>
     </div></div>
   <div class="card"><h2>🐋 큰손 순위<button type="button" class="nickb" id="nickB">✏️ 내 이름</button></h2>
     <form class="nickf" id="nickF" hidden><input id="nickI" maxlength="10" placeholder="순위에 나올 내 이름" aria-label="내 이름"><button type="submit">저장</button></form>
-    <ul class="rank" id="rank"></ul></div>
+    <div class="rtabs" role="group" aria-label="순위 기준"><button data-r="q" aria-pressed="true">🐋 보유량</button><button data-r="r" aria-pressed="false">📈 수익률</button></div>
+    <ul class="rank" id="rank"></ul><div class="rnote" id="rnote"></div></div>
   <p class="foot">천국코인은 이 앱 안에서만 쓰는 장난 코인이에요. 진짜 돈·진짜 코인과 아무 관계가 없어요.<br>시세는 앱을 꺼 둔 동안에도 흘러가요.<br>이름을 정하면 1억원 이상 매매 뉴스와 큰손 순위가 보드게임 천국을 하는 사람들끼리 같이 보여요 (🙋 = 진짜 사람).</p>
 </div>
 <script>/* ===== 보드게임 교실 공통: 지갑 · 매일 용돈 · 목소리 · 업적 배지 · 알림 =====
@@ -356,7 +376,7 @@ const COIN=(()=>{
   const rawNick=()=>(FUNLS.get('bgc-nick','')||'').trim().slice(0,10);
   async function api(p,body){try{const r=await fetch(API+p,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});if(!r.ok)return null;const j=await r.json();SH=j;render();return j;}catch(e){return null;}}
   const pull=()=>api('/feed?me='+UID);
-  const sync=()=>api('/sync',{id:UID,nick:rawNick(),q:hold().q});
+  const sync=()=>api('/sync',{id:UID,nick:rawNick(),q:hold().q,c:hold().cost});
   const R={'1h':720,'1d':17280,'1w':120960};
   function draw(){const c=$('chart'),dpr=window.devicePixelRatio||1,W=c.clientWidth,H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;const g=c.getContext('2d');g.scale(dpr,dpr);
     const N=COIN.N,len=range==='all'?N+1:Math.min(N+1,R[range]+1),s0=N+1-len,M=Math.min(len,320),pts=[];
@@ -390,8 +410,18 @@ const COIN=(()=>{
     const list=COIN.WHO.map((w,k)=>({w,q:Math.round(3000000*(0.3+2.5*COIN.h(k,50))*(0.5+COIN.h(day*13+k,51))),c:AV[k]}));
     if(SH)SH.holders.forEach(x=>{if(!x.me)list.push({w:esc(x.nick),q:x.q,real:1,c:'#3a4452'});});
     list.push({w:nick(),q:H.q,me:1,c:'#ffd54f'});list.sort((a,b)=>b.q-a.q);
-    $('rank').innerHTML=list.slice(0,10).concat(list.slice(0,10).some(x=>x.me)?[]:[list.find(x=>x.me)]).map((x,k)=>'<li><span class="av" style="background:'+x.c+'">'+(x.me?'⭐':x.real?'🙋':x.w[0])+'</span><span class="nm'+(x.me?' me':'')+'">'+(list.indexOf(x)+1)+'. '+x.w+'</span><b>'+fmtQ(x.q)+'</b></li>').join('');
+    if(rmode==='r'){rankRate(p,H);}else{$('rnote').textContent='🙋 = 진짜 사람 · 나머지는 컴퓨터 큰손';
+    $('rank').innerHTML=list.slice(0,10).concat(list.slice(0,10).some(x=>x.me)?[]:[list.find(x=>x.me)]).map((x,k)=>'<li><span class="av" style="background:'+x.c+'">'+(x.me?'⭐':x.real?'🙋':x.w[0])+'</span><span class="nm'+(x.me?' me':'')+'">'+(list.indexOf(x)+1)+'. '+x.w+'</span><b>'+fmtQ(x.q)+'</b></li>').join('');}
     est();draw();if(typeof renderTalk==='function')renderTalk();}
+  // 📈 수익률 순위 (진짜 사람만, 지금 들고 있는 코인 기준)
+  let rmode='q';
+  const pct=v=>(v>=0?'+':'')+(Math.abs(v)>=1000?Math.round(v).toLocaleString():v.toFixed(1))+'%';
+  function rankRate(p,H){const L=[];if(SH)SH.holders.forEach(x=>{if(!x.me&&x.c>0&&x.q>0)L.push({w:esc(x.nick),r:(x.q*p-x.c)/x.c*100});});
+    if(H.q>1e-9&&H.cost>0)L.push({w:nick(),r:(H.q*p-H.cost)/H.cost*100,me:1});L.sort((a,b)=>b.r-a.r);
+    const top=L.slice(0,10),meX=L.find(x=>x.me);if(meX&&!top.includes(meX))top.push(meX);
+    $('rank').innerHTML=top.length?top.map(x=>'<li><span class="av" style="background:'+(x.me?'#ffd54f':'#3a4452')+'">'+(x.me?'⭐':'🙋')+'</span><span class="nm'+(x.me?' me':'')+'">'+(L.indexOf(x)+1)+'. '+x.w+'</span><b class="'+(x.r>=0?'up':'dn')+'">'+pct(x.r)+'</b></li>').join(''):'<li style="color:var(--sub)">아직 코인을 든 사람이 없어요</li>';
+    $('rnote').textContent='진짜 사람만 · 지금 들고 있는 코인의 수익률 (산 값 대비 지금 시세)';}
+  document.querySelector('.rtabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;rmode=b.dataset.r;document.querySelectorAll('.rtabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));render();};
   function est(){const v=+($('amt').value.replace(/[^0-9.]/g,''))||0,p=COIN.price(COIN.N);
     $('est').textContent=v?(tab==='buy'?'≈ '+fmtQ(v/p)+' 받아요':'≈ '+wonF(v*p)+' 받아요'):'';}
   document.querySelector('.rng').onclick=e=>{const b=e.target.closest('button');if(!b)return;range=b.dataset.r;document.querySelectorAll('.rng button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();};
@@ -400,12 +430,20 @@ const COIN=(()=>{
   document.querySelector('.quick').onclick=e=>{const b=e.target.closest('button');if(!b)return;const f=+b.dataset.q;
     $('amt').value=tab==='buy'?Math.floor(WALLET.get()*f).toLocaleString():(f===1?hold().q:Math.floor(hold().q*f*100)/100).toLocaleString(undefined,{maximumFractionDigits:2});est();};
   $('amt').oninput=()=>{if(tab==='buy'){const v=$('amt').value.replace(/[^0-9]/g,'');$('amt').value=v?(+v).toLocaleString():'';}est();};
-  async function tradeOut(side,amt){const r=await api('/trade',{id:UID,nick:rawNick(),q:hold().q,side,amt});
+  // 🎉 판 돈이 산 값보다 많으면 '토론에 자랑하기'
+  let bragMsg='';
+  function showBrag(profit,cost,won){const b=$('brag');if(!(profit>0&&cost>0)){b.hidden=true;return;}const r=profit/cost*100;
+    bragMsg='💰 천국코인 '+pct(r)+' 익절! '+big(profit)+' 벌었어요 🎉 ('+big(cost)+' → '+big(won)+')';
+    b.innerHTML='<span>🎉 '+pct(r)+' 수익!</span><button type="button" id="bragGo">토론에 자랑하기</button>';b.hidden=false;
+    $('bragGo').onclick=async()=>{if(!rawNick()){funToast('먼저 이름을 정해 주세요 (✏️ 내 이름)',3000);$('nickB').click();return;}
+      const r2=await postTalk(bragMsg,'brag');if(r2){b.hidden=true;document.querySelector('.ntabs [data-v=talk]').click();$('talk').scrollIntoView({block:'center'});funToast('토론에 자랑했어요 🎉');}};}
+  async function tradeOut(side,amt){const r=await api('/trade',{id:UID,nick:rawNick(),q:hold().q,c:hold().cost,side,amt});
     if(!r&&amt>=1e8)addMyNews((side==='s'?'💼 ':'🐋 ')+nick()+', 천국코인 '+big(amt)+'어치 '+(side==='s'?'매도… 차익 실현?':'매수! 큰손 등장'),side==='s'?0:1);
     if(r&&amt>=1e8&&!rawNick())funToast('이름을 정하면 다른 사람들 뉴스·순위에도 나와요 (✏️ 내 이름)',3500);}
   $('go').onclick=()=>{const v=+($('amt').value.replace(/[^0-9.]/g,''))||0,p=COIN.price(COIN.N),H=hold();if(!v)return;
+    $('brag').hidden=true;
     if(tab==='buy'){if(v>WALLET.get()){funToast('지갑에 돈이 모자라요');return;}WALLET.set(WALLET.get()-v);H.q+=v/p;H.cost+=v;FUNLS.set(K,H);tradeOut('b',v);funToast('🪙 <b>'+fmtQ(v/p)+'</b> 샀어요 ('+wonF(v)+')');}
-    else{const q=Math.min(v,H.q);if(q<=0){funToast('팔 코인이 없어요');return;}const won=Math.round(q*p);H.cost*=1-q/H.q;H.q-=q;if(H.q<1e-6){H.q=0;H.cost=0;}FUNLS.set(K,H);WALLET.set(WALLET.get()+won);
+    else{const q=Math.min(v,H.q);if(q<=0){funToast('팔 코인이 없어요');return;}const won=Math.round(q*p),cp=H.cost*q/H.q;showBrag(won-cp,cp,won);H.cost*=1-q/H.q;H.q-=q;if(H.q<1e-6){H.q=0;H.cost=0;}FUNLS.set(K,H);WALLET.set(WALLET.get()+won);
       tradeOut('s',won);funToast('💰 <b>'+fmtQ(q)+'</b> 팔아서 <b>'+wonF(won)+'</b> 받았어요');}
     $('amt').value='';render();};
   const nf=$('nickF');
@@ -421,16 +459,26 @@ const COIN=(()=>{
     const top=P.length?P[P.length-1].n:0;
     if(view==='talk'&&!document.hidden){if(top>seenN){seenN=top;FUNLS.set('bgc-talk-seen',seenN);}$('talkN').textContent='';}
     else{const k=P.filter(p=>p.n>seenN&&!p.mine).length;$('talkN').textContent=k?'· 새 글 '+k:'';}
+    // 오늘의 기분 투표
+    const V=SH.vote||{u:0,d:0,mine:''},vn=V.u+V.d,up=vn?Math.round(V.u/vn*100):50;
+    $('vote').innerHTML='<div class="vq">오늘 천국코인, 오를까 내릴까? <small>'+(vn?vn+'명 참여':'첫 투표를 해 보세요')+'</small></div><div class="vb"><button type="button" class="u'+(V.mine==='u'?' on':'')+'" data-vote="u">🚀 오른다</button><button type="button" class="d'+(V.mine==='d'?' on':'')+'" data-vote="d">💥 내린다</button></div>'+
+      (vn?'<div class="bar"><i style="width:'+up+'%"></i><b style="width:'+(100-up)+'%"></b></div><div class="vp"><span class="up">상승 '+up+'%</span><span class="dn">하락 '+(100-up)+'%</span></div>':'');
+    const li=p=>'<div class="th"><b>'+(p.mine?'⭐ ':'')+esc(p.nick)+'</b><span>'+ago(p.time)+'</span>'+(p.mine?'<button type="button" data-del="'+p.n+'">지우기</button>':'')+'</div><p>'+esc(p.text)+'</p><div class="tf"><button type="button" class="like'+(p.liked?' on':'')+'" data-like="'+p.n+'"'+(p.mine?' disabled title="내 글"':'')+'>👍 '+(p.likes||'')+'</button></div>';
+    $('pin').innerHTML=SH.pin?'<div class="pinned'+(SH.pin.kind==='brag'?' brag':'')+'"><div class="pt">📌 인기 글 (공감 '+SH.pin.likes+')</div>'+li(SH.pin)+'</div>':'';
     const atBottom=L.scrollHeight-L.scrollTop-L.clientHeight<40;
-    L.innerHTML=P.length?P.map(p=>'<li class="'+(p.mine?'mine':'')+'"><div class="th"><b>'+(p.mine?'⭐ ':'')+esc(p.nick)+'</b><span>'+ago(p.time)+'</span>'+(p.mine?'<button type="button" data-del="'+p.n+'">지우기</button>':'')+'</div><p>'+esc(p.text)+'</p></li>').join(''):'<li><p style="color:var(--sub)">아직 글이 없어요. 첫 글을 남겨 보세요!</p></li>';
+    L.innerHTML=P.length?P.map(p=>'<li class="'+(p.mine?'mine ':'')+(p.kind==='brag'?'brag':'')+'">'+li(p)+'</li>').join(''):'<li><p style="color:var(--sub)">아직 글이 없어요. 첫 글을 남겨 보세요!</p></li>';
     if(atBottom||!L.dataset.init){L.scrollTop=L.scrollHeight;L.dataset.init=1;}}
-  $('talkL').onclick=async e=>{const b=e.target.closest('[data-del]');if(!b||!confirm('이 글을 지울까요?'))return;await api('/unpost',{id:UID,n:+b.dataset.del});};
+  const talkClick=async e=>{const lk=e.target.closest('[data-like]');if(lk){if(lk.disabled)return;await api('/like',{id:UID,n:+lk.dataset.like});return;}
+    const b=e.target.closest('[data-del]');if(!b||!confirm('이 글을 지울까요?'))return;await api('/unpost',{id:UID,n:+b.dataset.del});};
+  $('talkL').onclick=talkClick;$('pin').onclick=talkClick;
+  $('vote').onclick=async e=>{const b=e.target.closest('[data-vote]');if(!b)return;const r=await api('/vote',{id:UID,v:b.dataset.vote});if(!r)funToast('투표하지 못했어요 (인터넷 연결 확인)');};
   $('talkF').onsubmit=async e=>{e.preventDefault();const t=$('talkI').value.trim();if(!t)return;
     if(!rawNick()){funToast('먼저 이름을 정해 주세요 (아래 큰손 순위의 ✏️ 내 이름)',3500);$('nickB').click();$('nickF').scrollIntoView({block:'center'});return;}
     const btn=e.submitter||document.querySelector('#talkF button');btn.disabled=true;
-    try{const r=await fetch(API+'/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:UID,nick:rawNick(),text:t})});
-      if(r.status===429)funToast('조금 있다가 다시 올려 주세요 (10초에 한 번)');else if(!r.ok)funToast('글을 올리지 못했어요');else{SH=await r.json();$('talkI').value='';$('talkL').dataset.init='';render();}}
-    catch(err){funToast('토론방에 연결하지 못했어요');}btn.disabled=false;};
+    if(await postTalk(t))$('talkI').value='';btn.disabled=false;};
+  async function postTalk(t,kind){try{const r=await fetch(API+'/post',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:UID,nick:rawNick(),text:t,kind})});
+      if(r.status===429){funToast('조금 있다가 다시 올려 주세요 (10초에 한 번)');return false;}if(!r.ok){funToast('글을 올리지 못했어요');return false;}SH=await r.json();$('talkL').dataset.init='';render();return true;}
+    catch(err){funToast('토론방에 연결하지 못했어요');return false;}}
   $('talkI').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))$('talkF').requestSubmit();});
   COIN.stepTo(COIN.nowStep());render();sync();setInterval(()=>{if(!document.hidden)pull();},15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull();});
   setInterval(()=>{const n=COIN.nowStep();if(n>COIN.N){COIN.stepTo(n);render();}},1000);
