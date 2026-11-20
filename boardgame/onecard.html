@@ -548,6 +548,16 @@ document.addEventListener('click',e=>{const pl=e.target.closest&&e.target.closes
     return{body:wrap,title:p?`<span>${p.querySelector('b')?.innerHTML||''}</span><small>${p.querySelector('small')?.innerHTML||''}</small>`:'카드'};});
 });
 
+/* ---------- 👀 접속 알림 (11/20 사용자 요청: 누가 들어왔는지 알 수 있게) ----------
+   앱을 열면 천국코인 서버에 '왔어요' 신호만 보냄(무작위 번호·정한 이름·지금 화면). 열려 있는 동안 1분마다. 서버가 안 되면 조용히 무시 */
+const HVN_API='https://34-187-239-222.sslip.io/hvn';
+function hvnUid(){let u=FUNLS.get('bgc-uid','');if(!/^[a-f0-9]{16,32}$/.test(u)){u=[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(16).padStart(2,'0')).join('');FUNLS.set('bgc-uid',u);}return u;}
+(()=>{const PG={'':'첫 화면',index:'첫 화면',baduk:'바둑',chess:'체스',janggi:'장기',omok:'오목',othello:'오델로',gonu:'고누',yut:'윷놀이',gostop:'고스톱',seotda:'섯다',poker:'포커',onecard:'원카드',pokdeng:'뽁뎅',mahjong:'마작',shisen:'사천성',ladder:'사다리',coin:'천국코인'};
+  const f=(location.pathname.split('/').pop()||'').replace(/\.html$/,''),page=PG[f]||f.slice(0,20);
+  const ping=()=>{if(document.hidden)return;try{fetch(HVN_API+'/hello',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:(FUNLS.get('bgc-nick','')||'').trim().slice(0,10),page}),keepalive:true}).catch(()=>{});}catch(e){}};
+  setTimeout(ping,1200);setInterval(ping,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping();});
+  addEventListener('bgc-nick',ping);})();
+
 /* ===== 포커 규칙: 세븐포커 · 하이로우 · 바둑이 · 홀덤 =====
    카드 id 0~51: 숫자 r = id%13+2 (2~14, 14=A), 무늬 s = floor(id/13): 0♣ 1♥ 2♦ 3♠ (같은 족보면 ♠>♦>♥>♣) */
 const PK=(()=>{
