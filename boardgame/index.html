@@ -371,7 +371,7 @@ document.getElementById('achOv').onclick=e=>{if(e.target.id==='achOv')e.target.h
   const esc=t=>String(t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
   const ago=t=>{const m=Math.floor((Date.now()-t)/60000);return m<1?'방금':m<60?m+'분 전':Math.floor(m/60)+'시간 전';};
   async function load(){try{const r=await fetch(HVN_API+'/who?me='+hvnUid(),{cache:'no-store'});if(!r.ok)return;W=await r.json();}catch(e){return;}
-    const b=$i('whoBar');b.hidden=false;b.innerHTML='<span class="dot"></span><span>접속 중 <b>'+W.online+'명</b> · 오늘 '+W.today+'명'+(W.newToday?' · 처음 '+W.newToday+'명':'')+'</span><span class="wm">누가? ›</span>';
+    const b=$i('whoBar');b.hidden=false;b.innerHTML='<span class="dot"></span><span>접속 중 <b>'+W.online+'명</b> · 오늘 '+W.today+'명'+(W.newToday?' · 처음 '+W.newToday+'명':'')+'</span><span class="wm">›</span>';
     if(!$i('whoOv').hidden)list();}
   function list(){if(!W)return;const N=W.named;
     $i('whoList').innerHTML='<p style="margin:0;color:var(--muted);font-size:13px">지금 '+W.online+'명 · 오늘 '+W.today+'명 · 지금까지 모두 '+W.total+'명</p>'+
