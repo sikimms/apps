@@ -580,11 +580,36 @@ document.addEventListener('click',e=>{const pl=e.target.closest&&e.target.closes
    앱을 열면 천국코인 서버에 '왔어요' 신호만 보냄(무작위 번호·정한 이름·지금 화면). 열려 있는 동안 1분마다. 서버가 안 되면 조용히 무시 */
 const HVN_API='https://34-187-239-222.sslip.io/hvn';
 function hvnUid(){let u=FUNLS.get('bgc-uid','');if(!/^[a-f0-9]{16,32}$/.test(u)){u=[...crypto.getRandomValues(new Uint8Array(12))].map(b=>b.toString(16).padStart(2,'0')).join('');FUNLS.set('bgc-uid',u);}return u;}
-(()=>{const PG={'':'첫 화면',index:'첫 화면',baduk:'바둑',chess:'체스',janggi:'장기',omok:'오목',othello:'오델로',gonu:'고누',yut:'윷놀이',gostop:'고스톱',seotda:'섯다',poker:'포커',onecard:'원카드',pokdeng:'뽁뎅',mahjong:'마작',shisen:'사천성',ladder:'사다리',coin:'천국코인'};
-  const f=(location.pathname.split('/').pop()||'').replace(/\.html$/,''),page=PG[f]||f.slice(0,20);
-  const ping=()=>{if(document.hidden)return;try{fetch(HVN_API+'/hello',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:(FUNLS.get('bgc-nick','')||'').trim().slice(0,10),page}),keepalive:true}).catch(()=>{});}catch(e){}};
-  setTimeout(ping,1200);setInterval(ping,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping();});
+const HVN_PG={'':'첫 화면',index:'첫 화면',baduk:'바둑',chess:'체스',janggi:'장기',omok:'오목',othello:'오델로',gonu:'고누',yut:'윷놀이',gostop:'고스톱',seotda:'섯다',poker:'포커',onecard:'원카드',pokdeng:'뽁뎅',mahjong:'마작',shisen:'사천성',ladder:'사다리',coin:'천국코인'};
+const HVN_FILE=(location.pathname.split('/').pop()||'').replace(/\.html$/,'');
+const hvnNick=()=>(FUNLS.get('bgc-nick','')||'').trim().slice(0,10);
+(()=>{const page=HVN_PG[HVN_FILE]||HVN_FILE.slice(0,20);
+  const ping=async()=>{if(document.hidden)return;try{const r=await fetch(HVN_API+'/hello',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),page})});
+      const j=await r.json();if(j&&j.inv&&j.inv.length)hvnShowInvite(j.inv[j.inv.length-1]);}catch(e){}};
+  setTimeout(ping,1200);setInterval(ping,20000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)ping();});
   addEventListener('bgc-nick',ping);})();
+
+/* ---------- 🎮 같이하기 초대 (11/20): 접속 중인 사람에게 게임 방 초대 ----------
+   보내는 쪽: 첫 화면 '누가?' 목록에서 같이하기 → 게임.html#host=<상대표>&n=<이름> → 그 게임이 방을 만들면 방 코드를 서버로 보냄
+   받는 쪽: 20초마다 신호 보낼 때 초대를 받아 창을 띄움 → 같이하기 누르면 게임.html#join=<방 코드> */
+function hvnShowInvite(v){document.getElementById('ivOv')?.remove();
+  const esc=t=>String(t).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+  const o=document.createElement('div');o.id='ivOv';o.style.cssText='position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+  o.innerHTML='<div style="background:linear-gradient(160deg,#1f6b43,#123d27);border:3px solid #ffd54f;border-radius:20px;padding:22px 18px 16px;max-width:340px;width:100%;text-align:center;color:#fff;font-family:\'Noto Sans KR\',sans-serif;box-shadow:0 14px 40px #000a">'+
+    '<div style="font-size:46px;line-height:1">🎮</div><div style="font:900 20px \'Noto Sans KR\',sans-serif;margin:8px 0 4px"><span style="color:#ffd54f">'+esc(v.nick)+'</span>님이<br>'+esc(v.game||'게임')+' 같이 하재요!</div>'+
+    '<div style="font-size:13px;opacity:.85;margin-bottom:14px">방 코드 '+esc(v.code)+'</div>'+
+    '<div style="display:flex;gap:8px"><button type="button" data-a="no" style="flex:1;border:1px solid #ffffff55;background:none;color:#fff;border-radius:12px;padding:12px;font:700 15px inherit;cursor:pointer">나중에</button>'+
+    '<button type="button" data-a="go" style="flex:1.4;border:0;background:#ffd54f;color:#3a2a00;border-radius:12px;padding:12px;font:900 16px inherit;cursor:pointer">같이하기 ▶</button></div></div>';
+  o.onclick=e=>{const b=e.target.closest('[data-a]');if(!b&&e.target!==o)return;o.remove();if(!b||b.dataset.a!=='go')return;
+    const url=v.file+'#join='+v.code;if(HVN_FILE+'.html'===v.file){location.hash='join='+v.code;location.reload();}else location.href=url;};
+  document.body.appendChild(o);try{if(typeof VOICE!=='undefined')VOICE.say(v.nick+'님이 같이 하재요');}catch(e){}}
+// 보내는 쪽: 게임 화면이 #host=… 로 열리면, 방이 만들어질 때까지 기다렸다가 방 코드를 초대로 보냄
+(()=>{const m=location.hash.match(/host=([a-f0-9]{10})(?:&n=([^&]*))?/);if(!m)return;const to=m[1],toNick=decodeURIComponent(m[2]||'친구');
+  setTimeout(()=>history.replaceState(null,'',location.pathname+location.search),3000);   // 게임 화면이 #host 를 읽은 뒤에 지움
+  let tries=0;const t=setInterval(async()=>{tries++;if(tries>60){clearInterval(t);funToast('방을 만들지 못해서 초대를 못 보냈어요');return;}
+    const R=typeof ROOM!=='undefined'?ROOM:typeof NET!=='undefined'?NET:null;if(!R||!R.peer||!R.peer.open||!R.code)return;clearInterval(t);
+    try{const r=await fetch(HVN_API+'/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),to,file:HVN_FILE+'.html',code:R.code,game:HVN_PG[HVN_FILE]||''})});
+      funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>판 시작</b>을 누르세요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
 
 /* ===== 히든 카드 쪼아 보기: 뒷면을 위로 밀어 올리면 앞면이 조금씩 보인다 =====
    squeeze(판 요소, 앞면 svg, 뒷면 svg, 가로세로 비율) → 다 보면 끝나는 Promise */
@@ -1124,7 +1149,9 @@ function roomMount(el,cfg){
     try{await navigator.clipboard.writeText(text+' '+url);ROOM.say('초대 링크를 복사했어요. 메신저에 붙여 넣어 보내세요.','ok');}catch(e){ROOM.say(`초대 링크: ${url}`);}};
   roomUI();
   const m=location.hash.match(/join=(\d{4})/);
-  if(m)setTimeout(()=>{cfg.showPlay&&cfg.showPlay();ROOM.on=true;LOBBY.start(cfg.game,lbDraw);$$('nrIn').value=m[1];roomUI();roomJoin(m[1]);},300);
+  if(m)setTimeout(()=>{cfg.showPlay&&cfg.showPlay();ROOM.on=true;LOBBY.start(cfg.game,lbDraw);$('nrIn').value=m[1];roomUI();roomJoin(m[1]);},300);
+  // 첫 화면 '같이하기'로 열린 경우: #host=… → 바로 방 만들기 (방 코드는 common_fun.js가 초대로 보냄)
+  if(/host=[a-f0-9]{10}/.test(location.hash))setTimeout(()=>{cfg.showPlay&&cfg.showPlay();ROOM.on=true;LOBBY.start(cfg.game,lbDraw);roomUI();roomHost();},300);
 }
 // 받은 메시지를 차례로 처리 (연출이 끝난 뒤 다음 메시지)
 function roomQueue(){let q=Promise.resolve();return fn=>{q=q.then(fn).catch(e=>console.error(e));};}
