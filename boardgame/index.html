@@ -308,13 +308,14 @@ document.getElementById('achOv').onclick=e=>{if(e.target.id==='achOv')e.target.h
     const all=MSG+' '+URL_;let ok=false;try{await navigator.clipboard.writeText(all);ok=true;}catch(e){}
     showInst('친구에게 링크 보내기','<p>'+(ok?'✅ 링크를 복사했어요. 카톡 대화방에 <b>붙여넣기</b> 하면 돼요.':'아래 주소를 길게 눌러 복사해 보내 주세요.')+'</p><p style="word-break:break-all;background:var(--bg);padding:8px;border-radius:8px">'+URL_+'</p><p><a href="sms:?&body='+encodeURIComponent(all)+'">📱 문자로 보내기</a></p>');};
   let deferred=null;const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
-  if(standalone)$i('instBtn').hidden=true;   // 이미 바탕화면 앱으로 연 경우
+  if(standalone)$i('instBtn').textContent='✅ 바탕화면에 추가됨';   // 이미 바탕화면 앱으로 연 경우 (숨기면 헷갈려서 표시만)
   addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;});
-  addEventListener('appinstalled',()=>{$i('instBtn').hidden=true;funToast('📲 바탕화면에 추가했어요!');});
+  addEventListener('appinstalled',()=>{$i('instBtn').textContent='✅ 바탕화면에 추가됨';funToast('📲 바탕화면에 추가했어요!');});
   const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1),android=/Android/.test(ua);
   function showInst(t,h){$i('instT').textContent=t;$i('instB').innerHTML=h;$i('instOv').hidden=false;}
   $i('instBtn').onclick=async()=>{
-    if(deferred){deferred.prompt();const r=await deferred.userChoice.catch(()=>null);deferred=null;if(r&&r.outcome==='accepted')$i('instBtn').hidden=true;return;}
+    if(standalone){showInst('이미 추가돼 있어요','<p>지금 바탕화면 아이콘으로 열고 있어요 ✅</p><p>친구에게는 <b>📤 친구 초대하기</b>로 링크를 보내 주세요. 친구 폰에서 이 버튼을 누르면 추가 방법이 나와요.</p>');return;}
+    if(deferred){deferred.prompt();const r=await deferred.userChoice.catch(()=>null);deferred=null;if(r&&r.outcome==='accepted')$i('instBtn').textContent='✅ 바탕화면에 추가됨';return;}
     if(ios)showInst('아이폰 바탕화면에 추가','<ol><li>사파리 아래쪽 <span class="big">⬆️</span> <b>공유</b> 버튼을 눌러요<br><small>(카톡 안에서 열었다면 먼저 오른쪽 아래 ··· → <b>Safari로 열기</b>)</small></li><li>목록을 내려 <b>홈 화면에 추가</b>를 눌러요</li><li>오른쪽 위 <b>추가</b>를 누르면 끝!</li></ol>');
     else if(android)showInst('바탕화면에 추가','<ol><li>크롬 오른쪽 위 <span class="big">⋮</span> 메뉴를 눌러요<br><small>(카톡 안에서 열었다면 먼저 오른쪽 위 ⋮ → <b>다른 브라우저로 열기</b>)</small></li><li><b>홈 화면에 추가</b> 또는 <b>앱 설치</b>를 눌러요</li><li><b>설치/추가</b>를 누르면 바탕화면에 아이콘이 생겨요</li></ol>');
     else showInst('PC 바탕화면에 추가','<ol><li>크롬이나 엣지 주소창 오른쪽의 <span class="big">⊕</span> (앱 설치) 아이콘을 눌러요</li><li>또는 오른쪽 위 ⋮ → <b>앱 설치</b> (엣지: ··· → 앱 → <b>이 사이트를 앱으로 설치</b>)</li><li>설치하면 바탕화면과 시작 메뉴에 아이콘이 생겨요</li></ol>');};
