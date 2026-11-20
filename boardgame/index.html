@@ -44,7 +44,7 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
 .ach{display:flex;gap:8px;align-items:center;padding:8px;border-radius:12px;border:1px solid var(--rule);background:var(--bg)}.ach i{font-style:normal;font-size:24px}
 .ach b{display:block;font-size:13px}.ach small{display:block;font-size:11px;color:var(--muted)}.ach.no{opacity:.4;filter:grayscale(1)}
 .achbox button{border:1px solid var(--rule);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 14px;cursor:pointer}
-.sharebar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 4px}
+.sharebar{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0 4px}
 .sharebar button{border:1px solid var(--rule);background:var(--card);color:var(--ink);border-radius:14px;padding:12px 8px;font:800 15px var(--f-body);cursor:pointer;box-shadow:0 2px 6px #0001}
 .sharebar button:active{transform:translateY(1px)}.sharebar button[hidden]{display:none}.sharebar:has(#instBtn[hidden]){grid-template-columns:1fr}
 .instbox ol{margin:8px 0 0;padding-left:20px;font-size:15px;line-height:1.9}.instbox .big{font-size:20px}
@@ -59,7 +59,7 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
     <div class="sub">처음 배우는 사람을 위한 화투·카드·판 게임·마작 교실</div>
     <div class="wallet"><div><small>내 지갑 (모든 게임 공통 · 가짜 돈)</small><b id="wBal">-</b><span id="wToday"></span></div>
       <div class="wbtns"><button id="achBtn">🏅 배지 <span id="achN"></span></button><button onclick="giftPrompt()" title="선물 코드">🎁</button><label class="vv"><input type="checkbox" id="vVoice"> 목소리</label></div></div>
-    <div class="sharebar"><button type="button" id="shareBtn">📤 친구 초대하기</button><button type="button" id="instBtn">📲 바탕화면에 추가</button></div>
+    <div class="sharebar"><button type="button" id="shareBtn">👫 친구와 같이하기 (초대)</button><button type="button" id="instBtn" hidden>📲 바탕화면에 추가</button></div>
     <div id="instOv" class="achov" hidden><div class="achbox instbox"><h2 id="instT">바탕화면에 추가하기</h2><div id="instB"></div><div style="text-align:right;margin-top:12px"><button id="instClose">알겠어요</button></div></div></div>
     <div id="recent"></div>
     <h2 class="cat">천국코인</h2><div class="apps"><a class="app" href="coin.html"><img src="icons/coin.png" alt="" width="64" height="64"><span><b>천국코인 거래소</b><small>게임 머니로 사고파는 장난 코인 · 시세·뉴스·큰손 순위</small></span></a></div>
@@ -308,9 +308,9 @@ document.getElementById('achOv').onclick=e=>{if(e.target.id==='achOv')e.target.h
     const all=MSG+' '+URL_;let ok=false;try{await navigator.clipboard.writeText(all);ok=true;}catch(e){}
     showInst('친구에게 링크 보내기','<p>'+(ok?'✅ 링크를 복사했어요. 카톡 대화방에 <b>붙여넣기</b> 하면 돼요.':'아래 주소를 길게 눌러 복사해 보내 주세요.')+'</p><p style="word-break:break-all;background:var(--bg);padding:8px;border-radius:8px">'+URL_+'</p><p><a href="sms:?&body='+encodeURIComponent(all)+'">📱 문자로 보내기</a></p>');};
   let deferred=null;const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
-  if(standalone)$i('instBtn').textContent='✅ 바탕화면에 추가됨';   // 이미 바탕화면 앱으로 연 경우 (숨기면 헷갈려서 표시만)
+     // 이미 바탕화면 앱으로 연 경우 (숨기면 헷갈려서 표시만)
   addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;});
-  addEventListener('appinstalled',()=>{$i('instBtn').textContent='✅ 바탕화면에 추가됨';funToast('📲 바탕화면에 추가했어요!');});
+  addEventListener('appinstalled',()=>{funToast('📲 바탕화면에 추가했어요!');});
   const ua=navigator.userAgent,ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1),android=/Android/.test(ua);
   function showInst(t,h){$i('instT').textContent=t;$i('instB').innerHTML=h;$i('instOv').hidden=false;}
   $i('instBtn').onclick=async()=>{
