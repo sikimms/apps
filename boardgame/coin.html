@@ -377,23 +377,64 @@ const COIN=(()=>{
   const STEP=5000,BASE=Math.log(10000),SIG=0.0018,REV=0.00003,EVP=1/4000,EVLEN=60;
   const h=(i,s)=>{let x=Math.imul(i^0x9e3779b9,0x85ebca6b)^Math.imul(s+0x632be5,0xc2b2ae35);x^=x>>>16;x=Math.imul(x,0x7feb352d);x^=x>>>15;x=Math.imul(x,0x846ca68b);x^=x>>>16;return (x>>>0)/4294967296;};
   const WHO=['김 사장','이 여사','박 부장','최 선생','정 과장','선(물주)','한 회장','윤 실장'];
-  const UPN=[(w,i)=>`🚀 ${w}, 천국코인에 ${2+Math.floor(h(i,3)*90)}억 몰빵!`,w=>`📈 "고스톱 판돈을 천국코인으로 받는다"는 소문에 급등`,w=>`🐋 정체불명 큰손 매수 포착 — ${w}로 추정`,w=>`🌕 ${w}: "천국코인 달까지 간다"`,w=>`🎉 ${w}, 포커 대박 상금으로 천국코인 쓸어 담아`];
-  const DNN=[w=>`📉 ${w}, 천국코인 전부 팔았다…`,w=>`😱 ${w} "섯다에서 다 잃었다" 코인 급히 처분`,w=>`🧊 거래소 점검 소문에 급락`,w=>`🐻 곰돌이 등장! 시장에 공포 확산`,w=>`💸 ${w}, 손절하고 화투 치러 떠나`];
-  let L=new Float64Array(0),N=-1,events=[],evLeft=0,evDrift=0;
+  const UPN=[(w,i)=>`🚀 ${w}, 천국코인에 ${2+Math.floor(h(i,3)*90)}억 몰빵!`,w=>`📈 "고스톱 판돈을 천국코인으로 받는다"는 소문에 급등`,w=>`🐋 정체불명 큰손 매수 포착 — ${w}로 추정`,w=>`🌕 ${w}: "천국코인 달까지 간다"`,w=>`🎉 ${w}, 포커 대박 상금으로 천국코인 쓸어 담아`,
+    w=>`🏪 동네 분식집 "떡볶이 값 천국코인 결제 가능" 선언`,w=>`🤖 AI 분석가 "천국코인, 역대급 저평가 구간" 보고서`,w=>`🌏 달나라 거래소 상장 확정! 해외 투자자 몰려`,(w,i)=>`🐋 고래 지갑 ${3+Math.floor(h(i,4)*9)}개 동시 매수… 무슨 일?`,w=>`🏆 ${w}, 마작 대회 우승 상금 전액 천국코인 매수`,
+    w=>`🎤 인기 트로트 가수 "노래 값 천국코인으로 받겠다" 깜짝 발언`,w=>`🍀 "천국코인 지갑 가진 사람만 로또 당첨" 근거 없는 소문 확산`,w=>`🏦 천국은행, 천국코인 담보 대출 시작`,w=>`📺 9시 뉴스 "요즘 아이들 용돈은 천국코인" 특집 방송`,w=>`🧑‍🍳 ${w}: "가게 문 닫고 천국코인 차트만 본다"`,
+    w=>`🛸 외계인도 산다? 수상한 신호와 함께 대량 매수`,w=>`🎲 윷놀이 판에서 "모" 다섯 번 연속… 행운의 상징 천국코인 급등`,w=>`⚡ 매수 주문 폭주로 거래소 서버 잠깐 멈칫`];
+  const DNN=[w=>`📉 ${w}, 천국코인 전부 팔았다…`,w=>`😱 ${w} "섯다에서 다 잃었다" 코인 급히 처분`,w=>`🧊 거래소 점검 소문에 급락`,w=>`🐻 곰돌이 등장! 시장에 공포 확산`,w=>`💸 ${w}, 손절하고 화투 치러 떠나`,
+    w=>`🧯 "천국코인 지갑 비밀번호 잊어버렸다" ${w} 하소연에 투심 위축`,w=>`🌧️ 장마 예보에 "코인보다 우산" 매도세`,w=>`🕵️ 천국 금융감독원 "과열 주의보" 발령`,(w,i)=>`🐋 고래 지갑에서 ${1+Math.floor(h(i,5)*9)}천억어치 거래소로 이동… 매도 신호?`,w=>`🍜 ${w}: "라면 사 먹으려고 코인 좀 팔았어요"`,
+    w=>`🎰 슬롯머신 대박 꿈 깨고 코인 정리하는 사람 늘어`,w=>`🧓 할머니 "그거 다 바람이여" 한마디에 동네 전체 매도`,w=>`📵 거래소 앱 먹통 소문… 사실은 와이파이 문제`,w=>`🦊 여우 같은 단타 세력, 고점에서 우르르 빠져나가`,w=>`🛑 ${w}, "코인 끊고 바둑 배운다" 선언`,w=>`🌪️ 이유 없는 급락… 전문가들도 "모르겠다"`];
+  let L=new Float64Array(0),N=-1,events=[],evLeft=0,evDrift=0,evUp=0,evDn=0;
   function stepTo(n){if(n<=N)return;const nl=new Float64Array(Math.max(n+1,L.length*2|0,1024));nl.set(L.subarray(0,N+1));L=nl;
     for(let i=N+1;i<=n;i++){
       if(i===0){L[0]=BASE;events.push({i:0,up:1,t:'🎉 천국코인 상장! 1 HVN = 10,000원에서 출발'});N=0;continue;}
       let p=L[i-1];
       const u1=Math.max(1e-12,h(i,1)),u2=h(i,2);p+=SIG*Math.sqrt(-2*Math.log(u1))*Math.cos(6.283185307*u2)+REV*(BASE-p);
       if(!evLeft&&h(i,7)<EVP){const up=h(i,8)<0.5,mag=0.15+0.35*h(i,9);evDrift=(up?Math.log(1+mag):Math.log(1-mag*0.8))/EVLEN;evLeft=EVLEN;
-        const w=WHO[Math.floor(h(i,10)*WHO.length)],pool=up?UPN:DNN;events.push({i,up:up?1:0,mag,t:pool[Math.floor(h(i,11)*pool.length)](w,i)});}
+        const w=WHO[Math.floor(h(i,10)*WHO.length)],pool=up?UPN:DNN,c=up?evUp++:evDn++;events.push({i,up:up?1:0,mag,t:pool[(c*5+3)%pool.length](w,i)});}   // 문구는 차례로 돌려 써서 연달아 같은 말 안 나오게
       if(evLeft){p+=evDrift;evLeft--;}
       L[i]=p;}
     N=n;}
+  const AMB=480,TAG={g:'🎮 게임',m:'📊 시장',l:'🌤️ 생활',c:'🗣️ 커뮤니티',w:'🌍 해외',f:'😂 웃긴',t:'💡 꿀팁'};
+  const GAMES=['고스톱','섯다','포커','원카드','뽁뎅','마작','윷놀이','바둑','장기','체스','오목','사천성'];
+  const AN=[
+    ['g',(k,r)=>`오늘의 인기 게임은 '${GAMES[Math.floor(r(1)*GAMES.length)]}'! 접속자 절반이 한 판씩`],
+    ['g',(k,r)=>`${WHO[Math.floor(r(1)*WHO.length)]}, ${GAMES[Math.floor(r(2)*GAMES.length)]}에서 ${3+Math.floor(r(3)*9)}연승 중`],
+    ['g',()=>'고스톱 "피박·광박" 동시 등장… 오늘의 비운의 주인공은?'],
+    ['g',(k,r)=>`포커 테이블에서 로열 스트레이트 플러시 목격담 ${1+Math.floor(r(1)*3)}건`],
+    ['g',()=>'마작 초보 모임 "리치만 외치면 이긴다" 비법 공유'],
+    ['m',(k,r,i)=>{const a=price(i),b=price(Math.max(0,i-720)),d=(a/b-1)*100;return `최근 1시간 ${d>=0?'+':''}${d.toFixed(2)}% · 지금 ${Math.round(a).toLocaleString()}원`;}],
+    ['m',(k,r,i)=>{let hi=0,lo=1e18;for(let j=Math.max(0,i-17280);j<=i;j+=60){const p=price(j);if(p>hi)hi=p;if(p<lo)lo=p;}return `24시간 최고 ${Math.round(hi).toLocaleString()}원 · 최저 ${Math.round(lo).toLocaleString()}원`;}],
+    ['m',(k,r,i)=>{const d=(price(i)/price(Math.max(0,i-4320))-1)*100;return Math.abs(d)<1?'6시간째 옆으로 걷는 중… 폭풍 전야?':`6시간 동안 ${d>0?'상승':'하락'} ${Math.abs(d).toFixed(1)}%${d>0?' — 분위기 좋다':' — 줍줍 기회?'}`;}],
+    ['m',(k,r,i)=>`상장 ${Math.floor((EPOCH+i*STEP-EPOCH)/864e5)+1}일째, 상장가 대비 ${((price(i)/10000-1)*100).toFixed(1)}%`],
+    ['l',()=>'오늘 저녁 메뉴 투표 1위는 치킨… 코인으로 결제하는 꿈만 꿔요'],
+    ['l',(k,r)=>`천국 날씨: ${['맑음 ☀️','흐림 ☁️','비 🌧️','눈 ❄️','바람 🌬️'][Math.floor(r(1)*5)]} — 화투 치기 좋은 날`],
+    ['l',()=>'주말엔 가족과 윷놀이 한 판 어때요? "모" 나오면 소원 하나'],
+    ['l',()=>'퇴근길 지하철, 사람들 폰 화면 절반이 고스톱'],
+    ['c',(k,r)=>`커뮤니티 설문 "천국코인 1년 뒤 얼마?" 1위는 ${['10만원','1억원','0원','라면 한 그릇'][Math.floor(r(1)*4)]}`],
+    ['c',()=>'"평균 산 값보다 내려가면 그냥 앱 지운다" 공감 글 화제'],
+    ['c',(k,r)=>`토론방 인기 단어: ${['존버','떡상','줍줍','손절','가즈아','물타기'][Math.floor(r(1)*6)]}`],
+    ['c',()=>'"섯다 땡잡이로 이겼어요" 인증글에 축하 댓글 줄줄이'],
+    ['w',()=>'달나라 거래소, 천국코인 24시간 거래 시작 검토'],
+    ['w',(k,r)=>`화성 이민자 커뮤니티 "천국코인 ${2+Math.floor(r(1)*8)}% 담았다"`],
+    ['w',()=>'은하 연합 중앙은행 "천국코인은 장난감" 공식 입장'],
+    ['f',()=>'고양이가 매수 버튼 밟아 전 재산 투자… 결과는 수익 3%'],
+    ['f',()=>'"차트 보려고 했는데 화투 그림 보고 있었다" 착시 사연'],
+    ['f',(k,r)=>`${WHO[Math.floor(r(1)*WHO.length)]}, 코인 수익으로 산 것은… 붕어빵 3개`],
+    ['f',()=>'"오를 때 살걸" 올해의 명언 후보 등록'],
+    ['t',()=>'수익률 순위는 돈이 적어도 1등 할 수 있어요'],
+    ['t',()=>'매일 출석 카드 뽑기로 용돈부터 챙기세요'],
+    ['t',()=>'판 끝나고 상대 이름을 누르면 패를 크게 볼 수 있어요'],
+    ['t',()=>'접속 중인 친구에게 🎮 같이하기로 바로 초대!']];
+  // 같은 문구가 이어서 나오지 않게: 정해진 순서로 섞어 두고 차례로 (분야가 골고루)
+  const PERM=AN.map((x,j)=>j);for(let j=PERM.length-1;j>0;j--){const q=Math.floor(h(j,99)*(j+1));[PERM[j],PERM[q]]=[PERM[q],PERM[j]];}
+  // k번째 칸(약 40분)마다 소식 하나: 칸 안 위치·분야·문구 모두 시간으로 정해짐
+  function ambient(n){const out=[],last=Math.floor(N/AMB);for(let k=last;k>=0&&out.length<n;k--){const i=k*AMB+Math.floor(h(k,21)*AMB);if(i>N||i<1)continue;
+      const r=j=>h(k,30+j),a=AN[PERM[k%AN.length]];out.push({i,cat:a[0],t:TAG[a[0]]+' · '+a[1](k,r,i)});}return out;}
   const nowStep=()=>Math.max(0,Math.floor((Date.now()-EPOCH)/STEP));
   const price=i=>Math.exp(L[Math.max(0,Math.min(N,i))]);
   const timeOf=i=>EPOCH+i*STEP;
-  return{EPOCH,STEP,h,WHO,stepTo,nowStep,price,timeOf,get N(){return N;},get events(){return events;}};
+  return{EPOCH,STEP,h,WHO,stepTo,nowStep,price,timeOf,ambient,get N(){return N;},get events(){return events;}};
 })();
 
 (()=>{
@@ -439,7 +480,7 @@ const COIN=(()=>{
     $('mPnl').innerHTML=H.q>1e-9?'<span class="'+(pnl>=0?'up':'dn')+'">'+(pnl>=0?'+':'')+big(pnl)+' ('+(pnl>=0?'+':'')+(pnl/H.cost*100).toFixed(1)+'%)</span>':'-';
     $('mWal').textContent=wonF(WALLET.get());
     const shared=SH?SH.news.map(n=>({t:(n.side==='s'?'💼 ':'🐋 ')+esc(n.nick)+', 천국코인 '+big(n.amt)+'어치 '+(n.side==='s'?'매도… 차익 실현?':'매수! 큰손 등장'),up:n.side==='s'?0:1,time:n.time})):[];
-    const ev=COIN.events.slice(-12).map(e=>({t:e.t,up:e.up,time:COIN.timeOf(e.i)})).concat(myNews(),shared).sort((a,b)=>b.time-a.time).slice(0,12);
+    const ev=COIN.events.slice(-12).map(e=>({t:e.t,up:e.up,time:COIN.timeOf(e.i)})).concat(COIN.ambient(12).map(e=>({t:esc(e.t),up:2,time:COIN.timeOf(e.i)})),myNews(),shared).sort((a,b)=>b.time-a.time).slice(0,16);
     $('news').innerHTML=ev.map(e=>'<li><time>'+ago(e.time)+'</time><span class="'+(e.up?'up':'dn')+'" style="color:inherit">'+e.t+'</span></li>').join('');
     $('tick').textContent=ev.slice(0,3).map(e=>e.t).join('   ·   ');
     // 큰손 순위 (컴퓨터 상대는 시간에 따라 조금씩 사고팖)
