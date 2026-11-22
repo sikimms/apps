@@ -466,6 +466,8 @@ function hvnShowInvite(v){document.getElementById('ivOv')?.remove();
     try{const r=await fetch(HVN_API+'/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),to,file:HVN_FILE+'.html',code:R.code,game:HVN_PG[HVN_FILE]||''})});
       funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>판 시작</b>을 누르세요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
 
+// 11/23 자동 배포(GCP bgdeploy) 연결 확인
+
 /* ===== 마작 규칙 (일본식 리치 마작, 4명, 동풍전) =====
    패 종류 t (0~33): 0~8 만(1~9) · 9~17 통 · 18~26 삭 · 27 동 28 남 29 서 30 북 · 31 백 32 발 33 중
    패 한 장 id (0~135): t = id>>2. 적도라(빨간 5) = id 16(5만) · 52(5통) · 88(5삭) */

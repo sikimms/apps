@@ -468,6 +468,8 @@ function hvnShowInvite(v){document.getElementById('ivOv')?.remove();
     try{const r=await fetch(HVN_API+'/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),to,file:HVN_FILE+'.html',code:R.code,game:HVN_PG[HVN_FILE]||''})});
       funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>판 시작</b>을 누르세요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
 
+// 11/23 자동 배포(GCP bgdeploy) 연결 확인
+
 /* ===== 윷놀이 규칙 =====
    말판 점 29개: 0 참먹이(출발·도착, 오른쪽 아래) → 1~4 오른쪽 변 → 5 오른쪽 위 귀(모) → 6~9 → 10 왼쪽 위 귀(뒷모)
    → 11~14 → 15 왼쪽 아래 귀(찌모) → 16~19 → 0. 지름길: 5→20→21→22(방)→23→24→15, 10→25→26→22→27→28→0.

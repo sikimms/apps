@@ -332,6 +332,8 @@ function hvnShowInvite(v){document.getElementById('ivOv')?.remove();
     const R=typeof ROOM!=='undefined'?ROOM:typeof NET!=='undefined'?NET:null;if(!R||!R.peer||!R.peer.open||!R.code)return;clearInterval(t);
     try{const r=await fetch(HVN_API+'/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),to,file:HVN_FILE+'.html',code:R.code,game:HVN_PG[HVN_FILE]||''})});
       funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>판 시작</b>을 누르세요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
+
+// 11/23 자동 배포(GCP bgdeploy) 연결 확인
 </script>
 <script>
 const GAMES=[{"f":"baduk.html","n":"바둑","i":"baduk"},{"f":"chess.html","n":"체스","i":"chess"},{"f":"janggi.html","n":"장기","i":"janggi"},{"f":"omok.html","n":"오목","i":"omok"},{"f":"othello.html","n":"오델로","i":"othello"},{"f":"gonu.html","n":"고누","i":"gonu"},{"f":"yut.html","n":"윷놀이","i":"yut"},{"f":"gostop.html","n":"고스톱","i":"gostop"},{"f":"seotda.html","n":"섯다·도리짓고땡","i":"seotda"},{"f":"poker.html","n":"포커·하이로우·바둑이","i":"poker"},{"f":"onecard.html","n":"원카드·훌라","i":"onecard"},{"f":"pokdeng.html","n":"뽁뎅 (복땡)","i":"pokdeng"},{"f":"mahjong.html","n":"마작","i":"mahjong"},{"f":"shisen.html","n":"사천성","i":"shisen"},{"f":"coin.html","n":"천국코인 거래소","i":"coin"},{"f":"ladder.html","n":"사다리타기","i":"ladder"}];

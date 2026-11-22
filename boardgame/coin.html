@@ -367,6 +367,8 @@ function hvnShowInvite(v){document.getElementById('ivOv')?.remove();
     const R=typeof ROOM!=='undefined'?ROOM:typeof NET!=='undefined'?NET:null;if(!R||!R.peer||!R.peer.open||!R.code)return;clearInterval(t);
     try{const r=await fetch(HVN_API+'/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),to,file:HVN_FILE+'.html',code:R.code,game:HVN_PG[HVN_FILE]||''})});
       funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>판 시작</b>을 누르세요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
+
+// 11/23 자동 배포(GCP bgdeploy) 연결 확인
 </script>
 <script>/* ===== 천국코인(HVN): 보드게임 천국 전용 가짜 코인 =====
    시세는 시간으로 정해지는 난수 걸음이라 앱을 꺼 둬도 흘러가고, 다시 열면 같은 흐름을 다시 계산한다. */

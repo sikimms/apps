@@ -583,6 +583,8 @@ function hvnShowInvite(v){document.getElementById('ivOv')?.remove();
     try{const r=await fetch(HVN_API+'/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),to,file:HVN_FILE+'.html',code:R.code,game:HVN_PG[HVN_FILE]||''})});
       funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>판 시작</b>을 누르세요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
 
+// 11/23 자동 배포(GCP bgdeploy) 연결 확인
+
 /* ===== 포커 규칙: 세븐포커 · 하이로우 · 바둑이 · 홀덤 =====
    카드 id 0~51: 숫자 r = id%13+2 (2~14, 14=A), 무늬 s = floor(id/13): 0♣ 1♥ 2♦ 3♠ (같은 족보면 ♠>♦>♥>♣) */
 const PK=(()=>{
