@@ -954,7 +954,9 @@ const roomGuests=()=>ROOM.guests.filter(g=>g.open).map(g=>g.gi);
 // 친구 지갑·별명 (방장이 들고 있음)
 function roomMoney(gi,def){const x=ROOM.gm&&ROOM.gm[gi];return x&&typeof x.money==='number'?x.money:def;}
 function roomName(gi){const x=ROOM.gm&&ROOM.gm[gi];return x&&x.nick?x.nick:'친구 '+gi;}
-function roomSendMoney(){if(ROOM.ok&&typeof WALLET!=='undefined')roomToHost({t:'money',v:WALLET.get(),nick:typeof LOBBY!=='undefined'?LOBBY.nick():''});}
+function roomSendMoney(){if(ROOM.ok&&typeof WALLET!=='undefined'){ROOM.sentMoney=WALLET.get();roomToHost({t:'money',v:ROOM.sentMoney,nick:typeof LOBBY!=='undefined'?LOBBY.nick():''});}}
+// 손님 기기: 판 사이에도 지갑이 바뀌면(용돈 카드·코인 매도·선물 등) 3초 안에 방장에게 다시 알림 → 상대 돈이 옛날 값으로 적게 보이던 문제
+setInterval(()=>{if(!ROOM.ok||ROOM.host||typeof WALLET==='undefined')return;if(WALLET.get()!==ROOM.sentMoney)roomSendMoney();},3000);
 function roomReset(){
   try{ROOM.conn&&ROOM.conn.close();}catch(e){}for(const g of ROOM.guests)try{g.conn.close();}catch(e){}
   try{ROOM.peer&&ROOM.peer.destroy();}catch(e){}
@@ -1428,7 +1430,7 @@ function onLeave(gi){
   if(pendAsk&&pendAsk.gi===gi){const r=pendAsk.res,def=pendAsk.def;pendAsk=null;r(def);}
   if(G&&!G.busy&&!G.s.over&&G.s.turn===p)aiTurn();else if(G)draw();
 }
-roomMount($('netroom'),{game:'gostop',max:2,start:startOnline,msg:onNet,leave:onLeave,off:stopOnline,showPlay:()=>showTab('play')});
+roomMount($('netroom'),{game:'gostop',max:2,start:startOnline,msg:onNet,leave:onLeave,off:stopOnline,showPlay:()=>showTab('play'),money:()=>{if(G&&G.s)document.querySelectorAll('.gplate[data-p]').forEach(lb=>{lb.innerHTML=nameOf(+lb.dataset.p);});}});
 function renderRec(){const lv=GS.LEVELS[opt.level].name,r=rec[lv]||{w:0,l:0};$('grec').innerHTML=`<b>${lv}</b> 상대 ${r.w}승 ${r.l}패 · 내 돈 ${won(money)}`;}
 function renderLevels(){$('glevels').innerHTML=GS.LEVELS.map((l,k)=>`<button class="lv" role="radio" aria-checked="${k===opt.level}" data-k="${k}">${l.name}<span>${['막 둠','눈앞만','계산함','깊이 계산'][k]}</span></button>`).join('');}
 $('glevels').addEventListener('click',e=>{const b=e.target.closest('.lv');if(!b||GUEST())return;opt.level=+b.dataset.k;store.set('level',opt.level);renderLevels();renderRec();if(G&&!G.s.over)draw();});

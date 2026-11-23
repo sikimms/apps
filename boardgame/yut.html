@@ -696,7 +696,9 @@ const roomGuests=()=>ROOM.guests.filter(g=>g.open).map(g=>g.gi);
 // 친구 지갑·별명 (방장이 들고 있음)
 function roomMoney(gi,def){const x=ROOM.gm&&ROOM.gm[gi];return x&&typeof x.money==='number'?x.money:def;}
 function roomName(gi){const x=ROOM.gm&&ROOM.gm[gi];return x&&x.nick?x.nick:'친구 '+gi;}
-function roomSendMoney(){if(ROOM.ok&&typeof WALLET!=='undefined')roomToHost({t:'money',v:WALLET.get(),nick:typeof LOBBY!=='undefined'?LOBBY.nick():''});}
+function roomSendMoney(){if(ROOM.ok&&typeof WALLET!=='undefined'){ROOM.sentMoney=WALLET.get();roomToHost({t:'money',v:ROOM.sentMoney,nick:typeof LOBBY!=='undefined'?LOBBY.nick():''});}}
+// 손님 기기: 판 사이에도 지갑이 바뀌면(용돈 카드·코인 매도·선물 등) 3초 안에 방장에게 다시 알림 → 상대 돈이 옛날 값으로 적게 보이던 문제
+setInterval(()=>{if(!ROOM.ok||ROOM.host||typeof WALLET==='undefined')return;if(WALLET.get()!==ROOM.sentMoney)roomSendMoney();},3000);
 function roomReset(){
   try{ROOM.conn&&ROOM.conn.close();}catch(e){}for(const g of ROOM.guests)try{g.conn.close();}catch(e){}
   try{ROOM.peer&&ROOM.peer.destroy();}catch(e){}
