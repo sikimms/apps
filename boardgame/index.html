@@ -44,6 +44,7 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
 .ach{display:flex;gap:8px;align-items:center;padding:8px;border-radius:12px;border:1px solid var(--rule);background:var(--bg)}.ach i{font-style:normal;font-size:24px}
 .ach b{display:block;font-size:13px}.ach small{display:block;font-size:11px;color:var(--muted)}.ach.no{opacity:.4;filter:grayscale(1)}
 .achbox button{border:1px solid var(--rule);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 14px;cursor:pointer}
+.evbtn{display:block;width:100%;margin:10px 0 0;border:0;border-radius:14px;padding:14px 10px;font:800 16px var(--f-body);color:#3a2a00;background:linear-gradient(135deg,#ffe082,#ffb300);box-shadow:0 4px 14px #ffb30066;cursor:pointer;animation:evp 1.4s ease-in-out infinite}.evbtn[hidden]{display:none}@keyframes evp{50%{transform:scale(1.02);box-shadow:0 4px 22px #ffb300aa}}
 .sharebar{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0 4px}
 .sharebar button{border:1px solid var(--rule);background:var(--card);color:var(--ink);border-radius:14px;padding:12px 8px;font:800 15px var(--f-body);cursor:pointer;box-shadow:0 2px 6px #0001}
 .sharebar button:active{transform:translateY(1px)}.sharebar button[hidden]{display:none}.sharebar:has(#instBtn[hidden]){grid-template-columns:1fr}
@@ -67,6 +68,7 @@ h1{font-family:var(--f-display);font-size:32px;margin:0;line-height:1.2}
     <div class="sub">처음 배우는 사람을 위한 화투·카드·판 게임·마작 교실</div>
     <div class="wallet"><div><small>내 지갑 (모든 게임 공통 · 가짜 돈)</small><b id="wBal">-</b><span id="wToday"></span></div>
       <div class="wbtns"><button id="achBtn">🏅 배지 <span id="achN"></span></button><button onclick="giftPrompt()" title="선물 코드">🎁</button><label class="vv"><input type="checkbox" id="vVoice"> 목소리</label></div></div>
+    <button type="button" id="evBtn" class="evbtn" hidden onclick="coinEvClaim()">🎁 11:59까지! 천국코인 <b>100만개</b> 받기</button>
     <div class="sharebar"><button type="button" id="shareBtn">👫 친구와 같이하기 (초대)</button><button type="button" id="instBtn" hidden>📲 바탕화면에 추가</button></div>
     <div id="instOv" class="achov" hidden><div class="achbox instbox"><h2 id="instT">바탕화면에 추가하기</h2><div id="instB"></div><div style="text-align:right;margin-top:12px"><button id="instClose">알겠어요</button></div></div></div>
     <button type="button" class="whobar" id="whoBar" hidden></button>
@@ -228,7 +230,18 @@ if(!window.FUN_NO_DAILY)WALLET.daily();
 // 11/18 사용자 요청: 1조 선물은 끝. 기기마다 한 번, 내 지갑과 컴퓨터 상대 돈을 모두 1억원으로 맞춤
 if(!window.FUN_NO_DAILY&&!FUNLS.get('bgc-reset-1eok',false)){FUNLS.set('bgc-reset-1eok',true);FUNLS.set('bgc-gift-1jo',true);WALLET.set(100000000);for(const g of ['gostop','seotda','poker','onecard','pokdeng']){const v=FUNLS.get(g+'-aimoney',null);if(Array.isArray(v))FUNLS.set(g+'-aimoney',v.map((x,i)=>i?100000000:x));}setTimeout(()=>funToast('💰 게임 머니를 모두 <b>1억원</b>으로 맞췄어요 (나·컴퓨터 상대 모두)',5000),1800);}
 // 🎁 선물 코드 넣기 (첫 화면 선물 버튼, 또는 게임 화면에서 Ctrl+Shift+G)
-function giftPrompt(){const c=prompt('🎁 선물 코드를 넣어 주세요');if(c==null)return;const r=WALLET.gift(c);
+// 🎁 11/23 이벤트: 오전 11:59(한국)까지 선물 버튼 → 천국코인 100만개 (한 사람 한 번: 기기 기록 + 서버 기록)
+const COIN_EV={id:'coin1123',until:Date.UTC(2026,10,23,2,59,59),q:1000000};
+const coinEvOn=()=>Date.now()<=COIN_EV.until&&!FUNLS.get('bgc-ev-'+COIN_EV.id,false);
+async function coinEvClaim(){if(Date.now()>COIN_EV.until){funToast('이벤트가 끝났어요 (오전 11:59까지)');return;}
+  if(FUNLS.get('bgc-ev-'+COIN_EV.id,false)){funToast('이미 받았어요 🙂 한 사람 한 번만이에요');return;}
+  let r=null;try{r=await fetch(HVN_API+'/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),ev:COIN_EV.id})});}catch(e){}
+  if(r&&r.status===409){FUNLS.set('bgc-ev-'+COIN_EV.id,true);funToast('이미 받았어요 🙂 한 사람 한 번만이에요');return;}
+  if(r&&!r.ok){funToast('이벤트가 끝났어요');return;}
+  FUNLS.set('bgc-ev-'+COIN_EV.id,true);FUNLS.set('bgc-coin-grant',(FUNLS.get('bgc-coin-grant',0)||0)+COIN_EV.q);
+  funToast('🎉 천국코인 <b>100만개</b>를 받았어요! 천국코인 거래소에서 확인하세요',5000);
+  const b=document.getElementById('evBtn');if(b)b.hidden=true;if(typeof COIN!=='undefined'&&typeof window.coinGrantApply==='function')window.coinGrantApply();}
+function giftPrompt(){if(Date.now()<=COIN_EV.until){coinEvClaim();return;}const c=prompt('🎁 선물 코드를 넣어 주세요');if(c==null)return;const r=WALLET.gift(c);
   if(r>0){alert('🎉 '+wonF(r)+'을 받았어요! 지갑: '+wonF(WALLET.get()));location.reload();}
   else alert(r===0?'이 기기에서 이미 받은 선물 코드예요.':'코드가 맞지 않아요.');}
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&(e.key==='G'||e.key==='g')){e.preventDefault();giftPrompt();}});
@@ -391,6 +404,7 @@ document.getElementById('achOv').onclick=e=>{if(e.target.id==='achOv')e.target.h
   $i('whoClose').onclick=()=>$i('whoOv').hidden=true;$i('whoOv').onclick=e=>{if(e.target.id==='whoOv')e.target.hidden=true;};
   setTimeout(load,2500);setInterval(()=>{if(!document.hidden)load();},60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
 })();
+{const eb=document.getElementById('evBtn');const ev=()=>{eb.hidden=!coinEvOn();};ev();setInterval(ev,30000);}
 homeRender();addEventListener('focus',homeRender);addEventListener('pageshow',homeRender);
 </script>
 <div id="swUpd" class="sw-upd" hidden role="status"><span id="swMsg">새 버전이 나왔어요</span><button id="swNow" type="button">지금 바꾸기</button><button id="swLater" type="button">나중에</button></div>

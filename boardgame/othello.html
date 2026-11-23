@@ -499,7 +499,18 @@ if(!window.FUN_NO_DAILY)WALLET.daily();
 // 11/18 사용자 요청: 1조 선물은 끝. 기기마다 한 번, 내 지갑과 컴퓨터 상대 돈을 모두 1억원으로 맞춤
 if(!window.FUN_NO_DAILY&&!FUNLS.get('bgc-reset-1eok',false)){FUNLS.set('bgc-reset-1eok',true);FUNLS.set('bgc-gift-1jo',true);WALLET.set(100000000);for(const g of ['gostop','seotda','poker','onecard','pokdeng']){const v=FUNLS.get(g+'-aimoney',null);if(Array.isArray(v))FUNLS.set(g+'-aimoney',v.map((x,i)=>i?100000000:x));}setTimeout(()=>funToast('💰 게임 머니를 모두 <b>1억원</b>으로 맞췄어요 (나·컴퓨터 상대 모두)',5000),1800);}
 // 🎁 선물 코드 넣기 (첫 화면 선물 버튼, 또는 게임 화면에서 Ctrl+Shift+G)
-function giftPrompt(){const c=prompt('🎁 선물 코드를 넣어 주세요');if(c==null)return;const r=WALLET.gift(c);
+// 🎁 11/23 이벤트: 오전 11:59(한국)까지 선물 버튼 → 천국코인 100만개 (한 사람 한 번: 기기 기록 + 서버 기록)
+const COIN_EV={id:'coin1123',until:Date.UTC(2026,10,23,2,59,59),q:1000000};
+const coinEvOn=()=>Date.now()<=COIN_EV.until&&!FUNLS.get('bgc-ev-'+COIN_EV.id,false);
+async function coinEvClaim(){if(Date.now()>COIN_EV.until){funToast('이벤트가 끝났어요 (오전 11:59까지)');return;}
+  if(FUNLS.get('bgc-ev-'+COIN_EV.id,false)){funToast('이미 받았어요 🙂 한 사람 한 번만이에요');return;}
+  let r=null;try{r=await fetch(HVN_API+'/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),ev:COIN_EV.id})});}catch(e){}
+  if(r&&r.status===409){FUNLS.set('bgc-ev-'+COIN_EV.id,true);funToast('이미 받았어요 🙂 한 사람 한 번만이에요');return;}
+  if(r&&!r.ok){funToast('이벤트가 끝났어요');return;}
+  FUNLS.set('bgc-ev-'+COIN_EV.id,true);FUNLS.set('bgc-coin-grant',(FUNLS.get('bgc-coin-grant',0)||0)+COIN_EV.q);
+  funToast('🎉 천국코인 <b>100만개</b>를 받았어요! 천국코인 거래소에서 확인하세요',5000);
+  const b=document.getElementById('evBtn');if(b)b.hidden=true;if(typeof COIN!=='undefined'&&typeof window.coinGrantApply==='function')window.coinGrantApply();}
+function giftPrompt(){if(Date.now()<=COIN_EV.until){coinEvClaim();return;}const c=prompt('🎁 선물 코드를 넣어 주세요');if(c==null)return;const r=WALLET.gift(c);
   if(r>0){alert('🎉 '+wonF(r)+'을 받았어요! 지갑: '+wonF(WALLET.get()));location.reload();}
   else alert(r===0?'이 기기에서 이미 받은 선물 코드예요.':'코드가 맞지 않아요.');}
 document.addEventListener('keydown',e=>{if(e.ctrlKey&&e.shiftKey&&(e.key==='G'||e.key==='g')){e.preventDefault();giftPrompt();}});
