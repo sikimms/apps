@@ -509,7 +509,7 @@ function hvnShowInvite(v){document.getElementById('ivOv')?.remove();
   let tries=0;const t=setInterval(async()=>{tries++;if(tries>60){clearInterval(t);funToast('방을 만들지 못해서 초대를 못 보냈어요');return;}
     const R=typeof ROOM!=='undefined'?ROOM:typeof NET!=='undefined'?NET:null;if(!R||!R.peer||!R.peer.open||!R.code)return;clearInterval(t);
     try{const r=await fetch(HVN_API+'/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),to,file:HVN_FILE+'.html',code:R.code,game:HVN_PG[HVN_FILE]||''})});
-      funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>판 시작</b>을 누르세요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
+      funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>바로 새 판</b>이 시작돼요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
 
 // 11/23 자동 배포(GCP bgdeploy) 연결 확인
 
@@ -988,7 +988,7 @@ function roomHost(){
         const g={gi:0,conn:c,open:false};
         c.on('open',()=>{const used=new Set(roomGuests());let gi=1;while(used.has(gi))gi++;g.gi=gi;g.open=true;ROOM.guests.push(g);
           try{c.send({t:'welcome',gi});}catch(e){}
-          ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();roomLobby();cfg.join&&cfg.join(gi);});
+          ROOM.say(`<b>친구 ${gi}</b>이(가) 들어왔어요. ${cfg.max>1?'더 기다리거나 ':''}<b>판 시작</b>을 누르세요.`,'ok');roomUI();roomLobby();cfg.join&&cfg.join(gi);roomAutoStart();});
         c.on('data',d=>{if(!g.open||!d||!d.t)return;if(d.t==='money'){ROOM.gm=ROOM.gm||{};ROOM.gm[g.gi]={money:+d.v||0,nick:String(d.nick||'').slice(0,10)};roomUI();if(ROOM.cfg.money)ROOM.cfg.money(g.gi);return;}if(d.t==='emo'){const who='친구 '+g.gi;emoShow(who,d.e);for(const o of ROOM.guests)if(o.open&&o!==g)try{o.conn.send({t:'emo',from:who,e:d.e});}catch(_){}return;}cfg.msg(g.gi,d);});
         c.on('close',()=>{if(!g.open)return;g.open=false;ROOM.guests=ROOM.guests.filter(x=>x!==g);ROOM.say(`친구 ${g.gi}의 연결이 끊겼어요. 그 자리는 컴퓨터가 이어서 해요.`,'bad');roomUI();roomLobby();cfg.leave&&cfg.leave(g.gi);});
         c.on('error',()=>{});});
@@ -1015,6 +1015,10 @@ function roomJoin(code){
     roomUI();
   }).catch(()=>ROOM.say('연결 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.','bad'));
 }
+// 11/24: 친구가 들어오면 방장이 '판 시작'을 안 눌러도 자동으로 새 판 (하던 판이 있어도 처음부터). 여러 명이 연달아 들어오면 마지막에 한 번만
+function roomAutoStart(){clearTimeout(ROOM.autoT);ROOM.autoT=setTimeout(()=>{if(!ROOM.host||!roomGuests().length)return;
+  ROOM.say('👋 친구가 들어와서 <b>새 판</b>을 시작해요!','ok');try{if(typeof funToast==='function')funToast('👋 친구가 들어와서 새 판을 시작해요');}catch(e){}
+  ROOM.cfg.showPlay&&ROOM.cfg.showPlay();ROOM.playing=true;roomLobby();ROOM.cfg.start();},1800);}
 // 친구가 방에 있는 동안: 방장 쪽에서는 친구가 둘 차례를 기다리는 중인지 등은 게임이 알아서 처리
 const roomGuest=()=>ROOM.on&&!ROOM.host&&ROOM.ok;     // 나는 친구(손님) 기기
 const roomHosting=()=>ROOM.on&&ROOM.host&&!!ROOM.peer; // 나는 방장 기기

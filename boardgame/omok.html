@@ -668,7 +668,7 @@ function hvnShowInvite(v){document.getElementById('ivOv')?.remove();
   let tries=0;const t=setInterval(async()=>{tries++;if(tries>60){clearInterval(t);funToast('방을 만들지 못해서 초대를 못 보냈어요');return;}
     const R=typeof ROOM!=='undefined'?ROOM:typeof NET!=='undefined'?NET:null;if(!R||!R.peer||!R.peer.open||!R.code)return;clearInterval(t);
     try{const r=await fetch(HVN_API+'/invite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:hvnUid(),nick:hvnNick(),to,file:HVN_FILE+'.html',code:R.code,game:HVN_PG[HVN_FILE]||''})});
-      funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>판 시작</b>을 누르세요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
+      funToast(r.ok?'📨 <b>'+toNick.replace(/[<>&]/g,'')+'</b>님께 초대를 보냈어요 · 들어오면 <b>바로 새 판</b>이 시작돼요':'초대를 보내지 못했어요',5000);}catch(e){funToast('초대를 보내지 못했어요 (인터넷 연결 확인)');}},500);})();
 
 // 11/23 자동 배포(GCP bgdeploy) 연결 확인
 
